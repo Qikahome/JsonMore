@@ -1,0 +1,8 @@
+{
+  "required": true,
+  "package": "qikahome.jsonmore.mixin",
+  "refmap": "jsonmore.refmap.json",
+  "mixins": ["MixinFlexTypesLoad"],
+  "client": [],
+  "server": []
+}
