@@ -1,4 +1,4 @@
-English [简体中文](README_zh-cn.md)
+English [简体中文](README-zh-cn.md)
 
 # JsonMore - JsonThings Addon
 A lightweight addon for [JsonThings](https://github.com/gigaherz/JsonThings) that expands the range of JSON-configurable content types in Minecraft.
