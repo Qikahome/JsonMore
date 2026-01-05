@@ -8,7 +8,7 @@
 - 适配 [TConstruct](https://github.com/SlimeKnights/TinkersConstruct) 等模组的插件支持
 
 ## 使用说明
-JsonMore 遵循 JsonThings 的 JSON 语法规范。使用示例可参考 `docs/` 目录（开发中）。
+JsonMore 遵循 JsonThings 的 JSON 语法规范。可参考[文档](docs/zh_cn/目录.md)。
 
 ## 许可证
 本项目基于 MIT 许可证开源 - 详情请查看 [LICENSE](LICENSE) 文件。
