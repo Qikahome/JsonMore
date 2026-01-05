@@ -1,7 +1,7 @@
 [English](README.md) 简体中文
 
 # JsonMore - JsonThings 附属模组
-一款轻量级的 [JsonThings](https://github.com/gigaherz/JsonThings) 附属模组，扩展了《我的世界》中可通过 JSON 配置的内容类型范围。
+一款重量级的 [JsonThings](https://github.com/gigaherz/JsonThings) 附属模组，扩展了《我的世界》中可通过 JSON 配置的内容类型范围。
 
 ## 功能特性
 - 扩展可通过 JSON 配置的内容类型
