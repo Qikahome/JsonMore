@@ -20,6 +20,7 @@ public abstract class MixinBlockEntityType<T extends BlockEntity> {
                 if (p_155263_.getBlock() instanceof IFlexBlock) {
                         //LOGGER.debug("Validating flex block: {}", p_155263_.getBlock());
                         cir.setReturnValue(true);
+                        cir.cancel();
                 }
         }
 }
