@@ -1,8 +1,9 @@
-package qikahome.jsonmore.tconstruct;
+package qikahome.jsonmore.minecraft;
 
 import java.util.Map;
 
 import javax.annotation.Nullable;
+
 import com.google.common.collect.Maps;
 
 import dev.gigaherz.jsonthings.things.IFlexBlock;
@@ -16,29 +17,21 @@ import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.BlockGetter;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.StandingSignBlock;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.properties.Property;
-import net.minecraft.world.level.material.PushReaction;
+import net.minecraft.world.level.block.state.properties.WoodType;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.shapes.CollisionContext;
 import net.minecraft.world.phys.shapes.VoxelShape;
-import slimeknights.tconstruct.smeltery.block.component.SearedTankBlock;
 
-public class FlexFluidTankBlock extends SearedTankBlock implements IFlexBlock {
-    public FlexFluidTankBlock(Properties properties, int capacity,
+public class FlexStandingSignBlock extends StandingSignBlock implements IFlexBlock {
+    public FlexStandingSignBlock(Properties props, WoodType woodType,
             Map<Property<?>, Comparable<?>> propertyDefaultValues) {
-        super(properties, capacity);
+        super(props, woodType);
         initializeFlex(propertyDefaultValues);
     }
-
-    public FlexFluidTankBlock(Properties properties, int capacity, PushReaction destroy) {
-        super(properties, capacity, destroy);
-    }
-
-    @Override
-    public PushReaction getPistonPushReaction(BlockState state) {
-        return null;
-    }
+    
 
     // region IFlexBlock
     private DynamicShape generalShape;

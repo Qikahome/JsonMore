@@ -2,47 +2,127 @@ package qikahome.jsonmore.tconstruct;
 
 import java.util.List;
 
+import org.jetbrains.annotations.NotNull;
+
+import dev.gigaherz.jsonthings.things.parsers.ThingParseException;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.NonNullList;
 import net.minecraft.core.registries.Registries;
-import net.minecraft.network.chat.Component;
+import net.minecraft.nbt.CompoundTag;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.tags.TagKey;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.level.block.entity.BlockEntityType.BlockEntitySupplier;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraftforge.items.ItemStackHandler;
-
+import qikahome.jsonmore.tconstruct.FlexTinkerChestBlock.ChestItemHandlerHelper;
 import slimeknights.mantle.block.entity.MantleBlockEntity;
 import slimeknights.tconstruct.tables.block.entity.chest.AbstractChestBlockEntity;
 import slimeknights.tconstruct.tables.block.entity.inventory.IChestItemHandler;
 import slimeknights.tconstruct.tables.block.entity.inventory.ScalingChestItemHandler;
 
-public class FlexTinkerChestBlockEntity extends AbstractChestBlockEntity {
+public class FlexTinkerChestBlockEntity extends AbstractChestBlockEntity{
 
     public FlexTinkerChestBlockEntity(BlockPos pos, BlockState state) {
-        super(TConstructPlugin.TINKER_CHEST_TILE.get(), pos, state, null, null);
+        super(TConstructPlugin.TINKER_CHEST_TILE.get(), pos, state, state.getBlock().getName(),
+                new FlexChestItemHandler(((FlexTinkerChestBlock) state.getBlock()).helper));
     }
 
-    public FlexTinkerChestBlockEntity(BlockPos pos, BlockState state, Component name, IChestItemHandler itemHandler) {
-        super(TConstructPlugin.TINKER_CHEST_TILE.get(), pos, state, name, itemHandler);
-    }
+    public static class FlexChestItemHandler implements IChestItemHandler {
 
-    public static BlockEntitySupplier<FlexTinkerChestBlockEntity> getSupplier(String name, String slotMode, int max_slots,
-            int slot_stack_limit,
-            boolean allow_duplicate_item,
-            List<String> filters) {
-        NonNullList<TagKey<Item>> tagFilters = NonNullList.create();
-        filters.forEach(f -> tagFilters.add(TagKey.create(Registries.ITEM, new ResourceLocation(f))));
-        if (slotMode.equals("scaling")) {
-            return (pos, state) -> new FlexTinkerChestBlockEntity(pos, state, Component.translatable(name),
-                    new FlexScalingChestItemHandler(max_slots, slot_stack_limit, allow_duplicate_item, tagFilters));
-        } else if (slotMode.equals("fixed")) {
-            return (pos, state) -> new FlexTinkerChestBlockEntity(pos, state, Component.translatable(name),
-                    new FlexTinkersChestItemHandler(max_slots, slot_stack_limit));
+        private ChestItemHandlerHelper helper;
+        private IChestItemHandler itemHandler;
+
+        public FlexChestItemHandler(ChestItemHandlerHelper helper) {
+            this.helper = helper;
         }
-        throw new IllegalArgumentException("Invalid slot mode: " + slotMode);
+
+        public static IChestItemHandler getHandler(String slotMode,
+                int max_slots,
+                int slot_stack_limit,
+                boolean allow_duplicate_item,
+                List<String> filters) {
+            NonNullList<TagKey<Item>> tagFilters = NonNullList.create();
+            filters.forEach(f -> tagFilters.add(TagKey.create(Registries.ITEM, new ResourceLocation(f))));
+            if (slotMode.equals("scaling")) {
+                return new FlexScalingChestItemHandler(max_slots, slot_stack_limit, allow_duplicate_item, tagFilters);
+            } else if (slotMode.equals("fixed")) {
+                return new FlexTinkersChestItemHandler(max_slots, slot_stack_limit);
+            }
+            throw new ThingParseException("Invalid slot mode: " + slotMode);
+        }
+
+        private void createHandlerIfVoid() {
+            if (itemHandler == null) {
+                itemHandler = getHandler(helper.slotMode, helper.maxSlots, helper.slotStackLimit, helper.allowDuplicateItem, helper.filters);
+            }
+        }
+
+        @Override
+        public void setStackInSlot(int slot, @NotNull ItemStack stack) {
+            createHandlerIfVoid();
+            itemHandler.setStackInSlot(slot, stack);
+        }
+
+        @Override
+        public int getSlots() {
+            createHandlerIfVoid();
+            return itemHandler.getSlots();
+        }
+
+        @Override
+        public @NotNull ItemStack getStackInSlot(int slot) {
+            createHandlerIfVoid();
+            return itemHandler.getStackInSlot(slot);
+        }
+
+        @Override
+        public @NotNull ItemStack insertItem(int slot, @NotNull ItemStack stack, boolean simulate) {
+            createHandlerIfVoid();
+            return itemHandler.insertItem(slot, stack, simulate);
+        }
+
+        @Override
+        public @NotNull ItemStack extractItem(int slot, int amount, boolean simulate) {
+            createHandlerIfVoid();
+            return itemHandler.extractItem(slot, amount, simulate);
+        }
+
+        @Override
+        public int getSlotLimit(int slot) {
+            createHandlerIfVoid();
+            return itemHandler.getSlotLimit(slot);
+        }
+
+        @Override
+        public boolean isItemValid(int slot, @NotNull ItemStack stack) {
+            createHandlerIfVoid();
+            return itemHandler.isItemValid(slot, stack);
+        }
+
+        @Override
+        public CompoundTag serializeNBT() {
+            createHandlerIfVoid();
+            return itemHandler.serializeNBT();
+        }
+
+        @Override
+        public void deserializeNBT(CompoundTag nbt) {
+            createHandlerIfVoid();
+            itemHandler.deserializeNBT(nbt);
+        }
+
+        @Override
+        public int getVisualSize() {
+            createHandlerIfVoid();
+            return itemHandler.getVisualSize();
+        }
+
+        @Override
+        public void setParent(MantleBlockEntity parent) {
+            createHandlerIfVoid();
+            itemHandler.setParent(parent);
+        }
     }
 
     /** Item handler for part chest-like chests */

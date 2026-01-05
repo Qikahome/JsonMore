@@ -2,7 +2,7 @@
   "required": true,
   "package": "qikahome.jsonmore.mixin",
   "refmap": "jsonmore.refmap.json",
-  "mixins": ["MixinFlexTypesLoad"],
+  "mixins": ["MixinFlexTypesLoad","MixinStandingAndWallBlockItem","MixinBlockEntityType"],
   "client": [],
   "server": []
 }

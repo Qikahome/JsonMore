@@ -4,45 +4,29 @@ import org.slf4j.Logger;
 
 import com.mojang.logging.LogUtils;
 
-import dev.gigaherz.jsonthings.things.serializers.FlexBlockType;
-import net.minecraft.client.Minecraft;
-import net.minecraft.core.Registry;
-import net.minecraft.core.registries.Registries;
-import net.minecraft.resources.ResourceLocation;
-import net.minecraft.world.food.FoodProperties;
-import net.minecraft.world.item.BlockItem;
-import net.minecraft.world.item.CreativeModeTab;
-import net.minecraft.world.item.CreativeModeTabs;
-import net.minecraft.world.item.Item;
-import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.entity.BlockEntityType;
-import net.minecraft.world.level.block.state.BlockBehaviour;
-import net.minecraft.world.level.material.MapColor;
 import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.client.event.RenderLevelStageEvent.RegisterStageEvent;
 import net.minecraftforge.common.MinecraftForge;
-import net.minecraftforge.event.BuildCreativeModeTabContentsEvent;
 import net.minecraftforge.event.server.ServerStartingEvent;
 import net.minecraftforge.eventbus.api.IEventBus;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.ModList;
 import net.minecraftforge.fml.common.Mod;
+import net.minecraftforge.fml.common.Mod.EventBusSubscriber;
+import net.minecraftforge.fml.common.Mod.EventBusSubscriber.Bus;
 import net.minecraftforge.fml.config.ModConfig;
 import net.minecraftforge.fml.event.lifecycle.FMLClientSetupEvent;
 import net.minecraftforge.fml.event.lifecycle.FMLCommonSetupEvent;
 import net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext;
 import net.minecraftforge.registries.DeferredRegister;
 import net.minecraftforge.registries.ForgeRegistries;
-import net.minecraftforge.registries.RegisterEvent;
-import net.minecraftforge.registries.RegistryObject;
-import qikahome.jsonmore.tconstruct.FlexTinkerChestBlockEntity;
+import qikahome.jsonmore.minecraft.MinecraftPlugin;
 import qikahome.jsonmore.tconstruct.TConstructPlugin;
-import slimeknights.mantle.registration.deferred.BlockEntityTypeDeferredRegister;
 import slimeknights.tconstruct.TConstruct;
-import slimeknights.tconstruct.smeltery.block.entity.component.TankBlockEntity;
 
 // 这里的值应该与META-INF/mods.toml文件中的条目匹配
 @Mod(JsonMore.MODID)
+@EventBusSubscriber(modid= TConstruct.MOD_ID, value= Dist.CLIENT, bus= Bus.MOD)
 public class JsonMore {
     // 在一个公共位置定义mod id，以便所有内容都可以引用
     public static final String MODID = "jsonmore";
@@ -54,12 +38,15 @@ public class JsonMore {
 
         // 注册mod加载的commonSetup方法
         modEventBus.addListener(this::commonSetup);
-
+        
         // 为服务器和其他我们感兴趣的游戏事件注册自己
         MinecraftForge.EVENT_BUS.register(this);
 
-
         BLOCK_ENTITY_TYPES.register(modEventBus);
+
+        if(ModList.get().isLoaded("tconstruct")) {
+            TConstructPlugin.parser = TConstructPlugin.PARSER_SUPPLIER.apply(modEventBus);
+        }
 
         // 注册我们mod的ForgeConfigSpec，以便Forge可以为我们创建和加载配置文件
         context.registerConfig(ModConfig.Type.COMMON, Config.SPEC);
@@ -68,7 +55,7 @@ public class JsonMore {
     public static final DeferredRegister<BlockEntityType<?>> BLOCK_ENTITY_TYPES = DeferredRegister
             .create(ForgeRegistries.BLOCK_ENTITY_TYPES, MODID);
 
-    static{
+    static {
         if (ModList.get().isLoaded("tconstruct")) {
             LOGGER.info("Registering JsonMore TConstructPlugin Block Entities");
             TConstructPlugin.TINKER_CHEST_TILE = BLOCK_ENTITY_TYPES.register("tinker_chest",
@@ -77,6 +64,10 @@ public class JsonMore {
     }
 
     private void commonSetup(final FMLCommonSetupEvent event) {
+        LOGGER.info("Start JsonMore common setup.");
+        if(ModList.get().isLoaded("tconstruct")) {
+            TConstructPlugin.onCommonSetup(event);
+        }
     }
 
     // 您可以使用SubscribeEvent，让事件总线发现要调用的方法
@@ -101,6 +92,9 @@ public class JsonMore {
     public static void onFlexTypesLoad() {
         // 联动
         ModList modList = ModList.get();
+        if (modList.isLoaded("minecraft")) {
+            MinecraftPlugin.load();
+        }
         if (modList.isLoaded("tconstruct")) {
             TConstructPlugin.load();
         }

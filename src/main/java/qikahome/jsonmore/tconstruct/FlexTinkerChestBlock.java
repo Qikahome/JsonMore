@@ -1,5 +1,6 @@
 package qikahome.jsonmore.tconstruct;
 
+import java.util.List;
 import java.util.Map;
 
 import javax.annotation.Nullable;
@@ -12,6 +13,8 @@ import dev.gigaherz.jsonthings.things.events.FlexEventHandler;
 import dev.gigaherz.jsonthings.things.events.FlexEventResult;
 import dev.gigaherz.jsonthings.things.shapes.DynamicShape;
 import net.minecraft.core.BlockPos;
+import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.player.Player;
@@ -27,18 +30,47 @@ import net.minecraft.world.phys.shapes.VoxelShape;
 import slimeknights.tconstruct.tables.block.ChestBlock;
 
 public class FlexTinkerChestBlock extends ChestBlock implements IFlexBlock {
-    
+
     public FlexTinkerChestBlock(Properties properties, BlockEntitySupplier<? extends BlockEntity> be,
-            boolean dropsItems, Map<Property<?>, Comparable<?>> propertyDefaultValues) {
+            boolean dropsItems, Map<Property<?>, Comparable<?>> propertyDefaultValues, ChestItemHandlerHelper helper) {
         super(properties, be, dropsItems);
         initializeFlex(propertyDefaultValues);
+        this.helper = helper;
     }
 
     public static FlexTinkerChestBlock getRegisterSupplier() {
-        return new FlexTinkerChestBlock(Properties.of(), FlexTinkerChestBlockEntity::new, true, Maps.newHashMap());
+        return new FlexTinkerChestBlock(Properties.of(), FlexTinkerChestBlockEntity::new, true, Maps.newHashMap(),
+                null);
     }
 
+    public final ChestItemHandlerHelper helper;
 
+    @Override
+    public MutableComponent getName() {
+        if (helper != null) {
+            return Component.translatable(helper.defaultName);
+        }
+        return Component.translatable(this.getDescriptionId());
+    }
+
+    public static class ChestItemHandlerHelper {
+        public final String defaultName;
+        public final String slotMode;
+        public final int maxSlots;
+        public final int slotStackLimit;
+        public final boolean allowDuplicateItem;
+        public final List<String> filters;
+
+        public ChestItemHandlerHelper(String defaultName, String slotMode, int maxSlots,
+                int slotStackLimit, boolean allowDuplicateItem, List<String> filters) {
+            this.defaultName = defaultName;
+            this.slotMode = slotMode;
+            this.maxSlots = maxSlots;
+            this.slotStackLimit = slotStackLimit;
+            this.allowDuplicateItem = allowDuplicateItem;
+            this.filters = filters;
+        }
+    }
 
     // region IFlexBlock
     private DynamicShape generalShape;

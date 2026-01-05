@@ -4,8 +4,10 @@ import static qikahome.jsonmore.JsonMore.*;
 
 import java.util.List;
 import java.util.Map;
+import java.util.function.Function;
 import java.util.function.Supplier;
 
+import dev.gigaherz.jsonthings.things.parsers.ThingResourceManager;
 import dev.gigaherz.jsonthings.things.serializers.FlexBlockType;
 import dev.gigaherz.jsonthings.things.serializers.FlexItemType;
 import net.minecraft.core.NonNullList;
@@ -13,12 +15,17 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.GsonHelper;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.entity.BlockEntityType;
-import net.minecraft.world.level.block.entity.BlockEntityType.BlockEntitySupplier;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.StateDefinition;
 import net.minecraft.world.level.block.state.properties.Property;
+import net.minecraftforge.eventbus.api.IEventBus;
+import net.minecraftforge.fml.event.lifecycle.FMLCommonSetupEvent;
 import net.minecraftforge.registries.ForgeRegistries;
 import net.minecraftforge.registries.RegistryObject;
+import qikahome.jsonmore.tconstruct.FlexTinkerChestBlock.ChestItemHandlerHelper;
+import qikahome.jsonmore.tconstruct.parts.FlexMaterialStatTypeType;
+import qikahome.jsonmore.tconstruct.parts.MaterialStatTypeParser;
+import slimeknights.tconstruct.smeltery.block.component.SearedTankBlock;
 
 public class TConstructPlugin {
     public static void load() {
@@ -26,6 +33,9 @@ public class TConstructPlugin {
         FlexBlockType.register("jsonmore:fluid_tank", data -> {
             int capacity = GsonHelper.getAsInt(data, "capacity", 4000);
             return (props, builder) -> {
+                props.isValidSpawn((a, b, c, d) -> false).isRedstoneConductor((a, b, c) -> false)
+                        .isSuffocating((a, b, c) -> false).isViewBlocking((a, b, c) -> false).noOcclusion()
+                        .lightLevel(SearedTankBlock.LIGHT_GETTER);
                 List<Property<?>> _properties = builder.getProperties();
                 Map<Property<?>, Comparable<?>> propertyDefaultValues = builder.getPropertyDefaultValues();
                 return new FlexFluidTankBlock(props, capacity, propertyDefaultValues) {
@@ -55,10 +65,11 @@ public class TConstructPlugin {
                 String translationKey = gotTranslationKey == null
                         ? "block." + builder.getRegistryName().toString().replace(":", ".")
                         : gotTranslationKey;
-                BlockEntitySupplier<FlexTinkerChestBlockEntity> be = FlexTinkerChestBlockEntity
-                        .getSupplier(translationKey, slotMode, maxSlots, slotStackLimit, allowDuplicateItem, filters);
+                ChestItemHandlerHelper helper = new ChestItemHandlerHelper(translationKey, slotMode, maxSlots,
+                        slotStackLimit, allowDuplicateItem, filters);
 
-                return new FlexTinkerChestBlock(props, be, dropItems, propertyDefaultValues) {
+                return new FlexTinkerChestBlock(props, FlexTinkerChestBlockEntity::new, dropItems,
+                        propertyDefaultValues, helper) {
                     @Override
                     protected void createBlockStateDefinition(StateDefinition.Builder<Block, BlockState> builder1) {
                         super.createBlockStateDefinition(builder1);
@@ -84,7 +95,19 @@ public class TConstructPlugin {
                 return new FlexCanItem(props, builder, capacity);
             };
         });
+
+        FlexMaterialStatTypeType.load();
     }
+
+    public static void onCommonSetup(final FMLCommonSetupEvent event) {
+        parser.onCommonSetup(event);
+    }
+
+    public static MaterialStatTypeParser parser = null;
+    public static Function<IEventBus, MaterialStatTypeParser> PARSER_SUPPLIER = bus -> {
+        LOGGER.info("JsonMore: Start registering material stat types parser.");
+        return ThingResourceManager.instance().registerParser(new MaterialStatTypeParser(bus));
+    };
 
     public static RegistryObject<BlockEntityType<FlexTinkerChestBlockEntity>> TINKER_CHEST_TILE;
     public static final Supplier<BlockEntityType<FlexTinkerChestBlockEntity>> TINKER_CHEST_SUPPLIER = () -> BlockEntityType.Builder
