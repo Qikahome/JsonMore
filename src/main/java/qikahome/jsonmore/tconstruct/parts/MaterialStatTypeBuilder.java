@@ -79,19 +79,24 @@ public class MaterialStatTypeBuilder extends BaseBuilder<FlexMaterialStatType, M
                 var type = jo.get("type").getAsString();
                 Supplier<Stat<?, ?>> stat = null;
                 var regName = this.getRegistryName();
-                var descToolTip = GsonHelper.getAsString(jo, "descToolTip", new StringBuilder().append(regName.getPath()).append('.')
-                            .append(regName.getNamespace()).append('.').append(str).append(".description").toString());
-                var infoToolTip = GsonHelper.getAsString(jo, "infoToolTip", net.minecraft.Util.makeDescriptionId("tool_stat",regName));
-                
+                var descToolTip = GsonHelper.getAsString(jo, "descToolTip",
+                        new StringBuilder().append(regName.getPath()).append('.')
+                                .append(regName.getNamespace()).append('.')
+                                .append(str.replace(':', '.').replace('/', '.')).append(".description")
+                                .toString());
+                var infoToolTip = GsonHelper.getAsString(jo, "infoToolTip",
+                        net.minecraft.Util.makeDescriptionId("tool_stat", regName)
+                                + str.replace(':', '.').replace('/', '.'));
+
                 switch (type) {
                     case "float":
                         var value = jo.get("value").getAsFloat();
                         var operator = StatTypes.Operator.valueOf(jo.get("operator").getAsString().toUpperCase());
-                        stat = () -> new StatTypes.FloatStat(value, operator, descToolTip,infoToolTip);
+                        stat = () -> new StatTypes.FloatStat(value, operator, descToolTip, infoToolTip);
                         break;
                     case "tier":
                         var tier = Tiers.valueOf(jo.get("value").getAsString().toUpperCase());
-                        stat = () -> new StatTypes.TierStat(tier, descToolTip,infoToolTip);
+                        stat = () -> new StatTypes.TierStat(tier, descToolTip, infoToolTip);
                         break;
                 }
                 stats.put(str, stat);
