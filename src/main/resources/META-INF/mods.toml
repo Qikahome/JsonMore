@@ -107,6 +107,14 @@ description='''${mod_description}'''
     ordering="AFTER"
     side="BOTH"
 
+# Anvil MusBox 依赖 - 可选依赖
+[[dependencies.${mod_id}]]
+    modId="anvil_musbox"
+    mandatory=false
+    versionRange="${anvil_musbox_range}"
+    ordering="AFTER"
+    side="BOTH"
+
 # 功能要求（Features）：声明模组运行所需的游戏环境特性。以下示例声明
 # 模组要求 OpenGL 版本 3.2 及以上。未来会新增更多特性配置项。
 # 特性配置区分运行端，因此此项不会阻止模组在服务端加载。

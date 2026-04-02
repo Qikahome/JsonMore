@@ -21,12 +21,13 @@ import net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext;
 import net.minecraftforge.registries.DeferredRegister;
 import net.minecraftforge.registries.ForgeRegistries;
 import qikahome.jsonmore.minecraft.MinecraftPlugin;
+import qikahome.jsonmore.musbox.AnvilMusBoxPlugin;
 import qikahome.jsonmore.tconstruct.TConstructPlugin;
 import slimeknights.tconstruct.TConstruct;
 
 // 这里的值应该与META-INF/mods.toml文件中的条目匹配
 @Mod(JsonMore.MODID)
-@EventBusSubscriber(modid= TConstruct.MOD_ID, value= Dist.CLIENT, bus= Bus.MOD)
+@EventBusSubscriber(modid = TConstruct.MOD_ID, value = Dist.CLIENT, bus = Bus.MOD)
 public class JsonMore {
     // 在一个公共位置定义mod id，以便所有内容都可以引用
     public static final String MODID = "jsonmore";
@@ -38,13 +39,13 @@ public class JsonMore {
 
         // 注册mod加载的commonSetup方法
         modEventBus.addListener(this::commonSetup);
-        
+
         // 为服务器和其他我们感兴趣的游戏事件注册自己
         MinecraftForge.EVENT_BUS.register(this);
 
         BLOCK_ENTITY_TYPES.register(modEventBus);
 
-        if(ModList.get().isLoaded("tconstruct")) {
+        if (ModList.get().isLoaded("tconstruct")) {
             TConstructPlugin.parser = TConstructPlugin.PARSER_SUPPLIER.apply(modEventBus);
         }
 
@@ -65,7 +66,7 @@ public class JsonMore {
 
     private void commonSetup(final FMLCommonSetupEvent event) {
         LOGGER.info("Start JsonMore common setup.");
-        if(ModList.get().isLoaded("tconstruct")) {
+        if (ModList.get().isLoaded("tconstruct")) {
             TConstructPlugin.onCommonSetup(event);
         }
     }
@@ -97,6 +98,9 @@ public class JsonMore {
         }
         if (modList.isLoaded("tconstruct")) {
             TConstructPlugin.load();
+        }
+        if (ModList.get().isLoaded("anvil_musbox")) {
+            AnvilMusBoxPlugin.load();
         }
     }
 }

@@ -1,8 +1,14 @@
 {
   "required": true,
+  "compatibilityLevel": "JAVA_17",
   "package": "qikahome.jsonmore.mixin",
   "refmap": "jsonmore.refmap.json",
-  "mixins": ["MixinFlexTypesLoad","MixinStandingAndWallBlockItem","MixinBlockEntityType"],
+  "mixins": [
+    "MixinFlexTypesLoad",
+    "MixinStandingAndWallBlockItem",
+    "MixinBlockEntityType"
+  ],
   "client": [],
-  "server": []
+  "server": [],
+  "minVersion": "0.8"
 }

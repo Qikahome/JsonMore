@@ -1,3 +1,4 @@
+
 plugins {
     id 'eclipse'          // Eclipse 工程支持插件
     id 'idea'             // IntelliJ IDEA 工程支持插件
@@ -121,11 +122,10 @@ repositories {
     // 在此声明依赖仓库
     // ForgeGradle 会自动添加 Forge Maven 仓库和 Maven 中央仓库
 
-    // 若有依赖的模组 Jar 包放在 ./libs 目录，可如下声明本地仓库
-    // 参考文档：https://docs.gradle.org/current/userguide/declaring_repositories.html#sub:flat_dir_resolver
-    // flatDir {
-    //     dir 'libs'
-    // }
+    // 若有依赖的模组 Jar 包放在 ./libs 目录
+    flatDir {
+        dir 'libs'
+    }
     
     // JSON Things 模组仓库
     maven {
@@ -141,6 +141,23 @@ repositories {
     maven {
         name "Progwml6's maven"
         url "https://dvs1.progwml6.com/files/maven/"
+    }
+    // Modrinth Maven 仓库（备用）
+    exclusiveContent {
+        forRepository {
+            maven {
+                name = "Modrinth"
+                url = "https://api.modrinth.com/maven"
+            }
+        }
+        filter {
+            includeGroup "maven.modrinth"
+        }
+    }
+    // CurseForge Maven 仓库
+    maven {
+        name = "CurseForge"
+        url = "https://cursemaven.com"
     }
 }
 
@@ -170,6 +187,10 @@ dependencies {
     // 运行时使用完整的 JEI Jar 包
     runtimeOnly fg.deobf("mezz.jei:jei-${minecraft_version}-forge:${jei_version}")
 
+    // Jade - 可选依赖（方块信息显示）
+    // CurseForge: https://www.curseforge.com/minecraft/mc-mods/jade
+    runtimeOnly fg.deobf("curse.maven:jade-324717:6855440")
+
     // 匠魂（Tinkers' Construct）和 Mantle 核心库 - 可选依赖
     // 仅编译时依赖其 API，运行时不打包进模组
     compileOnly fg.deobf("slimeknights.mantle:Mantle:${minecraft_version}-${mantle_version}")
@@ -177,6 +198,12 @@ dependencies {
     // 运行时使用完整的 Jar 包
     runtimeOnly fg.deobf("slimeknights.mantle:Mantle:${minecraft_version}-${mantle_version}")
     runtimeOnly fg.deobf("slimeknights.tconstruct:TConstruct:${minecraft_version}-${tconstruct_version}")
+    
+    // Anvil MusBox - 可选依赖
+    // 项目地址: https://github.com/Qikahome/Anvil_Musbox
+    // 编译时使用本地 dev jar（IDE可查看源码），运行时从 Modrinth 获取混淆版
+    compileOnly fg.deobf("blank:Anvil-MusBox-Forge-${minecraft_version}:${anvil_musbox_version}")
+    runtimeOnly fg.deobf("blank:Anvil-MusBox-Forge-${minecraft_version}:${anvil_musbox_version}")
 
     // 更多依赖配置参考：
     // http://www.gradle.org/docs/current/userguide/artifact_dependencies_tutorial.html
@@ -197,7 +224,8 @@ tasks.named('processResources', ProcessResources).configure {
             jei_range: jei_range,
             json_things_range: json_things_range,
             tconstruct_range: tconstruct_range,
-            mantle_range: mantle_range
+            mantle_range: mantle_range,
+            anvil_musbox_range: anvil_musbox_range
     ]
     inputs.properties replaceProperties // 将变量纳入任务输入（用于增量构建）
 
