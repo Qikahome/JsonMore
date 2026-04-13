@@ -57,6 +57,8 @@ public class JsonMore {
             .create(ForgeRegistries.BLOCK_ENTITY_TYPES, MODID);
 
     static {
+        MinecraftPlugin.BARREL_TILE = BLOCK_ENTITY_TYPES.register("barrel",
+                MinecraftPlugin.BARREL_SUPPLIER);
         if (ModList.get().isLoaded("tconstruct")) {
             LOGGER.info("Registering JsonMore TConstructPlugin Block Entities");
             TConstructPlugin.TINKER_CHEST_TILE = BLOCK_ENTITY_TYPES.register("tinker_chest",

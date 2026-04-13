@@ -7,7 +7,6 @@ import javax.annotation.Nullable;
 
 import com.google.common.collect.Maps;
 
-import dev.gigaherz.jsonthings.things.IFlexBlock;
 import dev.gigaherz.jsonthings.things.events.FlexEventContext;
 import dev.gigaherz.jsonthings.things.events.FlexEventHandler;
 import dev.gigaherz.jsonthings.things.events.FlexEventResult;
@@ -21,15 +20,18 @@ import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.BlockGetter;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.entity.BlockEntity;
+import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.entity.BlockEntityType.BlockEntitySupplier;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.properties.Property;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.shapes.CollisionContext;
 import net.minecraft.world.phys.shapes.VoxelShape;
+import qikahome.jsonmore.lib.IFlexEntityBlock;
+import static qikahome.jsonmore.tconstruct.TConstructPlugin.TINKER_CHEST_TILE;
 import slimeknights.tconstruct.tables.block.ChestBlock;
 
-public class FlexTinkerChestBlock extends ChestBlock implements IFlexBlock {
+public class FlexTinkerChestBlock extends ChestBlock implements IFlexEntityBlock<FlexTinkerChestBlockEntity> {
 
     public FlexTinkerChestBlock(Properties properties, BlockEntitySupplier<? extends BlockEntity> be,
             boolean dropsItems, Map<Property<?>, Comparable<?>> propertyDefaultValues, ChestItemHandlerHelper helper) {
@@ -38,9 +40,9 @@ public class FlexTinkerChestBlock extends ChestBlock implements IFlexBlock {
         this.helper = helper;
     }
 
-    public static FlexTinkerChestBlock getRegisterSupplier() {
-        return new FlexTinkerChestBlock(Properties.of(), FlexTinkerChestBlockEntity::new, true, Maps.newHashMap(),
-                null);
+    @Override
+    public BlockEntityType<FlexTinkerChestBlockEntity> getBlockEntityType() {
+        return TINKER_CHEST_TILE.get();
     }
 
     public final ChestItemHandlerHelper helper;
