@@ -9,8 +9,10 @@ import com.google.gson.JsonObject;
 
 import net.minecraft.core.registries.Registries;
 import net.minecraft.network.FriendlyByteBuf;
+import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
 import net.minecraft.world.item.crafting.Ingredient;
 import net.minecraftforge.common.crafting.AbstractIngredient;
 import net.minecraftforge.common.crafting.CraftingHelper;
@@ -25,10 +27,16 @@ public class TrueIngredient extends AbstractIngredient {
         super(Stream.empty());
     }
 
+    private static final ItemStack ANYTHING_STACK;
+
+    static {
+        ANYTHING_STACK = new ItemStack(Items.STICK);
+        ANYTHING_STACK.setHoverName(Component.literal("Anything"));
+    }
+
     @Override
     public ItemStack[] getItems() {
-        //return ForgeRegistries.ITEMS.getValues().toArray(ItemStack[]::new);
-        return new ItemStack[0];
+        return new ItemStack[] { ANYTHING_STACK.copy() }; // 注意要copy，避免修改原实例
     }
 
     @Override

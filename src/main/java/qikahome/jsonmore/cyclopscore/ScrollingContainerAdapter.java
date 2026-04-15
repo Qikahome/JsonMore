@@ -70,7 +70,7 @@ public class ScrollingContainerAdapter extends ScrollingInventoryContainer<Slot>
 
     public ScrollingContainerAdapter(int id, Inventory playerInventory, Container inventory) {
         super(CyclopsCorePlugin.SCROLLING_CONTAINER_MENU.get(), id, playerInventory, inventory, Collections.<Slot>emptyList(), (item, pattern) -> true);
-        LOGGER.info("createAdapterMenu");
+        //LOGGER.info("createAdapterMenu");
         this.chestSlots = Lists.newArrayListWithCapacity(getSizeInventory());
         this.addChestSlots(getSizeInventory() / CHEST_INVENTORY_COLUMNS, CHEST_INVENTORY_COLUMNS);
         this.addPlayerInventory(playerInventory, INVENTORY_OFFSET_X, INVENTORY_OFFSET_Y);

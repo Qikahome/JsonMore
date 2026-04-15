@@ -26,6 +26,7 @@ public class CyclopsCorePlugin {
                 new ResourceLocation("cyclopscore:scrolling"),
                 (containerId, inventory, container, containerSize) -> new ScrollingContainerAdapter(containerId,
                         inventory, container),
-                true);
+                true,
+                (buf, container) -> {buf.writeVarInt(container.getContainerSize());});
     }
 }

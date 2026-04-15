@@ -83,9 +83,10 @@ import qikahome.jsonmore.lib.KeepInventoryMode;
 import qikahome.jsonmore.lib.NotIngredient;
 import qikahome.jsonmore.lib.PlacingDirections;
 
+import static qikahome.jsonmore.JsonMore.LOGGER;
+
 public class FlexBarrelBlock extends BaseEntityBlock
         implements IFlexEntityBlock<FlexBarrelBlock.FlexBarrelBlockEntity>, SimpleWaterloggedBlock {
-    private static final org.slf4j.Logger LOGGER = org.slf4j.LoggerFactory.getLogger(FlexBarrelBlock.class);
 
     public FlexBarrelBlock(BlockBehaviour.Properties properties, Map<Property<?>, Comparable<?>> propertyDefaultValues,
             int containerSize, SoundEvent soundOpen, SoundEvent soundClose, boolean waterloggedIn,
@@ -216,7 +217,8 @@ public class FlexBarrelBlock extends BaseEntityBlock
             BlockEntity blockentity = level.getBlockEntity(pos);
             if (blockentity instanceof FlexBarrelBlockEntity flexEntity) {
                 if (player instanceof ServerPlayer serverPlayer) {
-                    NetworkHooks.openScreen(serverPlayer, flexEntity, buffer -> buffer.writeVarInt(containerSize));
+                    NetworkHooks.openScreen(serverPlayer, flexEntity,
+                            buffer -> screenType.writeAdditionalData(buffer, flexEntity));
                 }
                 if (angerPiglins) {
                     PiglinAi.angerNearbyPiglins(player, true);
@@ -442,12 +444,17 @@ public class FlexBarrelBlock extends BaseEntityBlock
             }
 
             protected boolean isOwnContainer(Player player) {
+                //LOGGER.debug("Checking container: player.containerMenu = {}",
+                // player.containerMenu.getClass().getName());
                 if (player.containerMenu instanceof ChestMenu chestMenu) {
+                    //LOGGER.debug("Matched ChestMenu branch");
                     Container container = chestMenu.getContainer();
                     return container == FlexBarrelBlockEntity.this;
                 } else if (player.containerMenu instanceof IFlexContainer adapterContainer) {
+                    //LOGGER.debug("Matched IFlexContainer branch");
                     return adapterContainer.isThisContainer(FlexBarrelBlockEntity.this);
                 } else {
+                    //LOGGER.debug("No branch matched");
                     return false;
                 }
             }

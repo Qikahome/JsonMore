@@ -9,6 +9,7 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonParseException;
 
 import net.minecraft.network.FriendlyByteBuf;
+import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.crafting.Ingredient;
@@ -33,14 +34,37 @@ public class NotIngredient extends AbstractIngredient {
         return new NotIngredient(ingredient);
     }
 
+    private ItemStack[] cachedDisplayStacks = null;
+
     @Override
     public ItemStack[] getItems() {
-        return new ItemStack[0];
+        if (cachedDisplayStacks == null) {
+            ItemStack[] subItems = ingredient.getItems();
+            if (subItems.length == 0) {
+                // 使用 TrueIngredient 的代表性物品作为 fallback，但要克隆并修改名称
+                ItemStack[] trueItems = TrueIngredient.INSTANCE.getItems();
+                cachedDisplayStacks = new ItemStack[trueItems.length];
+                for (int i = 0; i < trueItems.length; i++) {
+                    ItemStack copy = trueItems[i].copy();
+                    copy.setHoverName(Component.literal("Anything (except nothing)"));
+                    cachedDisplayStacks[i] = copy;
+                }
+            } else {
+                cachedDisplayStacks = new ItemStack[subItems.length];
+                for (int i = 0; i < subItems.length; i++) {
+                    ItemStack copy = subItems[i].copy();
+                    Component originalName = copy.getHoverName();
+                    copy.setHoverName(Component.literal("Anything except ").append(originalName));
+                    cachedDisplayStacks[i] = copy;
+                }
+            }
+        }
+        return cachedDisplayStacks.clone();
     }
 
     @Override
     public boolean isEmpty() {
-        return false; // 因为 NotIngredient 通常不是空的（除非内部 ingredient 匹配所有物品，但这种情况极少）
+        return false;
     }
 
     @Override

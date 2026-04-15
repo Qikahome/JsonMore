@@ -35,7 +35,7 @@ public class ItemFilter implements Predicate<ItemStack> {
     public ItemFilter(JsonElement json) {
         this.pendingJson = json;
         this.resolved = false;
-        LOGGER.info("Created ItemFilter with pending JSON: {}", json);
+        LOGGER.debug("Created ItemFilter with pending JSON: {}", json);
     }
 
     public static ItemFilter parse(JsonElement json) {
@@ -50,10 +50,10 @@ public class ItemFilter implements Predicate<ItemStack> {
             return;
         }
         if (pendingJson != null) {
-            LOGGER.info("Resolving ItemFilter from JSON: {}", pendingJson);
+            LOGGER.debug("Resolving ItemFilter from JSON: {}", pendingJson);
             try {
                 ingredient = Ingredient.fromJson(pendingJson);
-                LOGGER.info("Resolved ingredient: {}", ingredient);
+                LOGGER.debug("Resolved ingredient: {}", ingredient);
             } catch (Exception e) {
                 LOGGER.error("Failed to resolve ingredient from JSON", e);
             }

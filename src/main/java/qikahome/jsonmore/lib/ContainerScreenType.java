@@ -2,9 +2,11 @@ package qikahome.jsonmore.lib;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.function.BiConsumer;
 
 import javax.annotation.Nullable;
 
+import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.inventory.AbstractContainerMenu;
@@ -44,11 +46,17 @@ public class ContainerScreenType {
     private final ResourceLocation id;
     private final IMenuFactory menuFactory;
     private final boolean available;
+    private final BiConsumer<FriendlyByteBuf, FlexBarrelBlockEntity> additionalDataWriter;
     
-    public ContainerScreenType(ResourceLocation id, IMenuFactory menuFactory, boolean available) {
+    public ContainerScreenType(ResourceLocation id, IMenuFactory menuFactory, boolean available, BiConsumer<FriendlyByteBuf, FlexBarrelBlockEntity> additionalDataWriter) {
         this.id = id;
         this.menuFactory = menuFactory;
         this.available = available;
+        this.additionalDataWriter = additionalDataWriter;
+    }
+
+    public ContainerScreenType(ResourceLocation id, IMenuFactory menuFactory, boolean available) {
+        this(id, menuFactory, available, (a,b) -> {});
     }
     
     public ResourceLocation getId() {
@@ -63,8 +71,18 @@ public class ContainerScreenType {
         return menuFactory.create(containerId, inventory, container, containerSize);
     }
     
+    public void writeAdditionalData(FriendlyByteBuf buf, FlexBarrelBlockEntity container) {
+        additionalDataWriter.accept(buf, container);
+    }
+    
     public static ContainerScreenType register(ResourceLocation id, IMenuFactory menuFactory, boolean available) {
         ContainerScreenType type = new ContainerScreenType(id, menuFactory, available);
+        TYPES.put(id, type);
+        return type;
+    }
+
+    public static ContainerScreenType register(ResourceLocation id, IMenuFactory menuFactory, boolean available, BiConsumer<FriendlyByteBuf, FlexBarrelBlockEntity> additionalDataWriter) {
+        ContainerScreenType type = new ContainerScreenType(id, menuFactory, available, additionalDataWriter);
         TYPES.put(id, type);
         return type;
     }

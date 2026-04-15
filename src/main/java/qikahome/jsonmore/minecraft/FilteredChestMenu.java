@@ -11,13 +11,16 @@ import qikahome.jsonmore.lib.IFlexContainer;
 
 import javax.annotation.Nullable;
 
+import static qikahome.jsonmore.JsonMore.LOGGER;
+
 public class FilteredChestMenu extends AbstractContainerMenu implements IFlexContainer {
     private final Container container;
     private final int containerRows;
     @Nullable
     private final Container blockEntity;
 
-    private FilteredChestMenu(MenuType<?> type, int containerId, Inventory playerInventory, Container container, int rows) {
+    private FilteredChestMenu(MenuType<?> type, int containerId, Inventory playerInventory, Container container,
+            int rows) {
         super(type, containerId);
         this.container = container;
         this.containerRows = rows;
@@ -25,15 +28,16 @@ public class FilteredChestMenu extends AbstractContainerMenu implements IFlexCon
         checkContainerSize(container, rows * 9);
 
         int containerY = 18;
-        
+
         for (int row = 0; row < rows; ++row) {
             for (int col = 0; col < 9; ++col) {
-                this.addSlot(new FilteredSlot(container, col + row * 9, 8 + col * 18, containerY + row * 18, blockEntity));
+                this.addSlot(
+                        new FilteredSlot(container, col + row * 9, 8 + col * 18, containerY + row * 18, blockEntity));
             }
         }
 
         int playerInventoryY = containerY + rows * 18 + 14;
-        
+
         for (int row = 0; row < 3; ++row) {
             for (int col = 0; col < 9; ++col) {
                 this.addSlot(new Slot(playerInventory, col + row * 9 + 9, 8 + col * 18, playerInventoryY + row * 18));
@@ -43,9 +47,11 @@ public class FilteredChestMenu extends AbstractContainerMenu implements IFlexCon
         for (int col = 0; col < 9; ++col) {
             this.addSlot(new Slot(playerInventory, col, 8 + col * 18, playerInventoryY + 58));
         }
+        this.container.startOpen(playerInventory.player);
     }
 
-    public static FilteredChestMenu create(int containerId, Inventory playerInventory, Container container, int containerSize) {
+    public static FilteredChestMenu create(int containerId, Inventory playerInventory, Container container,
+            int containerSize) {
         int rows = Math.max(1, Math.min(6, (int) Math.ceil((double) containerSize / 9)));
         MenuType<?> type = getMenuType(rows);
         return new FilteredChestMenu(type, containerId, playerInventory, container, rows);
@@ -78,7 +84,7 @@ public class FilteredChestMenu extends AbstractContainerMenu implements IFlexCon
         ItemStack result = slotItem.copy();
 
         int containerSlots = this.container.getContainerSize();
-        
+
         if (index < containerSlots) {
             if (!this.moveItemStackTo(slotItem, containerSlots, this.slots.size(), true)) {
                 return ItemStack.EMPTY;
@@ -125,7 +131,17 @@ public class FilteredChestMenu extends AbstractContainerMenu implements IFlexCon
     }
 
     @Override
+    public void removed(Player player) {
+        super.removed(player);
+        this.container.stopOpen(player);
+    }
+
+    @Override
     public boolean isThisContainer(Container container) {
-        return this.container == container;
+        boolean result = this.container == container;
+        // LOGGER.debug("FilteredChestMenu.isThisContainer: this.container={}, param
+        // container={}, result={}",
+        // this.container, container, result);
+        return result;
     }
 }
