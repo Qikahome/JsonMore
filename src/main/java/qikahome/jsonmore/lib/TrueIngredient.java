@@ -1,0 +1,82 @@
+package qikahome.jsonmore.lib;
+
+import java.util.stream.Stream;
+
+import javax.annotation.Nullable;
+
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
+
+import net.minecraft.core.registries.Registries;
+import net.minecraft.network.FriendlyByteBuf;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.crafting.Ingredient;
+import net.minecraftforge.common.crafting.AbstractIngredient;
+import net.minecraftforge.common.crafting.CraftingHelper;
+import net.minecraftforge.common.crafting.IIngredientSerializer;
+//import net.minecraftforge.registries.ForgeRegistries;
+
+public class TrueIngredient extends AbstractIngredient {
+    public static final ResourceLocation ID = new ResourceLocation("jsonmore:true");
+    public static final TrueIngredient INSTANCE = new TrueIngredient();
+
+    private TrueIngredient() {
+        super(Stream.empty());
+    }
+
+    @Override
+    public ItemStack[] getItems() {
+        //return ForgeRegistries.ITEMS.getValues().toArray(ItemStack[]::new);
+        return new ItemStack[0];
+    }
+
+    @Override
+    public boolean isEmpty() {
+        return false;
+    }
+
+    @Override
+    public boolean test(@Nullable ItemStack stack) {
+        return true;
+    }
+
+    @Override
+    public boolean isSimple() {
+        return false;
+    }
+
+    @Override
+    public IIngredientSerializer<? extends Ingredient> getSerializer() {
+        return Serializer.INSTANCE;
+    }
+
+    @Override
+    public JsonElement toJson() {
+        JsonObject json = new JsonObject();
+        json.addProperty("type", ID.toString());
+        return json;
+    }
+
+    public static class Serializer implements IIngredientSerializer<TrueIngredient> {
+        public static final Serializer INSTANCE = new Serializer();
+
+        @Override
+        public TrueIngredient parse(FriendlyByteBuf buffer) {
+            return TrueIngredient.INSTANCE;
+        }
+
+        @Override
+        public TrueIngredient parse(JsonObject json) {
+            return TrueIngredient.INSTANCE;
+        }
+
+        @Override
+        public void write(FriendlyByteBuf buffer, TrueIngredient ingredient) {
+        }
+    }
+
+    public static void register() {
+        CraftingHelper.register(ID, Serializer.INSTANCE);
+    }
+}

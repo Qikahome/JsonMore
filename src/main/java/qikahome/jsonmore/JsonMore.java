@@ -5,6 +5,7 @@ import org.slf4j.Logger;
 import com.mojang.logging.LogUtils;
 
 import net.minecraft.world.level.block.entity.BlockEntityType;
+import net.minecraft.world.inventory.MenuType;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.event.server.ServerStartingEvent;
@@ -20,6 +21,8 @@ import net.minecraftforge.fml.event.lifecycle.FMLCommonSetupEvent;
 import net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext;
 import net.minecraftforge.registries.DeferredRegister;
 import net.minecraftforge.registries.ForgeRegistries;
+import qikahome.jsonmore.cyclopscore.CyclopsCorePlugin;
+import qikahome.jsonmore.cyclopscore.ScrollingContainerScreen;
 import qikahome.jsonmore.minecraft.MinecraftPlugin;
 import qikahome.jsonmore.musbox.AnvilMusBoxPlugin;
 import qikahome.jsonmore.tconstruct.TConstructPlugin;
@@ -44,6 +47,7 @@ public class JsonMore {
         MinecraftForge.EVENT_BUS.register(this);
 
         BLOCK_ENTITY_TYPES.register(modEventBus);
+        MENU_TYPES.register(modEventBus);
 
         if (ModList.get().isLoaded("tconstruct")) {
             TConstructPlugin.parser = TConstructPlugin.PARSER_SUPPLIER.apply(modEventBus);
@@ -55,6 +59,8 @@ public class JsonMore {
 
     public static final DeferredRegister<BlockEntityType<?>> BLOCK_ENTITY_TYPES = DeferredRegister
             .create(ForgeRegistries.BLOCK_ENTITY_TYPES, MODID);
+    public static final DeferredRegister<MenuType<?>> MENU_TYPES = DeferredRegister
+            .create(ForgeRegistries.MENU_TYPES, MODID);
 
     static {
         MinecraftPlugin.BARREL_TILE = BLOCK_ENTITY_TYPES.register("barrel",
@@ -64,10 +70,19 @@ public class JsonMore {
             TConstructPlugin.TINKER_CHEST_TILE = BLOCK_ENTITY_TYPES.register("tinker_chest",
                     TConstructPlugin.TINKER_CHEST_SUPPLIER);
         }
+        if (ModList.get().isLoaded("cyclopscore")) {
+            CyclopsCorePlugin.SCROLLING_CONTAINER_MENU = MENU_TYPES.register("scrolling_container",
+                    CyclopsCorePlugin.supplier);
+        }
     }
 
     private void commonSetup(final FMLCommonSetupEvent event) {
         LOGGER.info("Start JsonMore common setup.");
+        event.enqueueWork(() -> {
+            qikahome.jsonmore.lib.NotIngredient.register();
+            qikahome.jsonmore.lib.KeepInventoryContainerIngredient.register();
+            qikahome.jsonmore.lib.TrueIngredient.register();
+        });
         if (ModList.get().isLoaded("tconstruct")) {
             TConstructPlugin.onCommonSetup(event);
         }
@@ -85,18 +100,21 @@ public class JsonMore {
     public static class ClientModEvents {
         @SubscribeEvent
         public static void onClientSetup(FMLClientSetupEvent event) {
-            // 一些客户端设置代码
-            // LOGGER.info("HELLO FROM CLIENT SETUP");
-            // LOGGER.info("MINECRAFT NAME >> {}",
-            // Minecraft.getInstance().getUser().getName());
+            event.enqueueWork(() -> {
+                if (ModList.get().isLoaded("cyclopscore")) {
+                    net.minecraft.client.gui.screens.MenuScreens.register(
+                            CyclopsCorePlugin.SCROLLING_CONTAINER_MENU.get(),
+                            ScrollingContainerScreen::new);
+                }
+            });
         }
     }
 
     public static void onFlexTypesLoad() {
         // 联动
         ModList modList = ModList.get();
-        if (modList.isLoaded("minecraft")) {
-            MinecraftPlugin.load();
+        if (modList.isLoaded("cyclopscore")) {
+            CyclopsCorePlugin.load();
         }
         if (modList.isLoaded("tconstruct")) {
             TConstructPlugin.load();
@@ -104,5 +122,8 @@ public class JsonMore {
         if (ModList.get().isLoaded("anvil_musbox")) {
             AnvilMusBoxPlugin.load();
         }
+        //if (modList.isLoaded("minecraft")) {
+            MinecraftPlugin.load();
+        //}
     }
 }

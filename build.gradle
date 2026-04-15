@@ -205,6 +205,11 @@ dependencies {
     compileOnly fg.deobf("blank:Anvil-MusBox-Forge-${minecraft_version}:${anvil_musbox_version}")
     runtimeOnly fg.deobf("blank:Anvil-MusBox-Forge-${minecraft_version}:${anvil_musbox_version}")
 
+    // CyclopsCore - 可选依赖（用于滚动容器）
+    // CurseForge: https://www.curseforge.com/minecraft/mc-mods/cyclops-core
+    compileOnly fg.deobf("curse.maven:cyclops-core-232758:7637992")
+    runtimeOnly fg.deobf("curse.maven:cyclops-core-232758:7637992")
+
     // 更多依赖配置参考：
     // http://www.gradle.org/docs/current/userguide/artifact_dependencies_tutorial.html
     // http://www.gradle.org/docs/current/userguide/dependency_management.html

@@ -1,11 +1,16 @@
 package qikahome.jsonmore.minecraft;
 
+import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.function.Supplier;
 
 import org.apache.commons.lang3.mutable.MutableObject;
+
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
 
 import dev.gigaherz.jsonthings.things.parsers.ThingParseException;
 import dev.gigaherz.jsonthings.things.serializers.FlexBlockType;
@@ -16,6 +21,11 @@ import net.minecraft.util.GsonHelper;
 import net.minecraftforge.registries.ForgeRegistries;
 import net.minecraftforge.registries.RegistryObject;
 import qikahome.jsonmore.Utils;
+import qikahome.jsonmore.lib.BlockedDirection;
+import qikahome.jsonmore.lib.ContainerScreenType;
+import qikahome.jsonmore.lib.FaceFilter;
+import qikahome.jsonmore.lib.ItemFilter;
+import qikahome.jsonmore.lib.KeepInventoryMode;
 import qikahome.jsonmore.lib.PlacingDirections;
 import qikahome.jsonmore.minecraft.FlexBarrelBlock.FlexBarrelBlockEntity;
 import net.minecraft.world.level.block.Block;
@@ -86,6 +96,44 @@ public class MinecraftPlugin {
                     GsonHelper.getAsString(data, "close_sound", "none:none"));
             boolean waterlogged = GsonHelper.getAsBoolean(data, "can_waterlogged", false);
             String facing = GsonHelper.getAsString(data, "directions", "facing_horizontal");
+            String keepInventoryStr = GsonHelper.getAsString(data, "keep_inventory", "never");
+            boolean angerPiglins = GsonHelper.getAsBoolean(data, "anger_piglins", false);
+            String blockedStr = GsonHelper.getAsString(data, "blocked", "never");
+            Map<FaceFilter, ItemFilter> insertFilters = parseFaceFilterMap(data, "insert_filters");
+            Map<FaceFilter, ItemFilter> extractFilters = parseFaceFilterMap(data, "extract_filters");
+            ResourceLocation screenType = new ResourceLocation(
+                    GsonHelper.getAsString(data, "screen", "jsonmore:chest"));
+            KeepInventoryMode keepInventoryMode;
+            try {
+                keepInventoryMode = KeepInventoryMode.valueOf(keepInventoryStr.toUpperCase());
+            } catch (IllegalArgumentException e) {
+                throw new ThingParseException("Keep inventory mode " + keepInventoryStr + " not found");
+            }
+            BlockedDirection blockedDirection;
+            try {
+                blockedDirection = BlockedDirection.valueOf(blockedStr.toUpperCase());
+            } catch (IllegalArgumentException e) {
+                throw new ThingParseException("Blocked direction " + blockedStr + " not found");
+            }
+            if (ContainerScreenType.get(screenType) == null) {
+                throw new ThingParseException(
+                        "Screen type " + screenType + " is not available (mod may not be installed)");
+            }
+            ItemFilter placeFilter;
+            if (!data.has("place_filter")) {
+                if (keepInventoryMode != KeepInventoryMode.NEVER) {
+                    placeFilter = FlexBarrelBlock.DEFAULT_PLACE_FILTER;
+                } else {
+                    placeFilter = ItemFilter.EMPTY;
+                }
+            } else {
+                try {
+                    placeFilter = ItemFilter.parse(data.get("place_filter"));
+                } catch (IllegalArgumentException e) {
+                    throw new ThingParseException("Invalid place_filter", e);
+                }
+            }
+            insertFilters.put(FaceFilter.ANY, placeFilter);
             return (props, builder) -> {
                 List<Property<?>> _properties = builder.getProperties();
                 Map<Property<?>, Comparable<?>> propertyDefaultValues = builder.getPropertyDefaultValues();
@@ -101,7 +149,8 @@ public class MinecraftPlugin {
                         || closeSoundEvent == null && !closeSound.toString().equals("none:none"))
                     throw new ThingParseException("Sound event " + openSound + " or " + closeSound + " not found");
                 return new FlexBarrelBlock(props, propertyDefaultValues, slots, openSoundEvent, closeSoundEvent,
-                        waterlogged, facingDirection) {
+                        waterlogged, facingDirection, keepInventoryMode, angerPiglins, blockedDirection,
+                        insertFilters, extractFilters, screenType) {
                     @Override
                     protected void createBlockStateDefinition(StateDefinition.Builder<Block, BlockState> builder1) {
                         super.createBlockStateDefinition(builder1);
@@ -113,6 +162,30 @@ public class MinecraftPlugin {
                 };
             };
         }, "solid", false, false, false);
+    }
+
+    private static Map<FaceFilter, ItemFilter> parseFaceFilterMap(JsonObject data, String key) {
+        if (!data.has(key)) {
+            return new HashMap<>();
+        }
+        JsonObject obj = data.getAsJsonObject(key);
+        Map<FaceFilter, ItemFilter> filters = new HashMap<>();
+        for (Map.Entry<String, JsonElement> entry : obj.entrySet()) {
+            FaceFilter faceFilter = FaceFilter.fromString(entry.getKey());
+            if (faceFilter != null) {
+                ItemFilter filter = ItemFilter.parse(entry.getValue());
+                filters.put(faceFilter, filter);
+            }
+        }
+        return filters;
+    }
+
+    private static Map<FaceFilter, ItemFilter> parseFaceFilterMap(JsonObject data, String key,
+            ItemFilter defaultFilter) {
+        if (!data.has(key)) {
+            return new HashMap<>(Map.of(FaceFilter.ALL, defaultFilter));
+        }
+        return parseFaceFilterMap(data, key);
     }
 
     public static RegistryObject<BlockEntityType<FlexBarrelBlockEntity>> BARREL_TILE;
