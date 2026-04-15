@@ -179,6 +179,8 @@ dependencies {
         transitive = false
         exclude group: 'com.google.code.findbugs', module: 'jsr305'
     }
+    annotationProcessor 'com.google.code.gson:gson:2.10.1'
+    annotationProcessor 'com.google.guava:guava:31.1-jre'
 
     // JEI - 可选依赖
     // 仅编译时依赖 JEI API，运行时不打包进模组
@@ -287,7 +289,24 @@ mixin {
     // 添加调试
     debug = true
 }
-
+// 确保 refmap 被复制到资源目录并打包进 jar
+// tasks.named('processResources') {
+//     dependsOn compileJava
+//     doLast {
+//         def refmapSrc = file("${buildDir}/tmp/compileJava/compileJava-refmap.json")
+//         def refmapDest = file("${sourceSets.main.output.resourcesDir}/${mod_id}.refmap.json")
+//         if (refmapSrc.exists()) {
+//             copy {
+//                 from refmapSrc
+//                 into sourceSets.main.output.resourcesDir
+//                 rename { "${mod_id}.refmap.json" }
+//             }
+//             println "Refmap copied to ${refmapDest}"
+//         } else {
+//             println "Warning: refmap not found at ${refmapSrc}"
+//         }
+//     }
+//}
 // 配置所有 Java 编译任务的编码为 UTF-8
 tasks.withType(JavaCompile).configureEach {
     options.encoding = 'UTF-8'
