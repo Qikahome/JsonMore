@@ -109,7 +109,7 @@ public class MinecraftPlugin {
             String blockedStr = GsonHelper.getAsString(data, "blocked", "never");
             Map<FaceFilter, ItemFilter> insertFilters = parseFaceFilterMap(data, "insert_filters");
             Map<FaceFilter, ItemFilter> extractFilters = parseFaceFilterMap(data, "extract_filters");
-            ContainerScreenType screenType = ContainerScreenType.parse(data.get("screen"),"jsonmore:chest");
+            ContainerScreenType screenType = ContainerScreenType.parse(data.get("screen"), "jsonmore:chest");
             ContainerScreenType connectedScreenType = data.has("connected_screen")
                     ? ContainerScreenType.parse(data.get("connected_screen"))
                     : null;
@@ -155,25 +155,8 @@ public class MinecraftPlugin {
                 }
             }
             insertFilters.put(FaceFilter.ANY, placeFilter);
-            Set<ResourceLocation> connectableContainers = new HashSet<>();
-            JsonArray arr;
-            try {
-                arr = GsonHelper.getAsJsonArray(data, "connectable", new JsonArray());
-            } catch (JsonSyntaxException e) {
-                throw new ThingParseException("connectable must be a JSON array", e);
-            }
-            for (JsonElement elem : arr) {
-                if (!elem.isJsonPrimitive() || !elem.getAsJsonPrimitive().isString()) {
-                    throw new ThingParseException("connectable array elements must be strings: " + elem);
-                }
-                String id = elem.getAsString();
-                try {
-                    connectableContainers.add(new ResourceLocation(id));
-                } catch (IllegalArgumentException e) {
-                    throw new ThingParseException("Invalid ResourceLocation in connectable: " + id, e);
-                }
-            }
-
+            ResourceLocation connectableContainers = new ResourceLocation(
+                    GsonHelper.getAsString(data, "connectable", "none:none"));
             return (props, builder) -> {
                 List<Property<?>> _properties = builder.getProperties();
                 Map<Property<?>, Comparable<?>> propertyDefaultValues = builder.getPropertyDefaultValues();

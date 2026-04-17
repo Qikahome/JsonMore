@@ -17,6 +17,7 @@ import dev.gigaherz.jsonthings.things.shapes.DynamicShape;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.NonNullList;
+import net.minecraft.core.Registry;
 import net.minecraft.core.Vec3i;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.nbt.CompoundTag;
@@ -100,7 +101,7 @@ public class FlexBarrelBlock extends BaseEntityBlock
             Map<FaceFilter, ItemFilter> extractFilters,
             ContainerScreenType screenType, ContainerScreenType connectedScreenType,
             Set<ExpandableMode> expandableModes,
-            Set<ResourceLocation> connectableContainers) {
+            ResourceLocation connectableContainers) {
         super(properties);
         initializeFlex(propertyDefaultValues);
         this.containerSize = containerSize;
@@ -116,8 +117,10 @@ public class FlexBarrelBlock extends BaseEntityBlock
         this.screenType = screenType;
         this.connectedScreenType = connectedScreenType != null ? connectedScreenType : this.screenType;
         this.expandableModes = expandableModes != null ? expandableModes : Collections.emptySet();
-        this.connectableContainers = connectableContainers != null ? connectableContainers : Collections.emptySet();
+        this.connectableContainers = TagKey.create(Registries.BLOCK, connectableContainers);
     }
+
+
 
     // region IFlexBlock
     private DynamicShape generalShape;
@@ -313,7 +316,7 @@ public class FlexBarrelBlock extends BaseEntityBlock
     public final ContainerScreenType screenType;
     public final ContainerScreenType connectedScreenType;
     public final Set<ExpandableMode> expandableModes;
-    public final Set<ResourceLocation> connectableContainers;
+    public final TagKey<Block> connectableContainers;
 
     public static final ItemFilter DEFAULT_PLACE_FILTER;
     static {
@@ -325,10 +328,8 @@ public class FlexBarrelBlock extends BaseEntityBlock
                                 new KeepInventoryContainerIngredient(KeepInventoryContainerIngredient.Mode.MAY))));
     }
 
-    public boolean isConnectableBlock(Block neighbor) {
-        return neighbor == this || connectableContainers.contains(ForgeRegistries.BLOCKS.getKey(neighbor)) ||
-                neighbor instanceof FlexBarrelBlock flex
-                        && flex.connectableContainers.contains(ForgeRegistries.BLOCKS.getKey(this));
+    public boolean isConnectableBlock(BlockState neighbor) {
+        return neighbor.getBlock() == this || neighbor.is(connectableContainers);
     }
 
     public InteractionResult fallbackUse(BlockState state, Level level, BlockPos pos, Player player,
@@ -423,7 +424,7 @@ public class FlexBarrelBlock extends BaseEntityBlock
             BlockPos neighborPos = pos.relative(neighborDir);
             BlockState neighborState = level.getBlockState(neighborPos);
             for (ExpandableMode mode : expandableModes) {
-                if (isConnectableBlock(neighborState.getBlock())
+                if (isConnectableBlock(neighborState)
                         && neighborState.getValue(PART) == ContainerPart.NONE) {
                     connected = mode.connect(neighborState, neighborPos, level, neighborDir.getOpposite());
                 }
@@ -583,7 +584,7 @@ public class FlexBarrelBlock extends BaseEntityBlock
                 BlockPos neighborPos = pos.relative(neighborDir);
                 BlockState neighborState = level.getBlockState(neighborPos);
 
-                if (isConnectableBlock(neighborState.getBlock())
+                if (isConnectableBlock(neighborState)
                         && neighborState.getValue(PART) == ContainerPart.NONE) {
                     BlockState newState = mode.tryForceConnect(state, neighborState, neighborPos, level, clickedFace,
                             true);
@@ -601,7 +602,7 @@ public class FlexBarrelBlock extends BaseEntityBlock
                 BlockPos neighborPos = pos.relative(dir);
                 BlockState neighborState = level.getBlockState(neighborPos);
 
-                if (isConnectableBlock(neighborState.getBlock())
+                if (isConnectableBlock(neighborState)
                         && neighborState.getValue(PART) == ContainerPart.NONE) {
                     // 自动扫描时，将 dir 作为“虚拟点击面”传入
                     BlockState newState = mode.tryConnect(state, neighborState, neighborPos, level, dir.getOpposite(),
@@ -662,7 +663,7 @@ public class FlexBarrelBlock extends BaseEntityBlock
         if (neighborDir != null) {
             BlockPos neighborPos = pos.relative(neighborDir);
             BlockState neighborState = level.getBlockState(neighborPos);
-            if (isConnectableBlock(neighborState.getBlock()) && neighborState.getValue(PART).isConnected()) {
+            if (isConnectableBlock(neighborState) && neighborState.getValue(PART).isConnected()) {
                 // 清除邻居的连接状态
                 level.setBlock(neighborPos, neighborState.setValue(PART, ContainerPart.NONE), 3);
             }
