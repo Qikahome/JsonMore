@@ -1,13 +1,16 @@
 package qikahome.jsonmore.lib;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
+import net.minecraft.network.chat.Component;
 import net.minecraft.world.CompoundContainer;
 import net.minecraft.world.Container;
-import net.minecraft.world.SimpleContainer;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.block.entity.BaseContainerBlockEntity;
 
 public class MultiContainer implements Container, IFlexContainer {
     private final List<Container> subContainers;
@@ -28,16 +31,7 @@ public class MultiContainer implements Container, IFlexContainer {
         return of(List.of(subContainers));
     }
 
-    public static Container of(List<Container> subContainers) {
-        if (subContainers.isEmpty()) {
-            return new SimpleContainer(new ItemStack[0]);
-        }
-        if (subContainers.size() == 1) {
-            return subContainers.get(0);
-        }
-        if (subContainers.size() == 2) {
-            return new CompoundContainer(subContainers.get(0), subContainers.get(1));
-        }
+    public static MultiContainer of(List<Container> subContainers) {
         return new MultiContainer(subContainers);
     }
 
@@ -153,5 +147,33 @@ public class MultiContainer implements Container, IFlexContainer {
     @Override
     public boolean isThisContainer(Container container) {
         return this.contains(container);
+    }
+
+    public Component getDisplayName() {
+        Map<Component, Integer> nameCount = new HashMap<>();
+        int noname = 0;
+        for (Container subContainer : this.subContainers) {
+            if (subContainer instanceof BaseContainerBlockEntity be) {
+                nameCount.put(be.getDisplayName(), nameCount.getOrDefault(be.getDisplayName(), 0) + 1);
+            } else {
+                noname++;
+            }
+        }
+        int appended = 0;
+        var collector = Component.literal("");
+        for (var entry : nameCount.entrySet()) {
+            if (appended < 2) {
+                if (!collector.equals(Component.literal("")))
+                    collector.append(", ");
+                if (entry.getValue() > 1)
+                    collector.append(entry.getValue().toString() + ' ');
+                collector.append(entry.getKey());
+                appended++;
+            } else
+                noname += entry.getValue();
+        }
+        if (noname > 0)
+            collector.append(Component.translatable("ui.jsonmore.more", Integer.toString(noname)));
+        return collector;
     }
 }

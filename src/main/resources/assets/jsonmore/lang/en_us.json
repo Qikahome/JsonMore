@@ -1,4 +1,5 @@
 {
   "ingredient.jsonmore.true": "Anything",
-  "ingredient.jsonmore.not": "Anything except %s"
+  "ingredient.jsonmore.not": "Anything except %s",
+  "ui.jsonmore.more": "and %s more.."
 }

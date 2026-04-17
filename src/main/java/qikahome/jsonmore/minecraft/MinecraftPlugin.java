@@ -1,24 +1,17 @@
 package qikahome.jsonmore.minecraft;
 
 import java.util.Collections;
-import java.util.EnumSet;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.function.Supplier;
-import java.util.stream.Collectors;
-
 import org.apache.commons.lang3.mutable.MutableObject;
 
-import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
-import com.google.gson.JsonSyntaxException;
-
 import dev.gigaherz.jsonthings.things.parsers.ThingParseException;
 import dev.gigaherz.jsonthings.things.serializers.FlexBlockType;
 import dev.gigaherz.jsonthings.things.serializers.FlexItemType;
@@ -72,7 +65,13 @@ public class MinecraftPlugin {
                     @Override
                     protected void createBlockStateDefinition(StateDefinition.Builder<Block, BlockState> builder1) {
                         super.createBlockStateDefinition(builder1);
-                        _properties.forEach(builder1::add);
+                                  for (Property<?> property : _properties) {
+                            try {
+                                builder1.add(property);
+                            } catch (IllegalArgumentException e) {
+                                //pass
+                            }
+                        }
                     }
                 };
             };
@@ -91,7 +90,13 @@ public class MinecraftPlugin {
                     @Override
                     protected void createBlockStateDefinition(StateDefinition.Builder<Block, BlockState> builder1) {
                         super.createBlockStateDefinition(builder1);
-                        _properties.forEach(builder1::add);
+                        for (Property<?> property : _properties) {
+                            try {
+                                builder1.add(property);
+                            } catch (IllegalArgumentException e) {
+                                throw new ThingParseException("Property " + property + " not found", e);
+                            }
+                        }
                     }
                 };
             };
@@ -121,7 +126,7 @@ public class MinecraftPlugin {
                     try {
                         modes.add(ExpandableMode.valueOf(mode.toUpperCase()));
                     } catch (IllegalArgumentException e) {
-                        throw new ThingParseException("Invalid expandable mode: " + mode);
+                        throw new ThingParseException("Invalid expandable mode: " + mode, e);
                     }
                 }
                 expandableModes = modes;
@@ -132,13 +137,13 @@ public class MinecraftPlugin {
             try {
                 keepInventoryMode = KeepInventoryMode.valueOf(keepInventoryStr.toUpperCase());
             } catch (IllegalArgumentException e) {
-                throw new ThingParseException("Keep inventory mode " + keepInventoryStr + " not found");
+                throw new ThingParseException("Keep inventory mode " + keepInventoryStr + " not found", e);
             }
             BlockedDirection blockedDirection;
             try {
                 blockedDirection = BlockedDirection.valueOf(blockedStr.toUpperCase());
             } catch (IllegalArgumentException e) {
-                throw new ThingParseException("Blocked direction " + blockedStr + " not found");
+                throw new ThingParseException("Blocked direction " + blockedStr + " not found", e);
             }
             ItemFilter placeFilter;
             if (!data.has("place_filter")) {
@@ -165,8 +170,8 @@ public class MinecraftPlugin {
                 PlacingDirections facingDirection;
                 try {
                     facingDirection = PlacingDirections.valueOf(facing.toUpperCase());
-                } catch (IllegalArgumentException e) {
-                    throw new ThingParseException("Direction " + facing + " not found");
+                                } catch (IllegalArgumentException e) {
+                    throw new ThingParseException("Direction " + facing + " not found", e);
                 }
                 if (openSoundEvent == null && !openSound.toString().equals("none:none")
                         || closeSoundEvent == null && !closeSound.toString().equals("none:none"))
@@ -178,7 +183,13 @@ public class MinecraftPlugin {
                     @Override
                     protected void createBlockStateDefinition(StateDefinition.Builder<Block, BlockState> builder1) {
                         super.createBlockStateDefinition(builder1);
-                        _properties.forEach(builder1::add);
+                        for (Property<?> property : _properties) {
+                            try {
+                                builder1.add(property);
+                            } catch (IllegalArgumentException e) {
+                                //pass
+                            }
+                        }
                         if (waterlogged) {
                             builder1.add(BlockStateProperties.WATERLOGGED);
                         }
@@ -202,14 +213,6 @@ public class MinecraftPlugin {
             }
         }
         return filters;
-    }
-
-    private static Map<FaceFilter, ItemFilter> parseFaceFilterMap(JsonObject data, String key,
-            ItemFilter defaultFilter) {
-        if (!data.has(key)) {
-            return new HashMap<>(Map.of(FaceFilter.ALL, defaultFilter));
-        }
-        return parseFaceFilterMap(data, key);
     }
 
     public static RegistryObject<BlockEntityType<FlexBarrelBlockEntity>> BARREL_TILE;

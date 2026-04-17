@@ -8,6 +8,8 @@ import java.util.Set;
 
 import javax.annotation.Nullable;
 
+import org.apache.commons.lang3.tuple.Pair;
+
 import com.google.common.collect.Maps;
 
 import dev.gigaherz.jsonthings.things.events.FlexEventContext;
@@ -89,6 +91,7 @@ import qikahome.jsonmore.lib.MultiContainer;
 import qikahome.jsonmore.lib.NotIngredient;
 import qikahome.jsonmore.lib.PlacingDirections;
 import net.minecraft.world.level.block.Mirror;
+import net.minecraft.world.level.block.ChestBlock;
 import static qikahome.jsonmore.lib.ContainerPart.PART;
 
 public class FlexBarrelBlock extends BaseEntityBlock
@@ -120,8 +123,6 @@ public class FlexBarrelBlock extends BaseEntityBlock
         this.connectableContainers = TagKey.create(Registries.BLOCK, connectableContainers);
     }
 
-
-
     // region IFlexBlock
     private DynamicShape generalShape;
     private DynamicShape collisionShape;
@@ -131,16 +132,16 @@ public class FlexBarrelBlock extends BaseEntityBlock
 
     @SuppressWarnings({ "rawtypes", "unchecked" })
     private void initializeFlex(Map<Property<?>, Comparable<?>> propertyDefaultValues) {
+        BlockState def = getStateDefinition().any();
         if (propertyDefaultValues.size() > 0) {
-            BlockState def = getStateDefinition().any();
             for (Map.Entry<Property<?>, Comparable<?>> entry : propertyDefaultValues.entrySet()) {
                 Property prop = entry.getKey();
                 Comparable value = entry.getValue();
                 def = def.setValue(prop, value);
             }
-
-            registerDefaultState(def);
         }
+        def.setValue(BlockStateProperties.OPEN, false);
+        registerDefaultState(def);
     }
 
     @Override
@@ -341,7 +342,7 @@ public class FlexBarrelBlock extends BaseEntityBlock
             var facing = state.getValue(BlockStateProperties.FACING);
             if (blocked.isBlocked(level, pos, facing,
                     part)) {
-                return InteractionResult.PASS;
+                return InteractionResult.CONSUME;
             }
             if (part.isConnected()) {
                 Direction neighborDir = part.getWorldDirection(facing).getOpposite();
@@ -352,7 +353,7 @@ public class FlexBarrelBlock extends BaseEntityBlock
                         if (neighbor.blocked.isBlocked(level, neighborPos,
                                 neighborState.getValue(BlockStateProperties.FACING),
                                 neighborState.getValue(PART))) {
-                            return InteractionResult.PASS;
+                            return InteractionResult.CONSUME;
                         }
                     }
                 }
@@ -363,8 +364,10 @@ public class FlexBarrelBlock extends BaseEntityBlock
                     ContainerScreenType screen = state.getValue(PART).isConnected()
                             ? connectedScreenType
                             : screenType;
-                    NetworkHooks.openScreen(serverPlayer, flexEntity,
-                            buffer -> screen.writeAdditionalData(buffer, this.getContainers(level, pos, state)));
+                    var containers=getContainers(level, pos, state);
+                    var containerSize=MultiContainer.of(containers).getContainerSize();
+                    NetworkHooks.openScreen(serverPlayer, screen.createMenuProvider(containers, containerSize),
+                            buffer -> screen.writeAdditionalData(buffer, this.getContainers(level, pos, state), containerSize));
                 }
                 if (angerPiglins) {
                     PiglinAi.angerNearbyPiglins(player, true);
@@ -481,34 +484,9 @@ public class FlexBarrelBlock extends BaseEntityBlock
         return MinecraftPlugin.BARREL_TILE.get();
     }
 
-    protected AbstractContainerMenu createMenu(int containerId, Inventory inventory,
-            FlexBarrelBlockEntity flexBlockEntity) {
+    public List<Container> getContainers(FlexBarrelBlockEntity flexBlockEntity) {
         BlockState state = flexBlockEntity.getBlockState();
-        ContainerPart part = state.getValue(PART);
-
-        ContainerScreenType screen = part.isConnected() ? connectedScreenType : screenType;
-
-        List<Container> containers;
-        int actualSize;
-
-        if (part.isConnected()) {
-            containers = new ArrayList<>(
-                    getContainers(flexBlockEntity.getLevel(), flexBlockEntity.getBlockPos(), state));
-            actualSize = 0;
-            for (Container c : containers) {
-                actualSize += c.getContainerSize();
-            }
-        } else {
-            containers = Collections.singletonList(flexBlockEntity);
-            actualSize = containerSize;
-        }
-
-        if (containers.isEmpty()) {
-            containers = Collections.singletonList(flexBlockEntity);
-            actualSize = containerSize;
-        }
-
-        return screen.createMenu(containerId, inventory, containers, actualSize);
+        return getContainers(flexBlockEntity.getLevel(), flexBlockEntity.getBlockPos(), state);
     }
 
     @Nullable
@@ -558,7 +536,8 @@ public class FlexBarrelBlock extends BaseEntityBlock
         // 基础状态：朝向 + 未连接
         BlockState state = this.defaultBlockState()
                 .setValue(BlockStateProperties.FACING, facing.getDirection(context))
-                .setValue(PART, ContainerPart.NONE);
+                .setValue(PART, ContainerPart.NONE)
+                .setValue(BlockStateProperties.OPEN, false);
 
         // 处理含水
         if (waterloggedIn && state.hasProperty(BlockStateProperties.WATERLOGGED)) {
@@ -636,6 +615,9 @@ public class FlexBarrelBlock extends BaseEntityBlock
     public BlockState updateShape(BlockState state, Direction direction, BlockState neighborState,
             LevelAccessor level, BlockPos pos, BlockPos neighborPos) {
         ContainerPart part = state.getValue(PART);
+        if (this.waterloggedIn && state.getValue(BlockStateProperties.WATERLOGGED)) {
+            level.scheduleTick(pos, Fluids.WATER, Fluids.WATER.getTickDelay(level));
+        }
         if (part == ContainerPart.NONE)
             return super.updateShape(state, direction, neighborState, level, pos, neighborPos);
         if (direction == part.getWorldDirection(state.getValue(BlockStateProperties.FACING)).getOpposite())
@@ -675,13 +657,31 @@ public class FlexBarrelBlock extends BaseEntityBlock
     public static class FlexBarrelBlockEntity extends RandomizableContainerBlockEntity implements WorldlyContainer {
         private NonNullList<ItemStack> items;
         private final ContainerOpenersCounter openersCounter = new ContainerOpenersCounter() {
+            private boolean shouldPlaySound(Level level, BlockPos pos, BlockState state) {
+                var part = state.getValue(PART);
+                var facing = state.getValue(BlockStateProperties.FACING);
+                switch (part) {
+                    case FRONT: {
+                        if (facing == Direction.DOWN || facing == Direction.SOUTH || facing == Direction.EAST)
+                            if (level.getBlockState(pos.relative(facing.getOpposite()))
+                                    .getValue(PART) == ContainerPart.FRONT)
+                                return false;
+                    }
+                    case LEFT, TOP, NONE:
+                        return true;
+                }
+                return false;
+            }
+
             protected void onOpen(Level level, BlockPos pos, BlockState state) {
-                FlexBarrelBlockEntity.this.playSound(state, flexBlock.open);
+                if (shouldPlaySound(level, pos, state))
+                    FlexBarrelBlockEntity.this.playSound(state, flexBlock.open);
                 FlexBarrelBlockEntity.this.updateBlockState(state, true);
             }
 
             protected void onClose(Level level, BlockPos pos, BlockState state) {
-                FlexBarrelBlockEntity.this.playSound(state, flexBlock.close);
+                if (shouldPlaySound(level, pos, state))
+                    FlexBarrelBlockEntity.this.playSound(state, flexBlock.close);
                 FlexBarrelBlockEntity.this.updateBlockState(state, false);
             }
 
@@ -750,7 +750,7 @@ public class FlexBarrelBlock extends BaseEntityBlock
 
         @Override
         protected AbstractContainerMenu createMenu(int containerId, Inventory inventory) {
-            return flexBlock.createMenu(containerId, inventory, this);
+            return null; // Block should parse this
         }
 
         @Override
@@ -820,9 +820,25 @@ public class FlexBarrelBlock extends BaseEntityBlock
 
         void playSound(BlockState state, SoundEvent sound) {
             Vec3i vec3i = state.getValue(BlockStateProperties.FACING).getNormal();
+            ContainerPart part = state.getValue(PART);
             double d0 = (double) this.worldPosition.getX() + 0.5D + (double) vec3i.getX() / 2.0D;
             double d1 = (double) this.worldPosition.getY() + 0.5D + (double) vec3i.getY() / 2.0D;
             double d2 = (double) this.worldPosition.getZ() + 0.5D + (double) vec3i.getZ() / 2.0D;
+            switch (part) {
+                case FRONT: {
+                    d0 += (double) vec3i.getX() * -0.5d;
+                    d1 += (double) vec3i.getY() * -0.5d;
+                    d2 += (double) vec3i.getZ() * -0.5d;
+                    break;
+                }
+                case LEFT: {
+                    d0 += (double) vec3i.getZ() * -0.5d;
+                    d2 += (double) vec3i.getX() * 0.5d;
+                    break;
+                }
+                case TOP:
+                    d1 -= 0.5d;
+            }
             this.level.playSound((Player) null, d0, d1, d2, sound, SoundSource.BLOCKS, 0.5F,
                     this.level.random.nextFloat() * 0.1F + 0.9F);
         }

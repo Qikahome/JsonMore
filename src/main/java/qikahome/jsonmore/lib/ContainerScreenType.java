@@ -18,50 +18,73 @@ import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.GsonHelper;
 import net.minecraft.world.Container;
+import net.minecraft.world.MenuProvider;
 import net.minecraft.world.entity.player.Inventory;
+import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.inventory.AbstractContainerMenu;
 import net.minecraft.world.inventory.ChestMenu;
 import net.minecraft.world.inventory.MenuType;
 import qikahome.jsonmore.Utils.IntRange;
 import qikahome.jsonmore.minecraft.FilteredChestMenu;
-
-import static qikahome.jsonmore.Utils.IntRange;
+import net.minecraft.network.chat.Component;
+import static qikahome.jsonmore.Utils.*;
 
 public class ContainerScreenType {
     private static final Map<ResourceLocation, ContainerScreenType> TYPES = new HashMap<>();
 
     public static final ContainerScreenType VANILLA_CHEST = register(
             new ResourceLocation("minecraft:chest"),
-            (containerId, inventory, containers, containerSize) -> {
-                Container inv = MultiContainer.of(containers);
+            (containers, containerSize) -> {
+                MultiContainer container = MultiContainer.of(containers);
                 int rows = containerSize / 9;
-                return switch (rows) {
-                    case 1 -> new ChestMenu(MenuType.GENERIC_9x1, containerId, inventory, inv, 1);
-                    case 2 -> new ChestMenu(MenuType.GENERIC_9x2, containerId, inventory, inv, 2);
-                    case 3 -> ChestMenu.threeRows(containerId, inventory, inv);
-                    case 4 -> new ChestMenu(MenuType.GENERIC_9x4, containerId, inventory, inv, 4);
-                    case 5 -> new ChestMenu(MenuType.GENERIC_9x5, containerId, inventory, inv, 5);
-                    case 6 -> ChestMenu.sixRows(containerId, inventory, inv);
-                    default -> throw new IllegalArgumentException("Invalid number of slots: " + containerSize);
+                return new MenuProvider() {
+                    @Override
+                    @Nullable
+                    public AbstractContainerMenu createMenu(int containerId, Inventory inventory, Player p_39956_) {
+                        return switch (rows) {
+                            case 1 -> new ChestMenu(MenuType.GENERIC_9x1, containerId, inventory, container, 1);
+                            case 2 -> new ChestMenu(MenuType.GENERIC_9x2, containerId, inventory, container, 2);
+                            case 3 -> ChestMenu.threeRows(containerId, inventory, container);
+                            case 4 -> new ChestMenu(MenuType.GENERIC_9x4, containerId, inventory, container, 4);
+                            case 5 -> new ChestMenu(MenuType.GENERIC_9x5, containerId, inventory, container, 5);
+                            case 6 -> ChestMenu.sixRows(containerId, inventory, container);
+                            default -> throw new IllegalArgumentException("Invalid number of slots: " + containerSize);
+                        };
+                    }
+
+                    @Override
+                    public Component getDisplayName() {
+                        return container.getDisplayName();
+                    }
                 };
+
             },
             true);
 
-    public static final ContainerScreenType CHEST = register(
-            new ResourceLocation("jsonmore:chest"),
-            (containerId, inventory, containers, containerSize) -> {
-                Container inv = MultiContainer.of(containers);
-                return FilteredChestMenu.create(containerId, inventory, inv, containerSize);
-            },
-            true);
+    public static final ContainerScreenType CHEST = register(new ResourceLocation("jsonmore:chest"),
+            (containers, containerSize) -> {
+                MultiContainer container = MultiContainer.of(containers);
+                return new MenuProvider() {
+                    @Override
+                    @Nullable
+                    public AbstractContainerMenu createMenu(int containerId, Inventory inventory, Player p_39956_) {
+                        return FilteredChestMenu.create(containerId, inventory, container, containerSize);
+                    }
+
+                    @Override
+                    public Component getDisplayName() {
+                        return container.getDisplayName();
+                    }
+                };
+            }, true);
 
     private final ResourceLocation id;
     private final IMenuFactory menuFactory;
     private final boolean available;
-    private final BiConsumer<FriendlyByteBuf, List<Container>> additionalDataWriter;
+    private final TriConsumer<FriendlyByteBuf, List<Container>, Integer> additionalDataWriter;
 
     public ContainerScreenType(ResourceLocation id, IMenuFactory menuFactory, boolean available,
-            BiConsumer<FriendlyByteBuf, List<Container>> additionalDataWriter) {
+            TriConsumer<FriendlyByteBuf, List<Container>, Integer> additionalDataWriter) {
         this.id = id;
         this.menuFactory = menuFactory;
         this.available = available;
@@ -73,7 +96,7 @@ public class ContainerScreenType {
     }
 
     public ContainerScreenType(ResourceLocation id, IMenuFactory menuFactory, boolean available) {
-        this(id, menuFactory, available, (a, b) -> {
+        this(id, menuFactory, available, (a, b, c) -> {
         });
     }
 
@@ -85,13 +108,12 @@ public class ContainerScreenType {
         return available;
     }
 
-    public AbstractContainerMenu createMenu(int containerId, Inventory inventory, List<Container> containers,
-            int containerSize) {
-        return menuFactory.create(containerId, inventory, containers, containerSize);
+    public MenuProvider createMenuProvider(List<Container> containers, int containerSize) {
+        return menuFactory.create(containers, containerSize);
     }
 
-    public void writeAdditionalData(FriendlyByteBuf buf, List<Container> containers) {
-        additionalDataWriter.accept(buf, containers);
+    public void writeAdditionalData(FriendlyByteBuf buf, List<Container> containers, int size) {
+        additionalDataWriter.accept(buf, containers, size);
     }
 
     public static ContainerScreenType register(ResourceLocation id, IMenuFactory menuFactory, boolean available) {
@@ -101,7 +123,7 @@ public class ContainerScreenType {
     }
 
     public static ContainerScreenType register(ResourceLocation id, IMenuFactory menuFactory, boolean available,
-            BiConsumer<FriendlyByteBuf, List<Container>> additionalDataWriter) {
+            TriConsumer<FriendlyByteBuf, List<Container>, Integer> additionalDataWriter) {
         ContainerScreenType type = new ContainerScreenType(id, menuFactory, available, additionalDataWriter);
         TYPES.put(id, type);
         return type;
@@ -169,28 +191,27 @@ public class ContainerScreenType {
                     String val = jsonObject.get(key).getAsString();
                     ResourceLocation id = new ResourceLocation(val);
                     if (!TYPES.containsKey(id))
-                        throw new ThingParseException("MenuType not found: " + id);
+                        throw new ThingParseException(
+                                "Screen type " + id + " is not available (mod may not be installed)");
                     types.put(range, getOrDefault(id));
                 }
                 return new ContainerScreenType() {
                     @Override
-                    public AbstractContainerMenu createMenu(int containerId, Inventory inventory,
-                            List<Container> containers,
-                            int containerSize) {
+                    public MenuProvider createMenuProvider(
+                            List<Container> containers, int containerSize) {
                         for (IntRange range : types.keySet()) {
                             if (range.contains(containerSize)) {
-                                return types.get(range).createMenu(containerId, inventory, containers, containerSize);
+                                return types.get(range).createMenuProvider(containers, containerSize);
                             }
                         }
                         throw new IllegalArgumentException("Container size " + containerSize + " not supported");
                     }
 
                     @Override
-                    public void writeAdditionalData(FriendlyByteBuf buf, List<Container> containers) {
-                        int size = MultiContainer.of(containers).getContainerSize();
+                    public void writeAdditionalData(FriendlyByteBuf buf, List<Container> containers, int size) {
                         for (IntRange range : types.keySet()) {
                             if (range.contains(size)) {
-                                types.get(range).writeAdditionalData(buf, containers);
+                                types.get(range).writeAdditionalData(buf, containers, size);
                                 return;
                             }
                         }
@@ -200,7 +221,7 @@ public class ContainerScreenType {
             } catch (Exception e) {
                 if (e instanceof ThingParseException)
                     throw e;
-                throw new ThingParseException("Failed to parse range mapping: ", e);
+                throw new ThingParseException("Failed to parse range mapping: " + e.getMessage(), e);
             }
         }
         throw new ThingParseException("Unsupport Container Screen Type Format");
@@ -212,7 +233,6 @@ public class ContainerScreenType {
 
     @FunctionalInterface
     public interface IMenuFactory {
-        AbstractContainerMenu create(int containerId, Inventory inventory, List<Container> containers,
-                int containerSize);
+        MenuProvider create(List<Container> containers, int containerSize);
     }
 }

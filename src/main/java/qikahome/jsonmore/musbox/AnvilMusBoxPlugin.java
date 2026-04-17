@@ -30,15 +30,22 @@ public class AnvilMusBoxPlugin {
             return (props, builder) -> {
                 List<Property<?>> _properties = builder.getProperties();
                 Map<Property<?>, Comparable<?>> propertyDefaultValues = builder.getPropertyDefaultValues();
-                TagKey<Block> tag=TagKey.create(Registries.BLOCK, new ResourceLocation(instrumentBlockTag));
-                SoundEvent soundEvent=ForgeRegistries.SOUND_EVENTS.getValue(sound);
-                if(soundEvent==null)
-                    throw new ThingParseException("Sound event "+sound+" not found");
-                FlexNoteBlock noteBlock = new FlexNoteBlock(props, propertyDefaultValues, tag, instrumentName, soundEvent, volume) {
+                TagKey<Block> tag = TagKey.create(Registries.BLOCK, new ResourceLocation(instrumentBlockTag));
+                SoundEvent soundEvent = ForgeRegistries.SOUND_EVENTS.getValue(sound);
+                if (soundEvent == null)
+                    throw new ThingParseException("Sound event " + sound + " not found");
+                FlexNoteBlock noteBlock = new FlexNoteBlock(props, propertyDefaultValues, tag, instrumentName,
+                        soundEvent, volume) {
                     @Override
                     protected void createBlockStateDefinition(StateDefinition.Builder<Block, BlockState> builder1) {
                         super.createBlockStateDefinition(builder1);
-                        _properties.forEach(builder1::add);
+                        for (Property<?> property : _properties) {
+                            try {
+                                builder1.add(property);
+                            } catch (IllegalArgumentException e) {
+                                // pass
+                            }
+                        }
                     }
                 };
                 AnvilMusBoxMod.INSTRUMENTS.add(noteBlock);

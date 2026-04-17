@@ -42,7 +42,13 @@ public class TConstructPlugin {
                     @Override
                     protected void createBlockStateDefinition(StateDefinition.Builder<Block, BlockState> builder1) {
                         super.createBlockStateDefinition(builder1);
-                        _properties.forEach(builder1::add);
+                        for (Property<?> property : _properties) {
+                            try {
+                                builder1.add(property);
+                            } catch (IllegalArgumentException e) {
+                                // pass
+                            }
+                        }
                     }
                 };
             };
@@ -73,7 +79,13 @@ public class TConstructPlugin {
                     @Override
                     protected void createBlockStateDefinition(StateDefinition.Builder<Block, BlockState> builder1) {
                         super.createBlockStateDefinition(builder1);
-                        _properties.forEach(builder1::add);
+                        for (Property<?> property : _properties) {
+                            try {
+                                builder1.add(property);
+                            } catch (IllegalArgumentException e) {
+                                // pass
+                            }
+                        }
                     }
                 };
             };

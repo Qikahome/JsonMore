@@ -5,15 +5,12 @@ import org.slf4j.Logger;
 import com.mojang.logging.LogUtils;
 
 import dev.gigaherz.jsonthings.things.ThingRegistries;
-import dev.gigaherz.jsonthings.things.parsers.ThingResourceManager;
 import net.minecraft.world.level.block.entity.BlockEntityType;
-import net.minecraft.world.level.block.state.properties.BlockStateProperties;
 import net.minecraft.core.Registry;
 import net.minecraft.world.inventory.MenuType;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.event.server.ServerStartingEvent;
-import net.minecraftforge.eventbus.api.EventPriority;
 import net.minecraftforge.eventbus.api.IEventBus;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.ModList;
@@ -23,11 +20,9 @@ import net.minecraftforge.fml.common.Mod.EventBusSubscriber.Bus;
 import net.minecraftforge.fml.config.ModConfig;
 import net.minecraftforge.fml.event.lifecycle.FMLClientSetupEvent;
 import net.minecraftforge.fml.event.lifecycle.FMLCommonSetupEvent;
-import net.minecraftforge.fml.event.lifecycle.FMLConstructModEvent;
 import net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext;
 import net.minecraftforge.registries.DeferredRegister;
 import net.minecraftforge.registries.ForgeRegistries;
-import net.minecraftforge.resource.ResourcePackLoader;
 import qikahome.jsonmore.cyclopscore.CyclopsCorePlugin;
 import qikahome.jsonmore.cyclopscore.ScrollingContainerScreen;
 import qikahome.jsonmore.lib.ContainerPart;
@@ -111,7 +106,6 @@ public class JsonMore {
         @SubscribeEvent
         public static void onClientSetup(FMLClientSetupEvent event) {
             event.enqueueWork(() -> {
-                Registry.register(ThingRegistries.PROPERTIES, "jsonmore:container_part", ContainerPart.PART);
                 if (ModList.get().isLoaded("cyclopscore")) {
                     net.minecraft.client.gui.screens.MenuScreens.register(
                             CyclopsCorePlugin.SCROLLING_CONTAINER_MENU.get(),
@@ -122,6 +116,7 @@ public class JsonMore {
     }
 
     public static void onFlexTypesLoad() {
+        Registry.register(ThingRegistries.PROPERTIES, "jsonmore:container_part", ContainerPart.PART);
         // 联动
         ModList modList = ModList.get();
         if (modList.isLoaded("cyclopscore")) {
