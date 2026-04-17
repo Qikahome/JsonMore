@@ -3,21 +3,28 @@ package qikahome.jsonmore;
 import com.google.common.base.Supplier;
 import static qikahome.jsonmore.JsonMore.LOGGER;
 
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
 import javax.annotation.Nullable;
 
 public class Utils {
     public static <T> T getOrDebug(Supplier<T> supplier, T defaultValue) {
         return getOrDebug(supplier, defaultValue, null);
     }
+
     public static <T> T getOrDebug(Supplier<T> supplier, T defaultValue, @Nullable String errorMessage) {
         return getOrElse(supplier, defaultValue, org.slf4j.event.Level.DEBUG, errorMessage);
     }
+
     public static <T> T getOrInfo(Supplier<T> supplier, T defaultValue) {
         return getOrInfo(supplier, defaultValue, null);
     }
+
     public static <T> T getOrInfo(Supplier<T> supplier, T defaultValue, @Nullable String errorMessage) {
         return getOrElse(supplier, defaultValue, org.slf4j.event.Level.INFO, errorMessage);
     }
+
     /**
      * 执行Supplier类型的Lambda，捕获异常并返回默认值
      * 
@@ -64,6 +71,35 @@ public class Utils {
                 }
             // 异常时返回默认值
             return defaultValue;
+        }
+    }
+
+    public static final class IntRange {
+        private final int min;
+        private final int max;
+
+        private IntRange(int min, int max) {
+            this.min = min;
+            this.max = max;
+        }
+
+        public static IntRange parse(String rangeStr) {
+            Pattern pattern = Pattern.compile("^\\[\\s*(\\d*)\\s*,\\s*(\\d*)\\s*\\)?\\]$");
+            Matcher matcher = pattern.matcher(rangeStr.trim());
+            if (!matcher.matches()) {
+                throw new IllegalArgumentException("Invalid range format: " + rangeStr);
+            }
+            String minStr = matcher.group(1);
+            String maxStr = matcher.group(2);
+            int min = minStr.isEmpty() ? Integer.MIN_VALUE : Integer.parseInt(minStr);
+            int max = maxStr.isEmpty() ? Integer.MAX_VALUE : Integer.parseInt(maxStr);
+            if (min > max)
+                throw new IllegalArgumentException("min > max");
+            return new IntRange(min, max);
+        }
+
+        public boolean contains(int value) {
+            return value >= min && value <= max;
         }
     }
 }

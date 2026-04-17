@@ -192,7 +192,7 @@
 47.0
 ====
  - 47.0.50 Fix FMLOnly loading. Closes #9609
- - 47.0.49 Improve logging for server connections (#9618)
+ - 47.0.49 Improve logging for server parts (#9618)
  - 47.0.48 Fix placing fluids into waterlogged blocks with FluidUtil::tryPlaceFluid. To behave more like vanilla MC-127110 (#9586)
  - 47.0.47 Expose loaded RegistryAccess through AddReloadListenerEvent (#9613)
  - 47.0.46 Fix GLM applying to entities when killed. Closes #9551

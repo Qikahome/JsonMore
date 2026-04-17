@@ -6,6 +6,8 @@ import net.minecraft.world.inventory.MenuType;
 import net.minecraftforge.network.IContainerFactory;
 import net.minecraftforge.registries.RegistryObject;
 import qikahome.jsonmore.lib.ContainerScreenType;
+import qikahome.jsonmore.lib.MultiContainer;
+
 import static qikahome.jsonmore.JsonMore.LOGGER;
 
 import java.util.function.Supplier;
@@ -24,9 +26,11 @@ public class CyclopsCorePlugin {
     private static void registerScrollingContainer() {
         ContainerScreenType.register(
                 new ResourceLocation("cyclopscore:scrolling"),
-                (containerId, inventory, container, containerSize) -> new ScrollingContainerAdapter(containerId,
-                        inventory, container),
+                (containerId, inventory, containers, containerSize) -> new ScrollingContainerAdapter(containerId,
+                        inventory, MultiContainer.of(containers)),
                 true,
-                (buf, container) -> {buf.writeVarInt(container.getContainerSize());});
+                (buf, containers) -> {
+                    buf.writeVarInt(MultiContainer.of(containers).getContainerSize());
+                });
     }
 }

@@ -1,6 +1,7 @@
 package qikahome.jsonmore.minecraft;
 
 import net.minecraft.world.Container;
+import net.minecraft.world.CompoundContainer;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.inventory.AbstractContainerMenu;
@@ -8,6 +9,7 @@ import net.minecraft.world.inventory.MenuType;
 import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.ItemStack;
 import qikahome.jsonmore.lib.IFlexContainer;
+import qikahome.jsonmore.lib.MultiContainer;
 
 import javax.annotation.Nullable;
 
@@ -138,10 +140,6 @@ public class FilteredChestMenu extends AbstractContainerMenu implements IFlexCon
 
     @Override
     public boolean isThisContainer(Container container) {
-        boolean result = this.container == container;
-        // LOGGER.debug("FilteredChestMenu.isThisContainer: this.container={}, param
-        // container={}, result={}",
-        // this.container, container, result);
-        return result;
+        return MultiContainer.contains(this.container, container);
     }
 }

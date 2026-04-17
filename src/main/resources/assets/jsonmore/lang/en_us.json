@@ -1,0 +1,4 @@
+{
+  "ingredient.jsonmore.true": "Anything",
+  "ingredient.jsonmore.not": "Anything except %s"
+}

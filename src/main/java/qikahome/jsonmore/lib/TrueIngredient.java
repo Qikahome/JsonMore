@@ -31,7 +31,7 @@ public class TrueIngredient extends AbstractIngredient {
 
     static {
         ANYTHING_STACK = new ItemStack(Items.STICK);
-        ANYTHING_STACK.setHoverName(Component.literal("Anything"));
+        ANYTHING_STACK.setHoverName(Component.translatable("ingredient.jsonmore.true"));
     }
 
     @Override

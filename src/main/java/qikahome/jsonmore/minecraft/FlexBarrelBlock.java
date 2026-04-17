@@ -1,6 +1,6 @@
 package qikahome.jsonmore.minecraft;
 
-import java.rmi.UnexpectedException;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -26,6 +26,7 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraftforge.common.crafting.CompoundIngredient;
 import net.minecraftforge.network.NetworkHooks;
+import net.minecraftforge.registries.ForgeRegistries;
 import net.minecraft.sounds.SoundEvent;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
@@ -33,6 +34,7 @@ import net.minecraft.tags.TagKey;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.Container;
 import net.minecraft.world.ContainerHelper;
+import net.minecraft.world.CompoundContainer;
 import net.minecraft.world.WorldlyContainer;
 import net.minecraft.world.Containers;
 import net.minecraft.world.InteractionHand;
@@ -43,18 +45,17 @@ import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.inventory.AbstractContainerMenu;
 import net.minecraft.world.inventory.ChestMenu;
-import net.minecraft.world.inventory.MenuType;
-import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.item.Items;
 import net.minecraft.world.item.TooltipFlag;
 import net.minecraft.world.item.context.BlockPlaceContext;
 import net.minecraft.world.item.crafting.Ingredient;
 import net.minecraft.world.level.BlockGetter;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.level.LevelAccessor;
 import net.minecraft.world.level.block.BaseEntityBlock;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.RenderShape;
+import net.minecraft.world.level.block.Rotation;
 import net.minecraft.world.level.block.SimpleWaterloggedBlock;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.entity.BlockEntityType;
@@ -64,6 +65,7 @@ import net.minecraft.world.level.block.state.BlockBehaviour;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.StateDefinition;
 import net.minecraft.world.level.block.state.properties.BlockStateProperties;
+import net.minecraft.world.level.block.state.properties.EnumProperty;
 import net.minecraft.world.level.block.state.properties.Property;
 import net.minecraft.world.level.material.Fluid;
 import net.minecraft.world.level.material.Fluids;
@@ -72,6 +74,8 @@ import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.shapes.CollisionContext;
 import net.minecraft.world.phys.shapes.VoxelShape;
 import qikahome.jsonmore.lib.BlockedDirection;
+import qikahome.jsonmore.lib.ContainerPart;
+import qikahome.jsonmore.lib.ExpandableMode;
 import qikahome.jsonmore.lib.FaceFilter;
 import qikahome.jsonmore.lib.IFlexContainer;
 import qikahome.jsonmore.lib.IFlexEntityBlock;
@@ -80,10 +84,11 @@ import qikahome.jsonmore.lib.ContainerScreenType;
 import qikahome.jsonmore.lib.ItemFilter;
 import qikahome.jsonmore.lib.KeepInventoryContainerIngredient;
 import qikahome.jsonmore.lib.KeepInventoryMode;
+import qikahome.jsonmore.lib.MultiContainer;
 import qikahome.jsonmore.lib.NotIngredient;
 import qikahome.jsonmore.lib.PlacingDirections;
-
-import static qikahome.jsonmore.JsonMore.LOGGER;
+import net.minecraft.world.level.block.Mirror;
+import static qikahome.jsonmore.lib.ContainerPart.PART;
 
 public class FlexBarrelBlock extends BaseEntityBlock
         implements IFlexEntityBlock<FlexBarrelBlock.FlexBarrelBlockEntity>, SimpleWaterloggedBlock {
@@ -93,7 +98,9 @@ public class FlexBarrelBlock extends BaseEntityBlock
             PlacingDirections facing, KeepInventoryMode keepInventory, boolean angerPiglins,
             BlockedDirection blocked, Map<FaceFilter, ItemFilter> insertFilters,
             Map<FaceFilter, ItemFilter> extractFilters,
-            ResourceLocation screenType) {
+            ContainerScreenType screenType, ContainerScreenType connectedScreenType,
+            Set<ExpandableMode> expandableModes,
+            Set<ResourceLocation> connectableContainers) {
         super(properties);
         initializeFlex(propertyDefaultValues);
         this.containerSize = containerSize;
@@ -106,7 +113,10 @@ public class FlexBarrelBlock extends BaseEntityBlock
         this.blocked = blocked;
         this.insertFilters = insertFilters;
         this.extractFilters = extractFilters;
-        this.screenType = ContainerScreenType.getOrDefault(screenType);
+        this.screenType = screenType;
+        this.connectedScreenType = connectedScreenType != null ? connectedScreenType : this.screenType;
+        this.expandableModes = expandableModes != null ? expandableModes : Collections.emptySet();
+        this.connectableContainers = connectableContainers != null ? connectableContainers : Collections.emptySet();
     }
 
     // region IFlexBlock
@@ -206,42 +216,6 @@ public class FlexBarrelBlock extends BaseEntityBlock
     // endregion
 
     // region BarrelBlock
-    public InteractionResult fallbackUse(BlockState state, Level level, BlockPos pos, Player player,
-            InteractionHand hand, BlockHitResult hit) {
-        if (level.isClientSide) {
-            return InteractionResult.SUCCESS;
-        } else {
-            if (blocked.isBlocked(level, pos, state.getValue(BlockStateProperties.FACING))) {
-                return InteractionResult.PASS;
-            }
-            BlockEntity blockentity = level.getBlockEntity(pos);
-            if (blockentity instanceof FlexBarrelBlockEntity flexEntity) {
-                if (player instanceof ServerPlayer serverPlayer) {
-                    NetworkHooks.openScreen(serverPlayer, flexEntity,
-                            buffer -> screenType.writeAdditionalData(buffer, flexEntity));
-                }
-                if (angerPiglins) {
-                    PiglinAi.angerNearbyPiglins(player, true);
-                }
-            }
-
-            return InteractionResult.CONSUME;
-        }
-    }
-
-    @Override
-    public void onRemove(BlockState oldState, Level level, BlockPos pos, BlockState newState,
-            boolean isMoving) {
-        if (!oldState.is(newState.getBlock())) {
-            BlockEntity blockentity = level.getBlockEntity(pos);
-            if (blockentity instanceof Container) {
-                Containers.dropContents(level, pos, (Container) blockentity);
-                level.updateNeighbourForOutputSignal(pos, this);
-            }
-
-            super.onRemove(oldState, level, pos, newState, isMoving);
-        }
-    }
 
     @Override
     public void tick(BlockState state, ServerLevel level, BlockPos pos, RandomSource random) {
@@ -269,7 +243,28 @@ public class FlexBarrelBlock extends BaseEntityBlock
 
     @Override
     public int getAnalogOutputSignal(BlockState state, Level level, BlockPos pos) {
-        return AbstractContainerMenu.getRedstoneSignalFromBlockEntity(level.getBlockEntity(pos));
+        List<Container> containers = getContainers(level, pos, state);
+        if (containers.isEmpty()) {
+            return 0;
+        }
+        int signal = 0;
+        for (Container c : containers) {
+            signal += AbstractContainerMenu.getRedstoneSignalFromContainer(c);
+        }
+        return signal / containers.size();
+    }
+
+    @Override
+    public BlockState rotate(BlockState state, Rotation rotation) {
+        return state.setValue(BlockStateProperties.FACING,
+                rotation.rotate(state.getValue(BlockStateProperties.FACING)));
+    }
+
+    @Override
+    public BlockState mirror(BlockState state, Mirror mirror) {
+        BlockState rotated = state.rotate(mirror.getRotation(state.getValue(BlockStateProperties.FACING)));
+        return mirror == Mirror.NONE ? rotated
+                : rotated.setValue(PART, rotated.getValue(PART).getOpposite());
     }
     // endregion
 
@@ -316,6 +311,9 @@ public class FlexBarrelBlock extends BaseEntityBlock
     public final Map<FaceFilter, ItemFilter> insertFilters;
     public final Map<FaceFilter, ItemFilter> extractFilters;
     public final ContainerScreenType screenType;
+    public final ContainerScreenType connectedScreenType;
+    public final Set<ExpandableMode> expandableModes;
+    public final Set<ResourceLocation> connectableContainers;
 
     public static final ItemFilter DEFAULT_PLACE_FILTER;
     static {
@@ -325,6 +323,55 @@ public class FlexBarrelBlock extends BaseEntityBlock
                                 Ingredient.of(TagKey.create(Registries.ITEM,
                                         new ResourceLocation("jsonmore:keep_inventory_containers"))),
                                 new KeepInventoryContainerIngredient(KeepInventoryContainerIngredient.Mode.MAY))));
+    }
+
+    public boolean isConnectableBlock(Block neighbor) {
+        return neighbor == this || connectableContainers.contains(ForgeRegistries.BLOCKS.getKey(neighbor)) ||
+                neighbor instanceof FlexBarrelBlock flex
+                        && flex.connectableContainers.contains(ForgeRegistries.BLOCKS.getKey(this));
+    }
+
+    public InteractionResult fallbackUse(BlockState state, Level level, BlockPos pos, Player player,
+            InteractionHand hand, BlockHitResult hit) {
+        if (level.isClientSide) {
+            return InteractionResult.SUCCESS;
+        } else {
+            var part = state.getValue(PART);
+            var facing = state.getValue(BlockStateProperties.FACING);
+            if (blocked.isBlocked(level, pos, facing,
+                    part)) {
+                return InteractionResult.PASS;
+            }
+            if (part.isConnected()) {
+                Direction neighborDir = part.getWorldDirection(facing).getOpposite();
+                if (neighborDir != null) {
+                    BlockPos neighborPos = pos.relative(neighborDir);
+                    BlockState neighborState = level.getBlockState(neighborPos);
+                    if (neighborState.getBlock() instanceof FlexBarrelBlock neighbor) {
+                        if (neighbor.blocked.isBlocked(level, neighborPos,
+                                neighborState.getValue(BlockStateProperties.FACING),
+                                neighborState.getValue(PART))) {
+                            return InteractionResult.PASS;
+                        }
+                    }
+                }
+            }
+            BlockEntity blockentity = level.getBlockEntity(pos);
+            if (blockentity instanceof FlexBarrelBlockEntity flexEntity) {
+                if (player instanceof ServerPlayer serverPlayer) {
+                    ContainerScreenType screen = state.getValue(PART).isConnected()
+                            ? connectedScreenType
+                            : screenType;
+                    NetworkHooks.openScreen(serverPlayer, flexEntity,
+                            buffer -> screen.writeAdditionalData(buffer, this.getContainers(level, pos, state)));
+                }
+                if (angerPiglins) {
+                    PiglinAi.angerNearbyPiglins(player, true);
+                }
+            }
+
+            return InteractionResult.CONSUME;
+        }
     }
 
     @Override
@@ -367,6 +414,27 @@ public class FlexBarrelBlock extends BaseEntityBlock
         return super.getDrops(state, builder);
     }
 
+    public boolean retryConnection(LevelAccessor level, BlockPos pos, BlockState state) {
+        var connection = state.getValue(PART);
+        var facing = state.getValue(BlockStateProperties.FACING);
+        boolean connected = false;
+        Direction neighborDir = connection.getWorldDirection(facing).getOpposite();
+        if (neighborDir != null) {
+            BlockPos neighborPos = pos.relative(neighborDir);
+            BlockState neighborState = level.getBlockState(neighborPos);
+            for (ExpandableMode mode : expandableModes) {
+                if (isConnectableBlock(neighborState.getBlock())
+                        && neighborState.getValue(PART) == ContainerPart.NONE) {
+                    connected = mode.connect(neighborState, neighborPos, level, neighborDir.getOpposite());
+                }
+                if (connected) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
     @Override
     public void setPlacedBy(Level level, BlockPos pos, BlockState state, @Nullable LivingEntity placer,
             ItemStack stack) {
@@ -374,6 +442,13 @@ public class FlexBarrelBlock extends BaseEntityBlock
             BlockEntity blockentity = level.getBlockEntity(pos);
             if (blockentity instanceof FlexBarrelBlockEntity flexEntity) {
                 flexEntity.setCustomName(stack.getHoverName());
+            }
+        }
+        var connection = state.getValue(PART);
+        var facing = state.getValue(BlockStateProperties.FACING);
+        if (connection.isConnected()) {
+            if (!retryConnection(level, pos, state)) {
+                level.setBlock(pos, state.setValue(PART, ContainerPart.NONE), 0);
             }
         }
     }
@@ -407,22 +482,192 @@ public class FlexBarrelBlock extends BaseEntityBlock
 
     protected AbstractContainerMenu createMenu(int containerId, Inventory inventory,
             FlexBarrelBlockEntity flexBlockEntity) {
-        return screenType.createMenu(containerId, inventory, flexBlockEntity, containerSize);
+        BlockState state = flexBlockEntity.getBlockState();
+        ContainerPart part = state.getValue(PART);
+
+        ContainerScreenType screen = part.isConnected() ? connectedScreenType : screenType;
+
+        List<Container> containers;
+        int actualSize;
+
+        if (part.isConnected()) {
+            containers = new ArrayList<>(
+                    getContainers(flexBlockEntity.getLevel(), flexBlockEntity.getBlockPos(), state));
+            actualSize = 0;
+            for (Container c : containers) {
+                actualSize += c.getContainerSize();
+            }
+        } else {
+            containers = Collections.singletonList(flexBlockEntity);
+            actualSize = containerSize;
+        }
+
+        if (containers.isEmpty()) {
+            containers = Collections.singletonList(flexBlockEntity);
+            actualSize = containerSize;
+        }
+
+        return screen.createMenu(containerId, inventory, containers, actualSize);
+    }
+
+    @Nullable
+    public List<Container> getContainers(Level level, BlockPos pos, BlockState state) {
+        ContainerPart part = state.getValue(PART);
+        BlockEntity blockEntity = level.getBlockEntity(pos);
+        if (!part.isConnected()) {
+            return blockEntity instanceof Container ? Collections.singletonList((Container) blockEntity)
+                    : Collections.emptyList();
+        }
+
+        Direction facing = state.getValue(BlockStateProperties.FACING);
+        Direction otherDir = part.getWorldDirection(facing).getOpposite();
+        if (otherDir == null)
+            return blockEntity instanceof Container ? Collections.singletonList((Container) blockEntity)
+                    : Collections.emptyList();
+
+        BlockPos otherPos = pos.relative(otherDir);
+        BlockEntity otherEntity = level.getBlockEntity(otherPos);
+
+        if (otherEntity instanceof FlexBarrelBlockEntity otherBarrel) {
+            BlockEntity thisEntity = level.getBlockEntity(pos);
+            if (thisEntity instanceof FlexBarrelBlockEntity thisBarrel) {
+                boolean thisIsFirst = part == ContainerPart.LEFT
+                        || part == ContainerPart.TOP
+                        || part == ContainerPart.FRONT;
+
+                if (thisIsFirst) {
+                    return List.of(thisBarrel, otherBarrel);
+                } else {
+                    return List.of(otherBarrel, thisBarrel);
+                }
+            }
+        }
+
+        return blockEntity instanceof Container ? Collections.singletonList((Container) blockEntity)
+                : Collections.emptyList();
     }
 
     @Override
     protected void createBlockStateDefinition(StateDefinition.Builder<Block, BlockState> builder1) {
-        builder1.add(BlockStateProperties.OPEN, BlockStateProperties.FACING);
+        builder1.add(BlockStateProperties.OPEN, BlockStateProperties.FACING, PART);
     }
 
     @Override
     public BlockState getStateForPlacement(BlockPlaceContext context) {
-        BlockState state = this.defaultBlockState().setValue(BlockStateProperties.FACING, facing.getDirection(context));
+        // 基础状态：朝向 + 未连接
+        BlockState state = this.defaultBlockState()
+                .setValue(BlockStateProperties.FACING, facing.getDirection(context))
+                .setValue(PART, ContainerPart.NONE);
+
+        // 处理含水
         if (waterloggedIn && state.hasProperty(BlockStateProperties.WATERLOGGED)) {
             boolean hasWater = context.getLevel().getFluidState(context.getClickedPos()).getType() == Fluids.WATER;
             state = state.setValue(BlockStateProperties.WATERLOGGED, hasWater);
         }
+
+        if (expandableModes.isEmpty()) {
+            return state;
+        }
+
+        Level level = context.getLevel();
+        BlockPos pos = context.getClickedPos();
+        Player player = context.getPlayer();
+        Direction clickedFace = context.getClickedFace();
+        boolean sneaking = player != null && player.isShiftKeyDown();
+        Direction thisFacing = state.getValue(BlockStateProperties.FACING);
+
+        // 潜行模式：精准连接（只检查点击面反方向的邻居）
+        if (sneaking) {
+            for (ExpandableMode mode : expandableModes) {
+                Direction neighborDir = clickedFace.getOpposite();
+                BlockPos neighborPos = pos.relative(neighborDir);
+                BlockState neighborState = level.getBlockState(neighborPos);
+
+                if (isConnectableBlock(neighborState.getBlock())
+                        && neighborState.getValue(PART) == ContainerPart.NONE) {
+                    BlockState newState = mode.tryForceConnect(state, neighborState, neighborPos, level, clickedFace,
+                            true);
+                    if (newState != state) {
+                        return newState; // 连接成功
+                    }
+                }
+            }
+            return state;
+        }
+
+        // 非潜行模式：自动扫描所有可能的方向
+        for (ExpandableMode mode : expandableModes) {
+            for (Direction dir : Direction.values()) {
+                BlockPos neighborPos = pos.relative(dir);
+                BlockState neighborState = level.getBlockState(neighborPos);
+
+                if (isConnectableBlock(neighborState.getBlock())
+                        && neighborState.getValue(PART) == ContainerPart.NONE) {
+                    // 自动扫描时，将 dir 作为“虚拟点击面”传入
+                    BlockState newState = mode.tryConnect(state, neighborState, neighborPos, level, dir.getOpposite(),
+                            true);
+                    if (newState != state) {
+                        return newState;
+                    }
+                }
+            }
+        }
+
         return state;
+    }
+
+    @Override
+    public void onRemove(BlockState oldState, Level level, BlockPos pos, BlockState newState,
+            boolean isMoving) {
+
+        if (!oldState.is(newState.getBlock())) {
+            BlockEntity blockentity = level.getBlockEntity(pos);
+            if (blockentity instanceof Container) {
+                Containers.dropContents(level, pos, (Container) blockentity);
+                level.updateNeighbourForOutputSignal(pos, this);
+            }
+
+            super.onRemove(oldState, level, pos, newState, isMoving);
+        }
+    }
+
+    @Override
+    public BlockState updateShape(BlockState state, Direction direction, BlockState neighborState,
+            LevelAccessor level, BlockPos pos, BlockPos neighborPos) {
+        ContainerPart part = state.getValue(PART);
+        if (part == ContainerPart.NONE)
+            return super.updateShape(state, direction, neighborState, level, pos, neighborPos);
+        if (direction == part.getWorldDirection(state.getValue(BlockStateProperties.FACING)).getOpposite())
+            if (neighborState.getBlock() instanceof FlexBarrelBlock flex) {
+                var neiPart = neighborState.getValue(PART);
+                var neiFacing = neighborState.getValue(BlockStateProperties.FACING);
+                if (neiPart.getWorldDirection(neiFacing) != direction) {
+                    return super.updateShape(state, direction, neighborState, level, pos, neighborPos)
+                            .setValue(PART, ContainerPart.NONE);
+                }
+            } else
+                return super.updateShape(state, direction, neighborState, level, pos, neighborPos)
+                        .setValue(PART, ContainerPart.NONE);
+        return super.updateShape(state, direction, neighborState, level, pos, neighborPos);
+    }
+
+    public BlockState disconnect(LevelAccessor level, BlockPos pos, BlockState state) {
+
+        ContainerPart part = state.getValue(PART);
+        if (!part.isConnected())
+            return state;
+
+        Direction facing = state.getValue(BlockStateProperties.FACING);
+        Direction neighborDir = part.getWorldDirection(facing).getOpposite();
+        if (neighborDir != null) {
+            BlockPos neighborPos = pos.relative(neighborDir);
+            BlockState neighborState = level.getBlockState(neighborPos);
+            if (isConnectableBlock(neighborState.getBlock()) && neighborState.getValue(PART).isConnected()) {
+                // 清除邻居的连接状态
+                level.setBlock(neighborPos, neighborState.setValue(PART, ContainerPart.NONE), 3);
+            }
+        }
+        return state.setValue(PART, ContainerPart.NONE);
     }
     // endregion
 
@@ -439,22 +684,18 @@ public class FlexBarrelBlock extends BaseEntityBlock
                 FlexBarrelBlockEntity.this.updateBlockState(state, false);
             }
 
-            protected void openerCountChanged(Level level, BlockPos pos, BlockState state, int oldCount,
-                    int newCount) {
+            protected void openerCountChanged(Level level, BlockPos pos, BlockState state, int oldCount, int newCount) {
             }
 
             protected boolean isOwnContainer(Player player) {
-                //LOGGER.debug("Checking container: player.containerMenu = {}",
-                // player.containerMenu.getClass().getName());
                 if (player.containerMenu instanceof ChestMenu chestMenu) {
-                    //LOGGER.debug("Matched ChestMenu branch");
                     Container container = chestMenu.getContainer();
-                    return container == FlexBarrelBlockEntity.this;
+                    return container == FlexBarrelBlockEntity.this
+                            || container instanceof CompoundContainer compoundContainer
+                                    && compoundContainer.contains(FlexBarrelBlockEntity.this);
                 } else if (player.containerMenu instanceof IFlexContainer adapterContainer) {
-                    //LOGGER.debug("Matched IFlexContainer branch");
                     return adapterContainer.isThisContainer(FlexBarrelBlockEntity.this);
                 } else {
-                    //LOGGER.debug("No branch matched");
                     return false;
                 }
             }
@@ -527,6 +768,44 @@ public class FlexBarrelBlock extends BaseEntityBlock
             }
         }
 
+        private net.minecraftforge.common.util.LazyOptional<net.minecraftforge.items.IItemHandlerModifiable> itemHandler;
+
+        @Override
+        public void setBlockState(BlockState state) {
+            super.setBlockState(state);
+            if (this.itemHandler != null) {
+                net.minecraftforge.common.util.LazyOptional<?> oldHandler = this.itemHandler;
+                this.itemHandler = null;
+                oldHandler.invalidate();
+            }
+        }
+
+        @Override
+        public <T> net.minecraftforge.common.util.LazyOptional<T> getCapability(
+                net.minecraftforge.common.capabilities.Capability<T> cap, @Nullable Direction side) {
+            if (cap == net.minecraftforge.common.capabilities.ForgeCapabilities.ITEM_HANDLER && !this.remove) {
+                if (this.itemHandler == null) {
+                    this.itemHandler = net.minecraftforge.common.util.LazyOptional.of(this::createHandler);
+                }
+                return this.itemHandler.cast();
+            }
+            return super.getCapability(cap, side);
+        }
+
+        private net.minecraftforge.items.IItemHandlerModifiable createHandler() {
+            return new net.minecraftforge.items.wrapper.InvWrapper(
+                    MultiContainer.of(flexBlock.getContainers(getLevel(), getBlockPos(), getBlockState())));
+        }
+
+        @Override
+        public void invalidateCaps() {
+            super.invalidateCaps();
+            if (itemHandler != null) {
+                itemHandler.invalidate();
+                itemHandler = null;
+            }
+        }
+
         public void recheckOpen() {
             if (!this.remove) {
                 this.openersCounter.recheckOpeners(this.getLevel(), this.getBlockPos(), this.getBlockState());
@@ -567,23 +846,29 @@ public class FlexBarrelBlock extends BaseEntityBlock
                 return false;
             }
 
+            if (flexBlock.insertFilters.isEmpty()) {
+                return true;
+            }
+
             Direction facing = getBlockState().getValue(BlockStateProperties.FACING);
-            boolean hasMatchingFilter = false;
 
             for (Map.Entry<FaceFilter, ItemFilter> entry : flexBlock.insertFilters.entrySet()) {
                 if (entry.getKey().test(facing, direction)) {
-                    hasMatchingFilter = true;
                     if (!entry.getValue().test(stack)) {
                         return false;
                     }
                 }
             }
-            return hasMatchingFilter;
+            return true;
         }
 
         @Override
         public boolean canTakeItemThroughFace(int index, ItemStack stack, Direction direction) {
             Direction facing = getBlockState().getValue(BlockStateProperties.FACING);
+
+            if (flexBlock.extractFilters.isEmpty()) {
+                return true;
+            }
 
             for (Map.Entry<FaceFilter, ItemFilter> entry : flexBlock.extractFilters.entrySet()) {
                 if (entry.getKey().test(facing, direction)) {

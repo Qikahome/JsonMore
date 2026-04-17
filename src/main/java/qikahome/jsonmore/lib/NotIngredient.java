@@ -41,12 +41,11 @@ public class NotIngredient extends AbstractIngredient {
         if (cachedDisplayStacks == null) {
             ItemStack[] subItems = ingredient.getItems();
             if (subItems.length == 0) {
-                // 使用 TrueIngredient 的代表性物品作为 fallback，但要克隆并修改名称
                 ItemStack[] trueItems = TrueIngredient.INSTANCE.getItems();
                 cachedDisplayStacks = new ItemStack[trueItems.length];
                 for (int i = 0; i < trueItems.length; i++) {
                     ItemStack copy = trueItems[i].copy();
-                    copy.setHoverName(Component.literal("Anything (except nothing)"));
+                    copy.setHoverName(Component.translatable("ingredient.jsonmore.not", "nothing"));
                     cachedDisplayStacks[i] = copy;
                 }
             } else {
@@ -54,7 +53,7 @@ public class NotIngredient extends AbstractIngredient {
                 for (int i = 0; i < subItems.length; i++) {
                     ItemStack copy = subItems[i].copy();
                     Component originalName = copy.getHoverName();
-                    copy.setHoverName(Component.literal("Anything except ").append(originalName));
+                    copy.setHoverName(Component.translatable("ingredient.jsonmore.not", originalName));
                     cachedDisplayStacks[i] = copy;
                 }
             }

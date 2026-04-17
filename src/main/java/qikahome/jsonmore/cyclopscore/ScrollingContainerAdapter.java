@@ -26,9 +26,11 @@ package qikahome.jsonmore.cyclopscore;
 import com.google.common.collect.Lists;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.world.Container;
+import net.minecraft.world.CompoundContainer;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.inventory.Slot;
 import qikahome.jsonmore.lib.IFlexContainer;
+import qikahome.jsonmore.lib.MultiContainer;
 
 import org.cyclops.cyclopscore.inventory.LargeInventory;
 import org.cyclops.cyclopscore.inventory.container.ContainerExtended;
@@ -141,6 +143,6 @@ public class ScrollingContainerAdapter extends ScrollingInventoryContainer<Slot>
 
     @Override
     public boolean isThisContainer(Container container) {
-        return this.inventory == container;
+        return MultiContainer.contains(this.inventory, container);
     }
 }
