@@ -1,4 +1,4 @@
-package qikahome.jsonmore.tconstruct.parts;
+package qikahome.jsonmore.tconstruct.dynamic;
 
 import java.util.function.Consumer;
 
@@ -9,14 +9,31 @@ import com.google.gson.JsonObject;
 
 import dev.gigaherz.jsonthings.things.builders.BaseBuilder;
 import dev.gigaherz.jsonthings.things.parsers.ThingParser;
-import dev.gigaherz.jsonthings.util.parse.JParse;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraftforge.eventbus.api.IEventBus;
 import net.minecraftforge.fml.event.lifecycle.FMLCommonSetupEvent;
 import slimeknights.tconstruct.library.materials.MaterialRegistry;
 
-public class MaterialStatTypeParser extends ThingParser<MaterialStatTypeBuilder> {
+public class MaterialStatTypeParser extends ThingParser<MaterialStatTypeParser.MaterialStatTypeBuilder> {
+    public static class MaterialStatTypeBuilder extends BaseBuilder<DynamicMaterialStatType, MaterialStatTypeBuilder> {
+        private final DynamicMaterialStatType statType;
+        protected MaterialStatTypeBuilder(ThingParser<MaterialStatTypeBuilder> ownerParser, JsonObject data,
+                ResourceLocation registryName) {
+            super(ownerParser, registryName);
+            data.addProperty("id", registryName.toString());
+            this.statType = DynamicMaterialStatType.LOADER.deserialize(data);
+        }
 
+        @Override
+        protected String getThingTypeDisplayName() {
+            return "Dynamic Material Stat Type";
+        }
+
+        @Override
+        protected DynamicMaterialStatType buildInternal() {
+            return statType;
+        }
+    }
     public static final Logger LOGGER = LogManager.getLogger();
 
     public MaterialStatTypeParser(IEventBus bus) {
@@ -35,18 +52,8 @@ public class MaterialStatTypeParser extends ThingParser<MaterialStatTypeBuilder>
     public MaterialStatTypeBuilder processThing(ResourceLocation key, JsonObject data,
             Consumer<MaterialStatTypeBuilder> builderModification) {
         LOGGER.info("JsonMore: Processing material stat type {}", key);
-        final MaterialStatTypeBuilder builder = MaterialStatTypeBuilder.begin(this, key);
-
-        JParse.begin(data)
-                .ifKey("parent", val -> val.string().map(ResourceLocation::new).handle(builder::setParent))
-                .ifKey("type", val -> val.string().handle(builder::setType))
-                .ifKey("can_repair", val -> val.bool().handle(builder::setCanRepair))
-                .ifKey("stats", val -> val.ifObj(obj -> builder.setStats(obj.getAsJsonObject())).typeError());
-
+        final MaterialStatTypeBuilder builder = new MaterialStatTypeBuilder(this, data, key);
         builderModification.accept(builder);
-
-        builder.setFactory(builder.getMaterialStatTypeType().getFactory(data));
-
         return builder;
     }
 }

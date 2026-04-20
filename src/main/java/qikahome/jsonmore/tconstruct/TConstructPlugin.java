@@ -23,8 +23,8 @@ import net.minecraftforge.fml.event.lifecycle.FMLCommonSetupEvent;
 import net.minecraftforge.registries.ForgeRegistries;
 import net.minecraftforge.registries.RegistryObject;
 import qikahome.jsonmore.tconstruct.FlexTinkerChestBlock.ChestItemHandlerHelper;
-import qikahome.jsonmore.tconstruct.parts.FlexMaterialStatTypeType;
-import qikahome.jsonmore.tconstruct.parts.MaterialStatTypeParser;
+import qikahome.jsonmore.tconstruct.dynamic.FlexMaterialStatTypeType;
+import qikahome.jsonmore.tconstruct.dynamic.MaterialStatTypeParser;
 import slimeknights.tconstruct.smeltery.block.component.SearedTankBlock;
 
 public class TConstructPlugin {
