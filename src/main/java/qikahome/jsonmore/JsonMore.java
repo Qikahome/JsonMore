@@ -26,6 +26,7 @@ import net.minecraftforge.registries.ForgeRegistries;
 import qikahome.jsonmore.cyclopscore.CyclopsCorePlugin;
 import qikahome.jsonmore.cyclopscore.ScrollingContainerScreen;
 import qikahome.jsonmore.lib.ContainerPart;
+import qikahome.jsonmore.mantle.MantlePlugin;
 import qikahome.jsonmore.minecraft.MinecraftPlugin;
 import qikahome.jsonmore.musbox.AnvilMusBoxPlugin;
 import qikahome.jsonmore.tconstruct.TConstructPlugin;
@@ -112,6 +113,9 @@ public class JsonMore {
                             ScrollingContainerScreen::new);
                 }
             });
+            if (ModList.get().isLoaded("mantle")) {
+                MantlePlugin.onClientSetup();
+            }
         }
     }
 
@@ -121,6 +125,9 @@ public class JsonMore {
         ModList modList = ModList.get();
         if (modList.isLoaded("cyclopscore")) {
             CyclopsCorePlugin.load();
+        }
+        if (modList.isLoaded("mantle")) {
+            MantlePlugin.load();
         }
         if (modList.isLoaded("tconstruct")) {
             TConstructPlugin.load();

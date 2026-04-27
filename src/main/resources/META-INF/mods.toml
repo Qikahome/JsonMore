@@ -1,76 +1,26 @@
-# 这是一个 mods.toml 文件的示例。该文件包含模组加载相关的核心配置数据。
-# 其中包含多个必填字段（#必填），以及更多可选配置字段（#可选）。
-# 文件整体遵循 TOML v0.5.0 标准格式。
-# 注意：本文件中包含若干 TOML 列表结构，需遵循其语法规则。
-# 如需了解 TOML 格式详情，可参考：https://github.com/toml-lang/toml
-
-# 要加载的模组加载器类型名称 - 对于常规 FML @Mod 注解的模组，此处需填写 javafml
-modLoader="javafml" #必填
-# 匹配上述模组加载器的版本范围 - 对于常规 FML @Mod 模组，此处填写 Forge 版本
-loaderVersion="${loader_version_range}" #必填 该版本通常随 Minecraft 版本迭代由 Forge 官方更新。可前往 Forge 下载页查看完整版本列表。
-# 你的模组的许可证协议。这是必填元数据，用于明确模组的再分发权限与规则。
-# 可访问 https://choosealicense.com/ 选择适配的许可证。默认版权声明为「保留所有权利」，故此配置默认值亦为此。
+modLoader="javafml"
+loaderVersion="${loader_version_range}"
 license="${mod_license}"
-# 模组出现问题时，引导用户反馈的问题追踪网址
-#issueTrackerURL="https://change.me.to.your.issue.tracker.example.invalid/" #可选
-# 若你的模组仅为客户端专用（无任何多人游戏功能，包括专用服务器或局域网联机），
-# 将此项设为 true 后，Forge 会自动配置正确的版本匹配检测规则，并跳过在专用服务器上加载该模组。
-#clientSideOnly=true #可选 - 未填写时默认值为 false
-# 模组列表配置 - 允许配置的模组数量由所用的模组加载器决定
-[[mods]] #必填
-# 模组的唯一标识（模组ID）
-modId="${mod_id}" #必填
-# 模组的版本号
-version="${mod_version}" #必填
-# 模组的显示名称（在模组列表中展示）
-displayName="${mod_name}" #必填
-# 模组更新检查的 JSON 接口地址。具体规范参考：https://docs.minecraftforge.net/en/latest/misc/updatechecker/
-#updateJSONURL="https://change.me.example.invalid/updates.json" #可选
+issueTrackerURL="https://github.com/Qikahome/JsonMore/issues/"
+
+[[mods]]
+modId="${mod_id}"
+version="${mod_version}"
+displayName="${mod_name}"
 # 模组的主页网址（会展示在模组管理界面中）
 #displayURL="https://change.me.to.your.mods.homepage.example.invalid/" #可选
-# 模组 JAR 包根目录下的徽标文件名（用于在模组界面展示logo）
-#logoFile="examplemod.png" #可选
-# 模组管理界面中展示的「鸣谢」文本字段
-#credits="" #可选
-# 模组管理界面中展示的「作者」文本字段
-authors="${mod_authors}" #可选
-# 版本匹配检测（Display Test）：控制模组在服务器连接界面的版本匹配提示状态
-# MATCH_VERSION：客户端与服务器的模组版本不一致时，会显示红色叉号。这是默认行为，
-#                若模组同时包含客户端和服务端逻辑，建议使用此项。
-# IGNORE_SERVER_VERSION：仅服务器端存在该模组、客户端不存在时，不会显示红色叉号。
-#                        适用于仅服务端生效的模组。
-# IGNORE_ALL_VERSION：无论客户端/服务器是否存在该模组，均不显示红色叉号。
-#                     仅适用于无任何服务端逻辑的纯客户端模组（特殊场景）。
-# NONE：不为模组设置版本匹配检测规则，需自行通过 IExtensionPoint.DisplayTest 实现自定义规则，
-#       可基于此值定义任意检测逻辑。
-# 重要说明：此项并非指定模组的加载环境（客户端/专用服务器）。
-#          你的模组应能在任意环境下加载（即使加载后不执行任何业务逻辑）。
-#displayTest="MATCH_VERSION" # 未填写时，clientSideOnly=false 则默认 MATCH_VERSION，
-                             # clientSideOnly=true 则默认 IGNORE_ALL_VERSION（#可选）
-
-# 模组的描述文本（支持多行编写）（#必填）
+authors="${mod_authors}"
 description='''${mod_description}'''
 
-# 依赖项配置 - 以 . 为特定模组ID声明依赖关系，依赖项为可选配置。
-[[dependencies.${mod_id}]] #可选
-    # 依赖的目标模组ID
-    modId="forge" #必填
-    # 该依赖是否为强制项 - 若设为非强制，必须指定下方的加载顺序（ordering）
-    mandatory=true #必填
-    # 依赖的版本范围
-    versionRange="${forge_version_range}" #必填
-    # 依赖的加载顺序关系 - 非强制依赖时必须指定 BEFORE 或 AFTER：
-    # BEFORE - 本模组在该依赖模组之前加载
-    # AFTER - 本模组在该依赖模组之后加载
-    ordering="NONE"
-    # 依赖生效的运行端 - BOTH（客户端+服务端）、CLIENT（仅客户端）、SERVER（仅服务端）
+[[dependencies.${mod_id}]]
+    modId="forge"
+    mandatory=true
+    versionRange="${forge_version_range}"
     side="BOTH"
 
-# 另一个依赖项（Minecraft 核心）
 [[dependencies.${mod_id}]]
     modId="minecraft"
     mandatory=true
-    # 该版本范围表示：最低为当前 Minecraft 版本，最高不包含下一个主版本
     versionRange="${minecraft_version_range}"
     ordering="NONE"
     side="BOTH"
@@ -90,6 +40,10 @@ description='''${mod_description}'''
     versionRange="${jei_range}"
     ordering="NONE"
     side="BOTH"
+
+# AccessTransformer 配置
+[[accessTransformers]]
+    file="META-INF/accesstransformer.cfg"
 
 # Mantle 核心库依赖 - 可选依赖
 [[dependencies.${mod_id}]]
@@ -114,9 +68,3 @@ description='''${mod_description}'''
     versionRange="${anvil_musbox_range}"
     ordering="AFTER"
     side="BOTH"
-
-# 功能要求（Features）：声明模组运行所需的游戏环境特性。以下示例声明
-# 模组要求 OpenGL 版本 3.2 及以上。未来会新增更多特性配置项。
-# 特性配置区分运行端，因此此项不会阻止模组在服务端加载。
-#[features.${mod_id}]
-#openGLVersion="[3.2,)"

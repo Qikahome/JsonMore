@@ -22,14 +22,63 @@ import net.minecraftforge.eventbus.api.IEventBus;
 import net.minecraftforge.fml.event.lifecycle.FMLCommonSetupEvent;
 import net.minecraftforge.registries.ForgeRegistries;
 import net.minecraftforge.registries.RegistryObject;
+import qikahome.jsonmore.mantle.MantlePlugin;
 import qikahome.jsonmore.tconstruct.FlexTinkerChestBlock.ChestItemHandlerHelper;
 import qikahome.jsonmore.tconstruct.dynamic.FlexMaterialStatTypeType;
 import qikahome.jsonmore.tconstruct.dynamic.MaterialStatTypeParser;
+import slimeknights.tconstruct.library.client.book.sectiontransformer.FluidEffectInjectingTransformer;
+import slimeknights.tconstruct.library.client.book.sectiontransformer.ModifierSectionTransformer;
+import slimeknights.tconstruct.library.client.book.sectiontransformer.ModifierTagInjectorTransformer;
+import slimeknights.tconstruct.library.client.book.sectiontransformer.ToolSectionTransformer;
+import slimeknights.tconstruct.library.client.book.sectiontransformer.ToolTagInjectorTransformer;
+import slimeknights.tconstruct.library.client.book.sectiontransformer.materials.TierRangeMaterialSectionTransformer;
 import slimeknights.tconstruct.smeltery.block.component.SearedTankBlock;
 
 public class TConstructPlugin {
     public static void load() {
         LOGGER.info("Loading JsonMore TConstructPlugin");
+        MantlePlugin.registerTransformer(new ResourceLocation("tconstruct:tool_tag_injector"), (data, book) -> {
+            book.addTransformer(ToolTagInjectorTransformer.INSTANCE);
+        });
+        MantlePlugin.registerTransformer(new ResourceLocation("tconstruct:modifier_tag_injector"), (data, book) -> {
+            book.addTransformer(ModifierTagInjectorTransformer.INSTANCE);
+        });
+        MantlePlugin.registerTransformer(new ResourceLocation("tconstruct:tool_section"), (data, book) -> {
+            if (data == null) {
+                book.addTransformer(ToolSectionTransformer.INSTANCE);
+            } else if (data.has("tool_type")) {
+                String toolType = GsonHelper.getAsString(data, "tool_type");
+                boolean largeTitle = GsonHelper.getAsBoolean(data, "large_title", false);
+                boolean centerTitle = GsonHelper.getAsBoolean(data, "center_title", false);
+                book.addTransformer(new ToolSectionTransformer(toolType, largeTitle, centerTitle));
+            } else {
+                LOGGER.warn(
+                        "ToolSectionTransformer: object form requires 'tool_type' field, e.g. {\"id\":\"tconstruct:tool_section\", \"tool_type\":\"armor\"}. Using default.");
+                book.addTransformer(ToolSectionTransformer.INSTANCE);
+            }
+        });
+        MantlePlugin.registerTransformer(new ResourceLocation("tconstruct:modifier_section"), (data, book) -> {
+            if (data == null) {
+                book.addTransformer(ModifierSectionTransformer.INSTANCE);
+            } else if (data.has("modifier_type")) {
+                String modifierType = GsonHelper.getAsString(data, "modifier_type");
+                boolean largeTitle = GsonHelper.getAsBoolean(data, "large_title", false);
+                boolean centerTitle = GsonHelper.getAsBoolean(data, "center_title", false);
+                book.addTransformer(new ModifierSectionTransformer(modifierType, largeTitle, centerTitle));
+            } else {
+                LOGGER.warn(
+                        "ModifierSectionTransformer: object form requires 'modifier_type' field, e.g. {\"id\":\"tconstruct:modifier_section\", \"modifier_type\":\"armor\"}. Using default.");
+                book.addTransformer(ModifierSectionTransformer.INSTANCE);
+            }
+        });
+        MantlePlugin.registerTransformer(new ResourceLocation("tconstruct:tier_range_material_section"),
+                (data, book) -> {
+                    book.addTransformer(TierRangeMaterialSectionTransformer.INSTANCE);
+                });
+        MantlePlugin.registerTransformer(new ResourceLocation("tconstruct:fluid_effect_injector"), (data, book) -> {
+            book.addTransformer(FluidEffectInjectingTransformer.INSTANCE);
+        });
+
         FlexBlockType.register("jsonmore:fluid_tank", data -> {
             int capacity = GsonHelper.getAsInt(data, "capacity", 4000);
             return (props, builder) -> {
