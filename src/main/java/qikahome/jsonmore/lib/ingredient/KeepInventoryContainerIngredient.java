@@ -1,4 +1,4 @@
-package qikahome.jsonmore.lib;
+package qikahome.jsonmore.lib.ingredient;
 
 import java.util.stream.Stream;
 
@@ -19,6 +19,7 @@ import net.minecraft.world.level.block.Block;
 import net.minecraftforge.common.crafting.AbstractIngredient;
 import net.minecraftforge.common.crafting.CraftingHelper;
 import net.minecraftforge.common.crafting.IIngredientSerializer;
+import qikahome.jsonmore.lib.KeepInventoryMode;
 import qikahome.jsonmore.minecraft.FlexBarrelBlock;
 
 public class KeepInventoryContainerIngredient extends AbstractIngredient {

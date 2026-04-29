@@ -23,14 +23,18 @@ import net.minecraftforge.fml.event.lifecycle.FMLCommonSetupEvent;
 import net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext;
 import net.minecraftforge.registries.DeferredRegister;
 import net.minecraftforge.registries.ForgeRegistries;
+import net.minecraftforge.registries.RegistryObject;
 import qikahome.jsonmore.cyclopscore.CyclopsCorePlugin;
 import qikahome.jsonmore.cyclopscore.ScrollingContainerScreen;
 import qikahome.jsonmore.lib.ContainerPart;
+import qikahome.jsonmore.lib.recipe.ShapedConsumingRecipe;
+import qikahome.jsonmore.lib.recipe.ShapelessConsumingRecipe;
 import qikahome.jsonmore.mantle.MantlePlugin;
 import qikahome.jsonmore.minecraft.MinecraftPlugin;
 import qikahome.jsonmore.musbox.AnvilMusBoxPlugin;
 import qikahome.jsonmore.tconstruct.TConstructPlugin;
 import slimeknights.tconstruct.TConstruct;
+import net.minecraft.world.item.crafting.RecipeSerializer;
 
 // 这里的值应该与META-INF/mods.toml文件中的条目匹配
 @Mod(JsonMore.MODID)
@@ -52,6 +56,7 @@ public class JsonMore {
 
         BLOCK_ENTITY_TYPES.register(modEventBus);
         MENU_TYPES.register(modEventBus);
+        RECIPE_SERIALIZERS.register(modEventBus);
 
         if (ModList.get().isLoaded("tconstruct")) {
             TConstructPlugin.parser = TConstructPlugin.PARSER_SUPPLIER.apply(modEventBus);
@@ -67,6 +72,13 @@ public class JsonMore {
             .create(ForgeRegistries.BLOCK_ENTITY_TYPES, MODID);
     public static final DeferredRegister<MenuType<?>> MENU_TYPES = DeferredRegister
             .create(ForgeRegistries.MENU_TYPES, MODID);
+    public static final DeferredRegister<RecipeSerializer<?>> RECIPE_SERIALIZERS = DeferredRegister
+            .create(ForgeRegistries.RECIPE_SERIALIZERS, MODID);
+
+    public static final RegistryObject<RecipeSerializer<ShapelessConsumingRecipe>> SHAPELESS_CONSUMING_RECIPE = 
+            RECIPE_SERIALIZERS.register("shapeless_consuming", () -> ShapelessConsumingRecipe.Serializer.INSTANCE);
+    public static final RegistryObject<RecipeSerializer<ShapedConsumingRecipe>> SHAPED_CONSUMING_RECIPE = 
+            RECIPE_SERIALIZERS.register("shaped_consuming", () -> ShapedConsumingRecipe.Serializer.INSTANCE);
 
     static {
         MinecraftPlugin.BARREL_TILE = BLOCK_ENTITY_TYPES.register("barrel",
@@ -85,9 +97,11 @@ public class JsonMore {
     private void commonSetup(final FMLCommonSetupEvent event) {
         LOGGER.info("Start JsonMore common setup.");
         event.enqueueWork(() -> {
-            qikahome.jsonmore.lib.NotIngredient.register();
-            qikahome.jsonmore.lib.KeepInventoryContainerIngredient.register();
-            qikahome.jsonmore.lib.TrueIngredient.register();
+            qikahome.jsonmore.lib.ingredient.NotIngredient.register();
+            qikahome.jsonmore.lib.ingredient.KeepInventoryContainerIngredient.register();
+            qikahome.jsonmore.lib.ingredient.TrueIngredient.register();
+            qikahome.jsonmore.lib.ingredient.ToolDamagingIngredient.register();
+            qikahome.jsonmore.lib.ingredient.CountedIngredient.register();
         });
         if (ModList.get().isLoaded("tconstruct")) {
             TConstructPlugin.onCommonSetup(event);

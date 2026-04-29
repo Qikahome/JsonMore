@@ -13,6 +13,7 @@ import dev.gigaherz.jsonthings.things.serializers.FlexItemType;
 import net.minecraft.core.NonNullList;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.GsonHelper;
+import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockState;
@@ -32,6 +33,9 @@ import slimeknights.tconstruct.library.client.book.sectiontransformer.ModifierTa
 import slimeknights.tconstruct.library.client.book.sectiontransformer.ToolSectionTransformer;
 import slimeknights.tconstruct.library.client.book.sectiontransformer.ToolTagInjectorTransformer;
 import slimeknights.tconstruct.library.client.book.sectiontransformer.materials.TierRangeMaterialSectionTransformer;
+import slimeknights.tconstruct.library.tools.item.IModifiable;
+import slimeknights.tconstruct.library.tools.nbt.ToolStack;
+import slimeknights.tconstruct.library.tools.stat.ToolStats;
 import slimeknights.tconstruct.smeltery.block.component.SearedTankBlock;
 
 public class TConstructPlugin {
@@ -174,4 +178,10 @@ public class TConstructPlugin {
     public static final Supplier<BlockEntityType<FlexTinkerChestBlockEntity>> TINKER_CHEST_SUPPLIER = () -> BlockEntityType.Builder
             .of(FlexTinkerChestBlockEntity::new)
             .build(null);
+
+    public static int getRealMaxDamage(ItemStack stack, int origin) {
+        if (stack.getItem() instanceof IModifiable)
+            return ToolStack.from(stack).getStats().getInt(ToolStats.DURABILITY);
+        return origin;
+    }
 }

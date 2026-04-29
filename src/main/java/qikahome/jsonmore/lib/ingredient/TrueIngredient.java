@@ -1,4 +1,4 @@
-package qikahome.jsonmore.lib;
+package qikahome.jsonmore.lib.ingredient;
 
 import java.util.stream.Stream;
 
