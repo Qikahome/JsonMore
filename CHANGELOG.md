@@ -1,5 +1,14 @@
 # Json More Changelog
 
+## 1.1.3
+- 添加 NBTCopyIngredient 原料类型，支持 NBT 复制和合并
+- 支持路径过滤（display.Lore、display.Lore[0] 等格式）
+- 支持 "!" 前缀反选和 "*" 通配符
+- 添加 remainder_override 字段统一解析方法
+- 优化错误处理，格式错误时抛出 JsonSyntaxException
+- 修复路径解析越界问题
+- 修复 SelfConsumingIngredient outputModify 未重写问题
+
 ## 1.0.4
 - 添加 `connectable` 参数，支持跨容器连接
 - 添加 `screen` 参数区间映射格式，支持根据容器大小自动选择界面
