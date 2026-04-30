@@ -102,6 +102,7 @@ public class JsonMore {
             qikahome.jsonmore.lib.ingredient.TrueIngredient.register();
             qikahome.jsonmore.lib.ingredient.ToolDamagingIngredient.register();
             qikahome.jsonmore.lib.ingredient.CountedIngredient.register();
+            qikahome.jsonmore.lib.ingredient.NBTCopyIngredient.register();
         });
         if (ModList.get().isLoaded("tconstruct")) {
             TConstructPlugin.onCommonSetup(event);

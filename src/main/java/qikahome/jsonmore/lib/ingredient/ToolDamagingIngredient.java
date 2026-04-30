@@ -55,6 +55,7 @@ public class ToolDamagingIngredient extends SelfConsumingIngredient {
     public ItemStack[] getItems() {
         ItemStack[] items = super.getItems();
         for (int i = 0; i < items.length; i++) {
+            items[i] = items[i].copy();
             if (items[i].getMaxDamage()>=damage){
                 items[i].setDamageValue(items[i].getMaxDamage()-damage);
             }

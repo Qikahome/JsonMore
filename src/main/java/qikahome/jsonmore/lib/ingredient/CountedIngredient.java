@@ -10,6 +10,7 @@ import com.google.gson.JsonParseException;
 import com.mojang.serialization.DataResult;
 import com.mojang.serialization.JsonOps;
 
+import net.minecraft.nbt.StringTag;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.GsonHelper;
@@ -20,6 +21,8 @@ import net.minecraftforge.common.crafting.IIngredientSerializer;
 
 public class CountedIngredient extends SelfConsumingIngredient {
     public static final ResourceLocation ID = new ResourceLocation("jsonmore:counted");
+    public static final StringTag NO_CONSUME = StringTag.valueOf("{\"translate\":\"ui.jsonmore.no_consume\"}");
+
     private final int count;
     @Nullable
     private final ItemStack remainder_override;
@@ -38,8 +41,14 @@ public class CountedIngredient extends SelfConsumingIngredient {
     public ItemStack consume(ItemStack stack) {
         if (stack.isEmpty())
             return stack;
-        ItemStack remainder = remainder_override != null ? remainder_override.copy() : stack.getCraftingRemainingItem().copy();
-        stack.shrink(count-1); // Unsafe
+        ItemStack remainder = remainder_override != null ? remainder_override.copy()
+                : stack.getCraftingRemainingItem().copy();
+        if (count == 0) {
+            ItemStack stack2 = stack.copy();
+            stack2.setCount(1);
+            return stack2;
+        }
+        stack.shrink(count - 1); // Unsafe
         remainder.setCount(remainder.getCount() * count);
         return remainder;
     }
@@ -48,7 +57,20 @@ public class CountedIngredient extends SelfConsumingIngredient {
     public ItemStack[] getItems() {
         ItemStack[] items = super.getItems();
         for (int i = 0; i < items.length; i++) {
-            items[i].setCount(count);
+            items[i] = items[i].copy();
+            if (count > 0)
+                items[i].setCount(count);
+            else {
+                try {
+                    var display = items[i].getOrCreateTagElement(ItemStack.TAG_DISPLAY);
+                    var lore = display.getList(ItemStack.TAG_LORE, 8);
+                    if (!lore.contains(NO_CONSUME))
+                        lore.add(NO_CONSUME);
+                    display.put(ItemStack.TAG_LORE, lore);
+                } catch (Exception e) {
+                    LOGGER.warn("Failed to parse lore: {}", e.getMessage());
+                }
+            }
         }
         return items;
     }

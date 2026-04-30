@@ -9,7 +9,7 @@ public abstract class SelfConsumingIngredient extends AbstractIngredient {
     protected final Ingredient ingredient;
 
     public SelfConsumingIngredient(Ingredient ingredient) {
-        if(ingredient instanceof SelfConsumingIngredient)
+        if (ingredient instanceof SelfConsumingIngredient)
             throw new IllegalArgumentException("Self consuming ingredient must not be nested");
         this.ingredient = ingredient;
     }
@@ -32,7 +32,7 @@ public abstract class SelfConsumingIngredient extends AbstractIngredient {
     /**
      * 消耗逻辑
      * 
-     * @param stack  要消耗的物品栈（会直接修改，必须传入容器中的原始引用）
+     * @param stack 要消耗的物品栈（会直接修改，必须传入容器中的原始引用）
      * @return 消耗后的返还物品
      */
     public abstract ItemStack consume(ItemStack stack);
@@ -41,22 +41,47 @@ public abstract class SelfConsumingIngredient extends AbstractIngredient {
      * 工具方法：实现原版默认消耗逻辑（返还容器物品）。
      * 子类可在 consume 方法中调用此方法，简化代码。
      * 
-     * @param stack  要消耗的物品栈
+     * @param stack 要消耗的物品栈
      * @return 消耗后的返还物品
      */
     protected static ItemStack vanillaConsume(ItemStack stack) {
         if (stack.isEmpty())
             return stack;
-        //ItemStack copy = stack.copy();
+        // ItemStack copy = stack.copy();
         ItemStack remainder = stack.getCraftingRemainingItem();
-        /*copy.shrink(1);
-        if (!remainder.isEmpty())
-            if (!copy.isEmpty())
-                output.accept(remainder);
-            else
-                copy = remainder;
-        return copy;*/
+        /*
+         * copy.shrink(1);
+         * if (!remainder.isEmpty())
+         * if (!copy.isEmpty())
+         * output.accept(remainder);
+         * else
+         * copy = remainder;
+         * return copy;
+         */
         return remainder;
+    }
+
+    /**
+     * 根据匹配的输入物品，修改配方输出物品。默认不做任何修改。
+     *
+     * @param ingredient 对应的配方材料
+     * @param matched    匹配到的输入物品
+     * @param output     输出物品（可直接修改其属性，如设置数量、NBT等）
+     */
+    public static void outputModify(Ingredient ingredient, ItemStack matched, ItemStack output) {
+        if (matched.isEmpty())
+            return;
+        if (ingredient instanceof SelfConsumingIngredient selfConsumingIngredient)
+            selfConsumingIngredient.outputModify(matched, output);
+    }
+
+    /**
+     * 根据匹配的输入物品，修改配方输出物品。默认不做任何修改。
+     *
+     * @param matched 匹配到的输入物品
+     * @param output  输出物品（可直接修改其属性，如设置数量、NBT等）
+     */
+    public void outputModify(ItemStack matched, ItemStack output) {
     }
 
     @Override

@@ -4,7 +4,6 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.function.Consumer;
 
 import com.google.gson.JsonObject;
 
@@ -20,33 +19,64 @@ import net.minecraft.world.item.crafting.RecipeSerializer;
 import net.minecraft.world.item.crafting.ShapelessRecipe;
 import qikahome.jsonmore.lib.ingredient.SelfConsumingIngredient;
 
-public class ShapelessConsumingRecipe extends ShapelessRecipe {
+public class ShapelessConsumingRecipe extends ShapelessRecipe implements IConsumingRecipe {
+
     public ShapelessConsumingRecipe(ResourceLocation id, String group, CraftingBookCategory category,
             ItemStack result, NonNullList<Ingredient> ingredients) {
         super(id, group, category, result, ingredients);
     }
 
+    // ==================== 共用匹配逻辑 ====================
+    private Map<Integer, Ingredient> matchIngredients(CraftingContainer container) {
+        List<Ingredient> ingredients = new ArrayList<>(getIngredients());
+        List<Integer> nonEmptySlots = new ArrayList<>();
+        for (int i = 0; i < container.getContainerSize(); i++) {
+            if (!container.getItem(i).isEmpty()) {
+                nonEmptySlots.add(i);
+            }
+        }
+
+        if (nonEmptySlots.size() < ingredients.size()) {
+            throw new IllegalArgumentException("Not enough items in the container to match the recipe");
+        }
+
+        Map<Integer, Ingredient> slotToIngredient = new HashMap<>();
+        boolean[] slotUsed = new boolean[container.getContainerSize()];
+        boolean found = backtrackMatch(0, ingredients, nonEmptySlots, slotUsed, slotToIngredient, container);
+
+        if (!found) {
+            throw new IllegalArgumentException("Cannot match recipe ingredients");
+        }
+        return slotToIngredient;
+    }
+
+    public static boolean backtrackMatch(int idx, List<Ingredient> ingredients, List<Integer> slots,
+            boolean[] slotUsed, Map<Integer, Ingredient> slotToIngredient,
+            CraftingContainer container) {
+        if (idx == ingredients.size())
+            return true;
+        Ingredient ingredient = ingredients.get(idx);
+        for (int slot : slots) {
+            if (!slotUsed[slot] && ingredient.test(container.getItem(slot))) {
+                slotUsed[slot] = true;
+                slotToIngredient.put(slot, ingredient);
+                if (backtrackMatch(idx + 1, ingredients, slots, slotUsed, slotToIngredient, container)) {
+                    return true;
+                }
+                slotUsed[slot] = false;
+                slotToIngredient.remove(slot);
+            }
+        }
+        return false;
+    }
+
+    // ==================== 剩余物品处理 ====================
     @Override
     public NonNullList<ItemStack> getRemainingItems(CraftingContainer container) {
         NonNullList<ItemStack> remainingItems = NonNullList.withSize(container.getContainerSize(), ItemStack.EMPTY);
+        Map<Integer, Ingredient> slotToIngredient = matchIngredients(container);
 
-        List<Ingredient> ingredients = new ArrayList<>(getIngredients());
-        Map<Integer, Ingredient> matchedSlots = new HashMap<>();
-
-        for (int i = 0; i < container.getContainerSize(); i++) {
-            ItemStack stack = container.getItem(i);
-            if (stack.isEmpty())
-                continue;
-            for (int j = 0; j < ingredients.size(); j++) {
-                Ingredient ingredient = ingredients.get(j);
-                if (ingredient.test(stack)) {
-                    matchedSlots.put(i, ingredient);
-                    ingredients.set(j, ingredient.of());
-                    break;
-                }
-            }
-        }
-        for (var entry : matchedSlots.entrySet()) {
+        for (var entry : slotToIngredient.entrySet()) {
             int slot = entry.getKey();
             ItemStack stack = container.getItem(slot);
             Ingredient ingredient = entry.getValue();
@@ -56,6 +86,29 @@ public class ShapelessConsumingRecipe extends ShapelessRecipe {
         return remainingItems;
     }
 
+    // ==================== 合成输出处理 ====================
+    @Override
+    public ItemStack assemble(CraftingContainer container, RegistryAccess registryAccess) {
+        // 先获取默认的输出（父类原始结果）
+        ItemStack result = super.assemble(container, registryAccess);
+        if (result.isEmpty()) {
+            return result;
+        }
+
+        // 匹配输入槽位与原料
+        Map<Integer, Ingredient> slotToIngredient = matchIngredients(container);
+
+        // 让每个原料有机会修改输出
+        for (var entry : slotToIngredient.entrySet()) {
+            int slot = entry.getKey();
+            ItemStack inputStack = container.getItem(slot);
+            Ingredient ingredient = entry.getValue();
+            SelfConsumingIngredient.outputModify(ingredient, inputStack, result);
+        }
+        return result;
+    }
+
+    // ==================== 序列化 ====================
     @Override
     public RecipeSerializer<?> getSerializer() {
         return Serializer.INSTANCE;

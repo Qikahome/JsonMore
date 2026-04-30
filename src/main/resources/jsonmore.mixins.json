@@ -5,7 +5,8 @@
   "refmap": "jsonmore.refmap.json",
   "mixins": [
     "MixinStandingAndWallBlockItem",
-    "MixinBlockEntityType"
+    "MixinBlockEntityType",
+    "MixinMechanicalCrafterBlockEntity"
   ],
   "client": [],
   "server": [],

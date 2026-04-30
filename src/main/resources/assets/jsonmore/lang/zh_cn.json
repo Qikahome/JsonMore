@@ -1,5 +1,6 @@
 {
   "ingredient.jsonmore.true": "任何东西",
   "ingredient.jsonmore.not": "除了 %s 以外的所有东西",
-  "ui.jsonmore.more": "和%s个更多"
+  "ui.jsonmore.more": "和%s个更多",
+  "ui.jsonmore.no_consume": "不消耗"
 }

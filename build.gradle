@@ -213,6 +213,11 @@ dependencies {
     compileOnly fg.deobf("curse.maven:cyclops-core-232758:7637992")
     runtimeOnly fg.deobf("curse.maven:cyclops-core-232758:7637992")
 
+    // Create - 可选依赖（用于测试配方兼容性）
+    // CurseForge: https://www.curseforge.com/minecraft/mc-mods/create
+    compileOnly fg.deobf("curse.maven:create-328085:7178761")
+    runtimeOnly fg.deobf("curse.maven:create-328085:7178761")
+
     // 更多依赖配置参考：
     // http://www.gradle.org/docs/current/userguide/artifact_dependencies_tutorial.html
     // http://www.gradle.org/docs/current/userguide/dependency_management.html
