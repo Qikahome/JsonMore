@@ -48,6 +48,8 @@ public class NBTCopyIngredient extends SelfConsumingIngredient {
     private final ItemStack remainder_override;
     @Nullable
     private final transient Set<PathSpec> parsedPaths;
+    @Nullable
+    private final transient Set<PathSpec> excludedPaths;
 
     private static class PathSpec {
         final List<String> keys;
@@ -71,40 +73,66 @@ public class NBTCopyIngredient extends SelfConsumingIngredient {
         this(ingredient, mode, null, remainder_override);
     }
 
-    public NBTCopyIngredient(Ingredient ingredient, Mode mode, @Nullable List<String> tags, @Nullable ItemStack remainder_override) {
+    public NBTCopyIngredient(Ingredient ingredient, Mode mode, @Nullable List<String> tags,
+            @Nullable ItemStack remainder_override) {
         super(ingredient);
         this.mode = mode;
         this.tags = tags;
         this.remainder_override = remainder_override == null ? null : remainder_override.copy();
-        this.parsedPaths = (tags != null && !tags.isEmpty()) ? parsePaths(tags) : null;
+
+        if (tags != null && !tags.isEmpty()) {
+            List<String> includes = new ArrayList<>();
+            List<String> excludes = new ArrayList<>();
+            boolean hasWildcard = false;
+
+            for (String tag : tags) {
+                if (tag.equals("*")) {
+                    hasWildcard = true;
+                } else if (tag.startsWith("!")) {
+                    excludes.add(tag.substring(1));
+                } else {
+                    includes.add(tag);
+                }
+            }
+
+            this.parsedPaths = (hasWildcard || !includes.isEmpty()) ? parsePaths(includes, false) : null;
+            this.excludedPaths = !excludes.isEmpty() ? parsePaths(excludes, true) : null;
+        } else {
+            this.parsedPaths = null;
+            this.excludedPaths = null;
+        }
     }
 
-    private Set<PathSpec> parsePaths(List<String> paths) {
+    private Set<PathSpec> parsePaths(List<String> paths, boolean negated) {
         Set<PathSpec> specs = new HashSet<>();
         for (String path : paths) {
             List<String> keys = new ArrayList<>();
             List<Integer> indices = new ArrayList<>();
-            
+
             Matcher matcher = PATH_PATTERN.matcher(path);
             int pos = 0;
             boolean valid = true;
-            
-            while (matcher.find(pos)) {
+
+            while (pos < path.length() && matcher.find(pos)) {
                 String key = matcher.group(1);
                 String indexStr = matcher.group(2);
-                
+
                 keys.add(key);
                 indices.add(indexStr != null ? Integer.parseInt(indexStr) : -1);
                 pos = matcher.end();
-                
+
                 if (pos < path.length() && path.charAt(pos) != '.') {
                     valid = false;
                     break;
                 }
                 pos++;
             }
+
+            if (!valid) {
+                throw new com.google.gson.JsonSyntaxException("Invalid tag path: " + path);
+            }
             
-            if (valid && !keys.isEmpty()) {
+            if (!keys.isEmpty()) {
                 specs.add(new PathSpec(keys, indices));
             }
         }
@@ -115,9 +143,16 @@ public class NBTCopyIngredient extends SelfConsumingIngredient {
     public ItemStack consume(ItemStack stack) {
         if (stack.isEmpty())
             return stack;
-        if (stack.getCount() > 1)
-            throw new IllegalArgumentException("NBTCopyIngredient only consumes single items");
-        return stack;
+        if (remainder_override != null)
+            return remainder_override.copy();
+        return vanillaConsume(stack);
+    }
+
+    @Override
+    public void outputModify(ItemStack matched, ItemStack output) {
+        if (matched.isEmpty() || output.isEmpty())
+            return;
+        copyNBT(output, matched);
     }
 
     public void copyNBT(ItemStack target, ItemStack source) {
@@ -165,12 +200,12 @@ public class NBTCopyIngredient extends SelfConsumingIngredient {
         mergeNBT(target, source, sourceWins, new ArrayList<>(), 0);
     }
 
-    private void mergeNBT(CompoundTag target, CompoundTag source, boolean sourceWins, 
-                          List<String> currentPath, int depth) {
+    private void mergeNBT(CompoundTag target, CompoundTag source, boolean sourceWins,
+            List<String> currentPath, int depth) {
         for (String key : source.getAllKeys()) {
             List<String> newPath = new ArrayList<>(currentPath);
             newPath.add(key);
-            
+
             if (parsedPaths != null && !parsedPaths.isEmpty()) {
                 if (!matchesAnyPath(newPath, depth)) {
                     continue;
@@ -201,11 +236,20 @@ public class NBTCopyIngredient extends SelfConsumingIngredient {
     }
 
     private boolean matchesAnyPath(List<String> currentPath, int depth) {
+        boolean excluded = isExcluded(currentPath);
+        if (excluded) {
+            return false;
+        }
+
+        if (parsedPaths == null || parsedPaths.isEmpty()) {
+            return true;
+        }
+
         for (PathSpec spec : parsedPaths) {
             if (currentPath.size() > spec.keys.size()) {
                 continue;
             }
-            
+
             boolean matches = true;
             for (int i = 0; i < currentPath.size() && i < spec.keys.size(); i++) {
                 if (!spec.keys.get(i).equals(currentPath.get(i))) {
@@ -218,7 +262,43 @@ public class NBTCopyIngredient extends SelfConsumingIngredient {
                     break;
                 }
             }
-            
+
+            if (matches) {
+                if (currentPath.size() == spec.keys.size()) {
+                    int lastIndex = spec.indices.get(spec.keys.size() - 1);
+                    if (lastIndex >= 0) {
+                        return true;
+                    }
+                }
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private boolean isExcluded(List<String> currentPath) {
+        if (excludedPaths == null || excludedPaths.isEmpty()) {
+            return false;
+        }
+
+        for (PathSpec spec : excludedPaths) {
+            if (currentPath.size() > spec.keys.size()) {
+                continue;
+            }
+
+            boolean matches = true;
+            for (int i = 0; i < currentPath.size() && i < spec.keys.size(); i++) {
+                if (!spec.keys.get(i).equals(currentPath.get(i))) {
+                    matches = false;
+                    break;
+                }
+                int index = spec.indices.get(i);
+                if (index >= 0) {
+                    matches = false;
+                    break;
+                }
+            }
+
             if (matches) {
                 if (currentPath.size() == spec.keys.size()) {
                     int lastIndex = spec.indices.get(spec.keys.size() - 1);
@@ -316,12 +396,7 @@ public class NBTCopyIngredient extends SelfConsumingIngredient {
                 }
             }
 
-            ItemStack remainder_override = null;
-            if (json.has("remainder_override")) {
-                DataResult<ItemStack> result = ItemStack.CODEC.parse(JsonOps.INSTANCE, json.get("remainder_override"));
-                remainder_override = result.getOrThrow(false,
-                        exception -> new JsonParseException("Invalid remainder_override: " + exception));
-            }
+            ItemStack remainder_override = parseRemainderOverride(json);
 
             JsonElement ingredientJson = json.get("ingredient");
             Ingredient ingredient = Ingredient.fromJson(ingredientJson);

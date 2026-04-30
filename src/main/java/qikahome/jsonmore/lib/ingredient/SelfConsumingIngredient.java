@@ -1,6 +1,12 @@
 package qikahome.jsonmore.lib.ingredient;
 
 import javax.annotation.Nullable;
+
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParseException;
+import com.mojang.serialization.DataResult;
+import com.mojang.serialization.JsonOps;
+
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.crafting.Ingredient;
 import net.minecraftforge.common.crafting.AbstractIngredient;
@@ -50,6 +56,7 @@ public abstract class SelfConsumingIngredient extends AbstractIngredient {
         // ItemStack copy = stack.copy();
         ItemStack remainder = stack.getCraftingRemainingItem();
         /*
+         * ItemStack copy = stack.copy();
          * copy.shrink(1);
          * if (!remainder.isEmpty())
          * if (!copy.isEmpty())
@@ -59,6 +66,26 @@ public abstract class SelfConsumingIngredient extends AbstractIngredient {
          * return copy;
          */
         return remainder;
+    }
+
+    /**
+     * 工具方法：从 JSON 对象中解析 remainder_override 字段。
+     * 提供统一的错误处理，当格式错误时抛出 JsonSyntaxException。
+     * 
+     * @param json JSON 对象
+     * @return 解析后的物品栈，如果不存在则返回 null
+     * @throws com.google.gson.JsonSyntaxException 当格式错误时抛出
+     */
+    protected static ItemStack parseRemainderOverride(JsonObject json) {
+        if (!json.has("remainder_override")) {
+            return null;
+        }
+        try {
+            DataResult<ItemStack> result = ItemStack.CODEC.parse(JsonOps.INSTANCE, json.get("remainder_override"));
+            return result.getOrThrow(false, String::new);
+        } catch (RuntimeException e) {
+            throw new com.google.gson.JsonSyntaxException("Invalid remainder_override: " + e.getMessage(), e);
+        }
     }
 
     /**

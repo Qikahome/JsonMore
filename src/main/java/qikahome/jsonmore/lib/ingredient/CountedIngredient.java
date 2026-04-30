@@ -124,14 +124,7 @@ public class CountedIngredient extends SelfConsumingIngredient {
             }
 
             int count = GsonHelper.getAsInt(json, "count", 1);
-            ItemStack remainder_override = null;
-            if (json.has("remainder_override")) {
-                DataResult<ItemStack> result = ItemStack.CODEC.parse(JsonOps.INSTANCE, json.get("remainder_override"));
-                remainder_override = result.getOrThrow(false,
-                        exception -> new JsonParseException("Invalid remainder_override: " + exception));
-            } else {
-                remainder_override = null;
-            }
+            ItemStack remainder_override = parseRemainderOverride(json);
 
             JsonElement ingredientJson = json.get("ingredient");
             Ingredient ingredient = Ingredient.fromJson(ingredientJson);
