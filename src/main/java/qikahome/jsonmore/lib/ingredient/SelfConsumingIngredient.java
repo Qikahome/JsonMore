@@ -3,7 +3,6 @@ package qikahome.jsonmore.lib.ingredient;
 import javax.annotation.Nullable;
 
 import com.google.gson.JsonObject;
-import com.google.gson.JsonParseException;
 import com.mojang.serialization.DataResult;
 import com.mojang.serialization.JsonOps;
 

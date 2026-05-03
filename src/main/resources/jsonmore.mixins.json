@@ -6,7 +6,8 @@
   "mixins": [
     "MixinStandingAndWallBlockItem",
     "MixinBlockEntityType",
-    "MixinMechanicalCrafterBlockEntity"
+    "MixinMechanicalCrafterBlockEntity",
+    "MixinLazyResultSlot"
   ],
   "client": [],
   "server": [],
