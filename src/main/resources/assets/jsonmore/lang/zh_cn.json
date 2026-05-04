@@ -2,5 +2,6 @@
   "ingredient.jsonmore.true": "任何东西",
   "ingredient.jsonmore.not": "除了 %s 以外的所有东西",
   "ui.jsonmore.more": "和%s个更多",
-  "ui.jsonmore.no_consume": "不消耗"
+  "ui.jsonmore.no_consume": "不消耗",
+  "error.jsonmore.craft_result_failed": "由于一个内部错误，无法获取合成结果"
 }

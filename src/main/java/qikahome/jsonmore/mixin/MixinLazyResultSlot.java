@@ -1,5 +1,9 @@
 package qikahome.jsonmore.mixin;
 
+import net.minecraft.Util;
+import net.minecraft.network.chat.ChatType;
+import net.minecraft.network.chat.Component;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import org.spongepowered.asm.mixin.Mixin;
@@ -17,9 +21,24 @@ public abstract class MixinLazyResultSlot {
         try {
             container.craftResult(player, resultStack, amountCrafted);
         } catch (Exception e) {
-            LOGGER.error("Failed to craft result: {}", e);
+            LOGGER.error(
+                    (player != null ? "Player " + player.getName().getString() + " " : "") + "Failed to craft result",
+                    e);
+            if (player != null && player instanceof ServerPlayer serverPlayer) {
+                serverPlayer.getServer().sendSystemMessage(Component.literal(
+                        String.format("Player %s failed to craft result at dimension %s, X:%s, Y:%s, Z:%s",
+                                player.getName().getString(),
+                                player.level().dimension().location(),
+                                player.getBlockX(),
+                                player.getBlockY(),
+                                player.getBlockZ())));
+                serverPlayer
+                        .displayClientMessage(Component.translatableWithFallback("error.jsonmore.craft_result_failed",
+                                "Failed to craft result with an internal exception"), false);
+            }
             net.minecraftforge.common.ForgeHooks.setCraftingPlayer(null);
             resultStack.setCount(0);
+            container.clearContent();
         }
     }
 }

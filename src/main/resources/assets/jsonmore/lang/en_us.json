@@ -2,5 +2,6 @@
   "ingredient.jsonmore.true": "Anything",
   "ingredient.jsonmore.not": "Anything except %s",
   "ui.jsonmore.more": "and %s more..",
-  "ui.jsonmore.no_consume": "Does Not Consume"
+  "ui.jsonmore.no_consume": "Does Not Consume",
+  "error.jsonmore.craft_result_failed": "Failed to craft result with an internal exception"
 }
