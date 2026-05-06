@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 import com.google.gson.JsonObject;
 
@@ -23,6 +24,9 @@ import static qikahome.jsonmore.lib.recipe.ShapelessConsumingRecipe.backtrackMat
 
 public class ShapedConsumingRecipe extends ShapedRecipe implements IConsumingRecipe {
 
+    // 缓存上一次的匹配结果
+    private transient Map<Integer, Ingredient> lastMatch;
+
     public ShapedConsumingRecipe(ResourceLocation id, String group, CraftingBookCategory category,
             int width, int height, NonNullList<Ingredient> ingredients,
             ItemStack result, boolean showNotification) {
@@ -35,19 +39,24 @@ public class ShapedConsumingRecipe extends ShapedRecipe implements IConsumingRec
         this(id, group, category, width, height, ingredients, result, true);
     }
 
-    // ==================== 共用匹配逻辑 ====================
+    // ==================== 共用匹配逻辑（带缓存） ====================
     /**
      * 匹配容器中的物品与配方的原料，返回每个格子对应的原料。
      * 若无法匹配则抛出异常。
      */
     private Map<Integer, Ingredient> matchIngredients(CraftingContainer container) {
-        List<Ingredient> ingredients = new ArrayList<>(getIngredients());
-        int recipeWidth = getWidth();
-        int recipeHeight = getHeight();
+        // 优先验证缓存
+        if (lastMatch != null && isCacheValid(container)) {
+            return lastMatch;
+        }
+
         int containerWidth = container.getWidth();
         int containerHeight = container.getHeight();
+        List<Ingredient> ingredients = getIngredients().stream()
+                .filter(ing -> !ing.isEmpty())
+                .collect(Collectors.toList());
 
-        // 情况1：容器宽度为0（例如某些模组的假工作台），使用无序回溯匹配
+        // 情况1：容器宽度为0或高度为0（例如模组假工作台），使用无序回溯匹配
         if (containerWidth == 0 || containerHeight == 0) {
             List<Integer> nonEmptySlots = new ArrayList<>();
             for (int i = 0; i < container.getContainerSize(); i++) {
@@ -55,23 +64,27 @@ public class ShapedConsumingRecipe extends ShapedRecipe implements IConsumingRec
                     nonEmptySlots.add(i);
                 }
             }
-            if (nonEmptySlots.size() < ingredients.size()) {
-                throw new IllegalArgumentException("Not enough items in container to match recipe");
+            if (nonEmptySlots.size() != ingredients.size()) {
+                throw new IllegalArgumentException("Item count mismatch: expected " + ingredients.size() +
+                        ", got " + nonEmptySlots.size());
             }
             Map<Integer, Ingredient> slotToIngredient = new HashMap<>();
             boolean[] slotUsed = new boolean[container.getContainerSize()];
             boolean found = backtrackMatch(0, ingredients, nonEmptySlots, slotUsed, slotToIngredient, container);
             if (!found) {
-                throw new IllegalArgumentException("Cannot match recipe ingredients");
+                throw new IllegalArgumentException("Cannot match recipe ingredients (unordered)");
             }
+            lastMatch = slotToIngredient;
             return slotToIngredient;
         }
 
         // 情况2：正常有序网格，尝试所有起始位置和镜像
+        int recipeWidth = getWidth();
+        int recipeHeight = getHeight();
         for (int startX = 0; startX <= containerWidth - recipeWidth; startX++) {
             for (int startY = 0; startY <= containerHeight - recipeHeight; startY++) {
-                for (boolean mirrored : new boolean[] { false, true }) {
-                    if (!matches(container, startX, startY, mirrored))
+                for (boolean mirrored : new boolean[]{false, true}) {
+                    if (!matchesShape(container, startX, startY, mirrored))
                         continue;
 
                     Map<Integer, Ingredient> matchedSlots = new HashMap<>();
@@ -83,38 +96,55 @@ public class ShapedConsumingRecipe extends ShapedRecipe implements IConsumingRec
                             int ingredientIndex = mirrored
                                     ? (recipeWidth - col - 1) + row * recipeWidth
                                     : col + row * recipeWidth;
-                            if (ingredientIndex >= remainingIngredients.size())
+                            // 原配方 getIngredients() 包含空格，需要映射到过滤后的 ingredients 列表
+                            Ingredient originalIng = getIngredients().get(ingredientIndex);
+                            if (originalIng.isEmpty())
                                 continue;
-                            Ingredient ing = remainingIngredients.get(ingredientIndex);
-                            if (ing.isEmpty())
-                                continue;
+
+                            // 在剩余的原料列表中找到匹配的原料（支持同种原料重复）
+                            int matchedIdx = -1;
+                            for (int idx = 0; idx < remainingIngredients.size(); idx++) {
+                                if (remainingIngredients.get(idx) == originalIng) {
+                                    matchedIdx = idx;
+                                    break;
+                                }
+                            }
+                            if (matchedIdx == -1) {
+                                matchedSlots = null;
+                                break;
+                            }
 
                             int containerSlot = (startY + row) * containerWidth + (startX + col);
-                            if (containerSlot >= container.getContainerSize())
-                                continue;
-                            ItemStack stack = container.getItem(containerSlot);
-                            if (stack.isEmpty())
-                                continue;
-
-                            if (ing.test(stack)) {
-                                matchedSlots.put(containerSlot, ing);
-                                remainingIngredients.set(ingredientIndex, Ingredient.EMPTY);
+                            if (containerSlot >= container.getContainerSize()) {
+                                matchedSlots = null;
+                                break;
                             }
+                            ItemStack stack = container.getItem(containerSlot);
+                            if (stack.isEmpty() || !originalIng.test(stack)) {
+                                matchedSlots = null;
+                                break;
+                            }
+
+                            matchedSlots.put(containerSlot, originalIng);
+                            remainingIngredients.remove(matchedIdx);
                         }
+                        if (matchedSlots == null) break;
                     }
-                    // 检查所有原料是否都被匹配
-                    boolean allMatched = remainingIngredients.stream().allMatch(Ingredient::isEmpty);
-                    if (allMatched) {
+
+                    if (matchedSlots != null && remainingIngredients.isEmpty()) {
+                        lastMatch = matchedSlots;
                         return matchedSlots;
                     }
                 }
             }
         }
-        throw new IllegalArgumentException("Cannot match recipe ingredients");
+        throw new IllegalArgumentException("Cannot match recipe ingredients (shaped)");
     }
 
-    // 辅助方法：判断在给定偏移和镜像下是否匹配（仅用于有序情况）
-    private boolean matches(CraftingContainer container, int startX, int startY, boolean mirrored) {
+    /**
+     * 判断在给定偏移和镜像下形状是否匹配（不检查原料对应关系，仅检查物品是否被原料接受）
+     */
+    private boolean matchesShape(CraftingContainer container, int startX, int startY, boolean mirrored) {
         NonNullList<Ingredient> ingredients = getIngredients();
         int recipeWidth = getWidth();
         int recipeHeight = getHeight();
@@ -140,6 +170,30 @@ public class ShapedConsumingRecipe extends ShapedRecipe implements IConsumingRec
         return true;
     }
 
+    /**
+     * 验证缓存的匹配结果是否仍适用于当前容器
+     */
+    private boolean isCacheValid(CraftingContainer container) {
+        if (lastMatch == null) return false;
+        // 检查每个缓存槽位：物品非空且通过原料测试
+        for (Map.Entry<Integer, Ingredient> entry : lastMatch.entrySet()) {
+            int slot = entry.getKey();
+            if (slot >= container.getContainerSize()) return false;
+            ItemStack stack = container.getItem(slot);
+            if (stack.isEmpty()) return false;
+            if (!entry.getValue().test(stack)) return false;
+        }
+        // 检查容器中是否有未被缓存覆盖的非空槽位
+        for (int i = 0; i < container.getContainerSize(); i++) {
+            if (!container.getItem(i).isEmpty() && !lastMatch.containsKey(i)) {
+                return false;
+            }
+        }
+        // 确保缓存大小等于非空原料数量
+        long nonEmptyIngredientCount = getIngredients().stream().filter(ing -> !ing.isEmpty()).count();
+        return lastMatch.size() == nonEmptyIngredientCount;
+    }
+
     // ==================== 剩余物品处理 ====================
     @Override
     public NonNullList<ItemStack> getRemainingItems(CraftingContainer container) {
@@ -159,16 +213,13 @@ public class ShapedConsumingRecipe extends ShapedRecipe implements IConsumingRec
     // ==================== 合成输出处理 ====================
     @Override
     public ItemStack assemble(CraftingContainer container, RegistryAccess registryAccess) {
-        // 获取默认的输出结果
         ItemStack result = super.assemble(container, registryAccess);
         if (result.isEmpty()) {
             return result;
         }
 
-        // 匹配槽位与原料
         Map<Integer, Ingredient> slotToIngredient = matchIngredients(container);
 
-        // 让每个原料修改输出
         for (var entry : slotToIngredient.entrySet()) {
             int slot = entry.getKey();
             ItemStack inputStack = container.getItem(slot);
@@ -197,8 +248,7 @@ public class ShapedConsumingRecipe extends ShapedRecipe implements IConsumingRec
 
         @Override
         public ShapedConsumingRecipe fromNetwork(ResourceLocation id, FriendlyByteBuf buffer) {
-            ShapedRecipe recipe = net.minecraft.world.item.crafting.RecipeSerializer.SHAPED_RECIPE.fromNetwork(id,
-                    buffer);
+            ShapedRecipe recipe = net.minecraft.world.item.crafting.RecipeSerializer.SHAPED_RECIPE.fromNetwork(id, buffer);
             return new ShapedConsumingRecipe(recipe.getId(), recipe.getGroup(), recipe.category(),
                     recipe.getWidth(), recipe.getHeight(), recipe.getIngredients(),
                     recipe.getResultItem(RegistryAccess.EMPTY), recipe.showNotification());

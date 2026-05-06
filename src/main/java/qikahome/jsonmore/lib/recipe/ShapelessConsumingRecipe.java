@@ -21,13 +21,22 @@ import qikahome.jsonmore.lib.ingredient.SelfConsumingIngredient;
 
 public class ShapelessConsumingRecipe extends ShapelessRecipe implements IConsumingRecipe {
 
+    // 缓存上一次的匹配结果，transient 避免序列化
+    private transient Map<Integer, Ingredient> lastMatch;
+
     public ShapelessConsumingRecipe(ResourceLocation id, String group, CraftingBookCategory category,
             ItemStack result, NonNullList<Ingredient> ingredients) {
         super(id, group, category, result, ingredients);
     }
 
-    // ==================== 共用匹配逻辑 ====================
+    // ==================== 共用匹配逻辑（带缓存） ====================
     private Map<Integer, Ingredient> matchIngredients(CraftingContainer container) {
+        // 优先验证缓存
+        if (lastMatch != null && isCacheValid(container, lastMatch)) {
+            return lastMatch;
+        }
+
+        // 缓存无效，执行完整回溯匹配
         List<Ingredient> ingredients = new ArrayList<>(getIngredients());
         List<Integer> nonEmptySlots = new ArrayList<>();
         for (int i = 0; i < container.getContainerSize(); i++) {
@@ -36,8 +45,9 @@ public class ShapelessConsumingRecipe extends ShapelessRecipe implements IConsum
             }
         }
 
-        if (nonEmptySlots.size() < ingredients.size()) {
-            throw new IllegalArgumentException("Not enough items in the container to match the recipe");
+        if (nonEmptySlots.size() != ingredients.size()) {
+            throw new IllegalArgumentException("Item count mismatch: expected " + ingredients.size() +
+                    ", got " + nonEmptySlots.size());
         }
 
         Map<Integer, Ingredient> slotToIngredient = new HashMap<>();
@@ -47,9 +57,40 @@ public class ShapelessConsumingRecipe extends ShapelessRecipe implements IConsum
         if (!found) {
             throw new IllegalArgumentException("Cannot match recipe ingredients");
         }
+
+        // 更新缓存
+        lastMatch = slotToIngredient;
         return slotToIngredient;
     }
 
+    /**
+     * 验证缓存的匹配结果是否仍适用于当前容器。
+     */
+    private boolean isCacheValid(CraftingContainer container, Map<Integer, Ingredient> cached) {
+        // 检查缓存中的每个槽位
+        for (Map.Entry<Integer, Ingredient> entry : cached.entrySet()) {
+            int slot = entry.getKey();
+            if (slot >= container.getContainerSize())
+                return false;
+            ItemStack stack = container.getItem(slot);
+            if (stack.isEmpty())
+                return false; // 原本有物品，现在空了
+            if (!entry.getValue().test(stack))
+                return false; // 物品类型不匹配
+        }
+
+        // 检查容器中是否有未被缓存覆盖的非空槽位（即多余物品）
+        for (int i = 0; i < container.getContainerSize(); i++) {
+            if (!container.getItem(i).isEmpty() && !cached.containsKey(i)) {
+                return false;
+            }
+        }
+
+        // 确保缓存的槽位数与原料数量一致
+        return cached.size() == getIngredients().size();
+    }
+
+    // 原回溯方法保持不变，但建议改为 private static（如需供 Shaped 使用，保持 public static）
     public static boolean backtrackMatch(int idx, List<Ingredient> ingredients, List<Integer> slots,
             boolean[] slotUsed, Map<Integer, Ingredient> slotToIngredient,
             CraftingContainer container) {
@@ -89,16 +130,13 @@ public class ShapelessConsumingRecipe extends ShapelessRecipe implements IConsum
     // ==================== 合成输出处理 ====================
     @Override
     public ItemStack assemble(CraftingContainer container, RegistryAccess registryAccess) {
-        // 先获取默认的输出（父类原始结果）
         ItemStack result = super.assemble(container, registryAccess);
         if (result.isEmpty()) {
             return result;
         }
 
-        // 匹配输入槽位与原料
         Map<Integer, Ingredient> slotToIngredient = matchIngredients(container);
 
-        // 让每个原料有机会修改输出
         for (var entry : slotToIngredient.entrySet()) {
             int slot = entry.getKey();
             ItemStack inputStack = container.getItem(slot);
@@ -108,7 +146,7 @@ public class ShapelessConsumingRecipe extends ShapelessRecipe implements IConsum
         return result;
     }
 
-    // ==================== 序列化 ====================
+    // ==================== 序列化（不变） ====================
     @Override
     public RecipeSerializer<?> getSerializer() {
         return Serializer.INSTANCE;
