@@ -5,6 +5,9 @@ import org.slf4j.Logger;
 import com.mojang.logging.LogUtils;
 
 import dev.gigaherz.jsonthings.things.ThingRegistries;
+import dev.gigaherz.jsonthings.things.parsers.BlockParser;
+import dev.gigaherz.jsonthings.things.parsers.ThingResourceManager;
+import dev.gigaherz.jsonthings.things.scripting.ScriptParser;
 import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.core.Registry;
 import net.minecraft.world.inventory.MenuType;
@@ -31,6 +34,7 @@ import qikahome.jsonmore.lib.recipe.ShapedConsumingRecipe;
 import qikahome.jsonmore.lib.recipe.ShapelessConsumingRecipe;
 import qikahome.jsonmore.mantle.MantlePlugin;
 import qikahome.jsonmore.minecraft.MinecraftPlugin;
+import qikahome.jsonmore.minecraft.gamerule.GameRuleParser;
 import qikahome.jsonmore.musbox.AnvilMusBoxPlugin;
 import qikahome.jsonmore.tconstruct.TConstructPlugin;
 import slimeknights.tconstruct.TConstruct;
@@ -64,6 +68,9 @@ public class JsonMore {
 
         // 注册我们mod的ForgeConfigSpec，以便Forge可以为我们创建和加载配置文件
         context.registerConfig(ModConfig.Type.COMMON, Config.SPEC);
+
+        var manager = ThingResourceManager.instance();
+        manager.registerParser(new GameRuleParser(modEventBus));
 
         onFlexTypesLoad();
     }
