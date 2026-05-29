@@ -40,6 +40,8 @@ import qikahome.jsonmore.musbox.AnvilMusBoxPlugin;
 import qikahome.jsonmore.tconstruct.TConstructPlugin;
 import slimeknights.tconstruct.TConstruct;
 import net.minecraft.world.item.crafting.RecipeSerializer;
+import net.minecraftforge.common.crafting.CraftingHelper;
+import qikahome.jsonmore.minecraft.gamerule.GameRuleCondition;
 
 // 这里的值应该与META-INF/mods.toml文件中的条目匹配
 @Mod(JsonMore.MODID)
@@ -113,6 +115,7 @@ public class JsonMore {
             qikahome.jsonmore.lib.ingredient.ToolDamagingIngredient.register();
             qikahome.jsonmore.lib.ingredient.CountedIngredient.register();
             qikahome.jsonmore.lib.ingredient.NBTCopyIngredient.register();
+            CraftingHelper.register(GameRuleCondition.Serializer.INSTANCE);
         });
         if (ModList.get().isLoaded("tconstruct")) {
             TConstructPlugin.onCommonSetup(event);
