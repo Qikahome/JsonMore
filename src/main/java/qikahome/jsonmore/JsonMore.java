@@ -30,6 +30,7 @@ import net.minecraftforge.registries.RegistryObject;
 import qikahome.jsonmore.cyclopscore.CyclopsCorePlugin;
 import qikahome.jsonmore.cyclopscore.ScrollingContainerScreen;
 import qikahome.jsonmore.lib.ContainerPart;
+import qikahome.jsonmore.lib.recipe.ItemApplicationRecipe;
 import qikahome.jsonmore.lib.recipe.ShapedConsumingRecipe;
 import qikahome.jsonmore.lib.recipe.ShapelessConsumingRecipe;
 import qikahome.jsonmore.mantle.MantlePlugin;
@@ -86,6 +87,8 @@ public class JsonMore {
             RECIPE_SERIALIZERS.register("shapeless_consuming", () -> ShapelessConsumingRecipe.Serializer.INSTANCE);
     public static final RegistryObject<RecipeSerializer<ShapedConsumingRecipe>> SHAPED_CONSUMING_RECIPE = 
             RECIPE_SERIALIZERS.register("shaped_consuming", () -> ShapedConsumingRecipe.Serializer.INSTANCE);
+    public static final RegistryObject<RecipeSerializer<ItemApplicationRecipe>> ITEM_APPLICATION_RECIPE = 
+            RECIPE_SERIALIZERS.register("item_application", () -> ItemApplicationRecipe.Serializer.INSTANCE);
 
     static {
         MinecraftPlugin.BARREL_TILE = BLOCK_ENTITY_TYPES.register("barrel",

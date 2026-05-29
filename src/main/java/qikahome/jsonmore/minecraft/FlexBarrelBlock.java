@@ -1,14 +1,11 @@
 package qikahome.jsonmore.minecraft;
 
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
 import javax.annotation.Nullable;
-
-import org.apache.commons.lang3.tuple.Pair;
 
 import com.google.common.collect.Maps;
 
@@ -19,7 +16,6 @@ import dev.gigaherz.jsonthings.things.shapes.DynamicShape;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.NonNullList;
-import net.minecraft.core.Registry;
 import net.minecraft.core.Vec3i;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.nbt.CompoundTag;
@@ -29,7 +25,6 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraftforge.common.crafting.CompoundIngredient;
 import net.minecraftforge.network.NetworkHooks;
-import net.minecraftforge.registries.ForgeRegistries;
 import net.minecraft.sounds.SoundEvent;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
@@ -68,7 +63,6 @@ import net.minecraft.world.level.block.state.BlockBehaviour;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.StateDefinition;
 import net.minecraft.world.level.block.state.properties.BlockStateProperties;
-import net.minecraft.world.level.block.state.properties.EnumProperty;
 import net.minecraft.world.level.block.state.properties.Property;
 import net.minecraft.world.level.material.Fluid;
 import net.minecraft.world.level.material.Fluids;
@@ -91,7 +85,6 @@ import qikahome.jsonmore.lib.PlacingDirections;
 import qikahome.jsonmore.lib.ingredient.KeepInventoryContainerIngredient;
 import qikahome.jsonmore.lib.ingredient.NotIngredient;
 import net.minecraft.world.level.block.Mirror;
-import net.minecraft.world.level.block.ChestBlock;
 import static qikahome.jsonmore.lib.ContainerPart.PART;
 
 public class FlexBarrelBlock extends BaseEntityBlock
@@ -282,7 +275,8 @@ public class FlexBarrelBlock extends BaseEntityBlock
             ListTag itemsList = blockEntityTag.getList("Items", 10);
             if (!itemsList.isEmpty()) {
                 tooltip.add(Component.empty());
-                tooltip.add(Component.translatable("container.shulkerBox.contains", itemsList.size(), containerSize));
+                // tooltip.add(Component.translatable("container.shulkerBox.contains",
+                // itemsList.size(), containerSize));
 
                 int shown = 0;
                 for (int i = 0; i < itemsList.size() && shown < 5; i++) {
@@ -364,10 +358,11 @@ public class FlexBarrelBlock extends BaseEntityBlock
                     ContainerScreenType screen = state.getValue(PART).isConnected()
                             ? connectedScreenType
                             : screenType;
-                    var containers=getContainers(level, pos, state);
-                    var containerSize=MultiContainer.of(containers).getContainerSize();
+                    var containers = getContainers(level, pos, state);
+                    var containerSize = MultiContainer.of(containers).getContainerSize();
                     NetworkHooks.openScreen(serverPlayer, screen.createMenuProvider(containers, containerSize),
-                            buffer -> screen.writeAdditionalData(buffer, this.getContainers(level, pos, state), containerSize));
+                            buffer -> screen.writeAdditionalData(buffer, this.getContainers(level, pos, state),
+                                    containerSize));
                 }
                 if (angerPiglins) {
                     PiglinAi.angerNearbyPiglins(player, true);
