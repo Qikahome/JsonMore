@@ -215,7 +215,10 @@ public class ItemApplicationRecipe implements Recipe<RecipeWrapper> {
                 if (oldBlockEntity != null) {
                     oldData = oldBlockEntity.saveWithFullMetadata();
                 }
-                removeBlock(level, pos, oldState);
+                level.removeBlockEntity(pos);
+                if (updateBlock) {
+                    level.destroyBlock(pos, false);
+                }
                 level.setBlock(pos, newState, updateBlock ? 3 : 2);
                 if (oldData != null) {
                     BlockEntity newBlockEntity = level.getBlockEntity(pos);
@@ -224,11 +227,20 @@ public class ItemApplicationRecipe implements Recipe<RecipeWrapper> {
                     }
                 }
             } else {
-                removeBlock(level, pos, oldState);
+                if (updateBlock) {
+                    level.destroyBlock(pos, false);
+                } else {
+                    level.removeBlockEntity(pos);
+                }
                 level.setBlock(pos, newState, updateBlock ? 3 : 2);
             }
         } else {
-            removeBlock(level, pos, oldState);
+            if (updateBlock) {
+                level.destroyBlock(pos, false);
+            } else {
+                level.removeBlockEntity(pos);
+                level.setBlock(pos, Blocks.AIR.defaultBlockState(), 2);
+            }
             Block.popResource(level, pos, primaryResult);
         }
 
@@ -254,15 +266,6 @@ public class ItemApplicationRecipe implements Recipe<RecipeWrapper> {
                     }
                 }
             }
-        }
-    }
-
-    private void removeBlock(Level level, BlockPos pos, BlockState oldState) {
-        level.removeBlockEntity(pos);
-        if (updateBlock) {
-            level.destroyBlock(pos, false);
-        } else {
-            level.setBlock(pos, Blocks.AIR.defaultBlockState(), 2);
         }
     }
 
