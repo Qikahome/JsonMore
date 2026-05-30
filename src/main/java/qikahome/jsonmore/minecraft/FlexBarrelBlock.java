@@ -133,7 +133,7 @@ public class FlexBarrelBlock extends BaseEntityBlock
                 def = def.setValue(prop, value);
             }
         }
-        def.setValue(BlockStateProperties.OPEN, false);
+        def = def.setValue(BlockStateProperties.OPEN, false);
         registerDefaultState(def);
     }
 

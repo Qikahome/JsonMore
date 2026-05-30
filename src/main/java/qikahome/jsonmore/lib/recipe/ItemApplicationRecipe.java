@@ -5,7 +5,9 @@ import javax.annotation.Nullable;
 import com.google.gson.JsonObject;
 
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
 import net.minecraft.core.RegistryAccess;
+import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.sounds.SoundEvents;
@@ -22,11 +24,13 @@ import net.minecraft.world.item.crafting.Recipe;
 import net.minecraft.world.item.crafting.RecipeSerializer;
 import net.minecraft.world.item.crafting.RecipeType;
 import net.minecraft.world.level.Level;
-import net.minecraft.nbt.CompoundTag;
 import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.StateDefinition;
+import net.minecraft.world.level.block.state.properties.BlockStateProperties;
+import net.minecraft.world.level.block.state.properties.DirectionProperty;
 import net.minecraft.world.level.block.state.properties.Property;
 import net.minecraftforge.common.crafting.CraftingHelper;
 import net.minecraftforge.event.entity.player.PlayerInteractEvent;
@@ -54,17 +58,19 @@ public class ItemApplicationRecipe implements Recipe<RecipeWrapper> {
     private final ItemStack result;
     private final boolean dropContainer;
     private final boolean keepBlockState;
+    private final boolean updateBlock;
     @Nullable
     private final Boolean sneaking;
 
     public ItemApplicationRecipe(ResourceLocation id, Ingredient block, Ingredient tool, ItemStack result,
-            boolean dropContainer, boolean keepBlockState, @Nullable Boolean sneaking) {
+            boolean dropContainer, boolean keepBlockState, boolean updateBlock, @Nullable Boolean sneaking) {
         this.id = id;
         this.block = block;
         this.tool = tool;
         this.result = result;
         this.dropContainer = dropContainer;
         this.keepBlockState = keepBlockState;
+        this.updateBlock = updateBlock;
         this.sneaking = sneaking;
     }
 
@@ -82,6 +88,10 @@ public class ItemApplicationRecipe implements Recipe<RecipeWrapper> {
 
     public boolean shouldKeepBlockState() {
         return keepBlockState;
+    }
+
+    public boolean shouldUpdateBlock() {
+        return updateBlock;
     }
 
     @Nullable
@@ -205,9 +215,8 @@ public class ItemApplicationRecipe implements Recipe<RecipeWrapper> {
                 if (oldBlockEntity != null) {
                     oldData = oldBlockEntity.saveWithFullMetadata();
                 }
-                level.removeBlockEntity(pos);
-                level.destroyBlock(pos, false);
-                level.setBlock(pos, newState, 3);
+                removeBlock(level, pos, oldState);
+                level.setBlock(pos, newState, updateBlock ? 3 : 2);
                 if (oldData != null) {
                     BlockEntity newBlockEntity = level.getBlockEntity(pos);
                     if (newBlockEntity != null) {
@@ -215,11 +224,11 @@ public class ItemApplicationRecipe implements Recipe<RecipeWrapper> {
                     }
                 }
             } else {
-                level.destroyBlock(pos, false);
-                level.setBlock(pos, newState, 3);
+                removeBlock(level, pos, oldState);
+                level.setBlock(pos, newState, updateBlock ? 3 : 2);
             }
         } else {
-            level.destroyBlock(pos, false);
+            removeBlock(level, pos, oldState);
             Block.popResource(level, pos, primaryResult);
         }
 
@@ -248,15 +257,48 @@ public class ItemApplicationRecipe implements Recipe<RecipeWrapper> {
         }
     }
 
-    @SuppressWarnings("unchecked")
-    private static <T extends Comparable<T>> BlockState copyCompatibleProperties(BlockState source, BlockState target) {
-        for (Property<?> property : source.getBlock().getStateDefinition().getProperties()) {
+    private void removeBlock(Level level, BlockPos pos, BlockState oldState) {
+        level.removeBlockEntity(pos);
+        if (updateBlock) {
+            level.destroyBlock(pos, false);
+        } else {
+            level.setBlock(pos, Blocks.AIR.defaultBlockState(), 2);
+        }
+    }
+
+    @SuppressWarnings({ "unchecked", "rawtypes" })
+    private static BlockState copyCompatibleProperties(BlockState source, BlockState target) {
+        StateDefinition<Block, BlockState> sourceDef = source.getBlock().getStateDefinition();
+        for (Property<?> property : sourceDef.getProperties()) {
             if (target.hasProperty(property)) {
-                Property<T> castProperty = (Property<T>) property;
-                target = target.setValue(castProperty, source.getValue(castProperty));
+                Comparable value = source.getValue((Property) property);
+                if (property.getPossibleValues().contains(value)) {
+                    target = target.setValue((Property) property, (Comparable) value);
+                }
             }
         }
+        DirectionProperty srcDir = findDirectionProperty(sourceDef);
+        DirectionProperty tgtDir = findDirectionProperty(target.getBlock().getStateDefinition());
+        if (srcDir != null && tgtDir != null && srcDir != tgtDir) {
+            Direction dir = source.getValue(srcDir);
+            if (tgtDir.getPossibleValues().contains(dir)) {
+                target = target.setValue(tgtDir, dir);
+            }
+        }
+        if (target.hasProperty(BlockStateProperties.OPEN)) {
+            target = target.setValue(BlockStateProperties.OPEN, false);
+        }
         return target;
+    }
+
+    @Nullable
+    private static DirectionProperty findDirectionProperty(StateDefinition<Block, BlockState> def) {
+        for (Property<?> property : def.getProperties()) {
+            if (property instanceof DirectionProperty dirProp) {
+                return dirProp;
+            }
+        }
+        return null;
     }
 
     public static class Serializer implements RecipeSerializer<ItemApplicationRecipe> {
@@ -269,9 +311,10 @@ public class ItemApplicationRecipe implements Recipe<RecipeWrapper> {
             ItemStack result = CraftingHelper.getItemStack(json.getAsJsonObject("result"), true);
             boolean dropContainer = net.minecraft.util.GsonHelper.getAsBoolean(json, "drop_container", true);
             boolean keepBlockState = net.minecraft.util.GsonHelper.getAsBoolean(json, "keep_block_state", false);
+            boolean updateBlock = net.minecraft.util.GsonHelper.getAsBoolean(json, "update_block", true);
             Boolean sneaking = json.has("sneaking") ? net.minecraft.util.GsonHelper.getAsBoolean(json, "sneaking") : null;
 
-            return new ItemApplicationRecipe(id, block, tool, result, dropContainer, keepBlockState, sneaking);
+            return new ItemApplicationRecipe(id, block, tool, result, dropContainer, keepBlockState, updateBlock, sneaking);
         }
 
         @Override
@@ -281,10 +324,11 @@ public class ItemApplicationRecipe implements Recipe<RecipeWrapper> {
             ItemStack result = buffer.readItem();
             boolean dropContainer = buffer.readBoolean();
             boolean keepBlockState = buffer.readBoolean();
+            boolean updateBlock = buffer.readBoolean();
             boolean hasSneaking = buffer.readBoolean();
             Boolean sneaking = hasSneaking ? buffer.readBoolean() : null;
 
-            return new ItemApplicationRecipe(id, block, tool, result, dropContainer, keepBlockState, sneaking);
+            return new ItemApplicationRecipe(id, block, tool, result, dropContainer, keepBlockState, updateBlock, sneaking);
         }
 
         @Override
@@ -294,6 +338,7 @@ public class ItemApplicationRecipe implements Recipe<RecipeWrapper> {
             buffer.writeItem(recipe.result);
             buffer.writeBoolean(recipe.dropContainer);
             buffer.writeBoolean(recipe.keepBlockState);
+            buffer.writeBoolean(recipe.updateBlock);
             buffer.writeBoolean(recipe.sneaking != null);
             if (recipe.sneaking != null) {
                 buffer.writeBoolean(recipe.sneaking);
