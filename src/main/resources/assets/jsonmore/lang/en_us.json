@@ -6,5 +6,6 @@
   "error.jsonmore.craft_result_failed": "Failed to craft result with an internal exception",
   "recipe.jsonmore.item_application": "Item Application",
   "recipe.jsonmore.item_application.sneaking.true": "Sneaking Required",
-  "recipe.jsonmore.item_application.sneaking.false": "Not Sneaking"
+  "recipe.jsonmore.item_application.sneaking.false": "Not Sneaking",
+  "recipe.jsonmore.disabled": "Disabled by Condition"
 }

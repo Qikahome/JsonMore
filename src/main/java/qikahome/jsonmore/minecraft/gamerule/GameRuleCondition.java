@@ -31,6 +31,7 @@ public class GameRuleCondition implements ICondition {
     @Override
     public boolean test(IContext context) {
         MinecraftServer server = ServerLifecycleHooks.getCurrentServer();
+
         if (server == null)
             return false;
 

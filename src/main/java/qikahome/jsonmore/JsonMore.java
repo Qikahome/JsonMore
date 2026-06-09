@@ -5,11 +5,10 @@ import org.slf4j.Logger;
 import com.mojang.logging.LogUtils;
 
 import dev.gigaherz.jsonthings.things.ThingRegistries;
-import dev.gigaherz.jsonthings.things.parsers.BlockParser;
 import dev.gigaherz.jsonthings.things.parsers.ThingResourceManager;
-import dev.gigaherz.jsonthings.things.scripting.ScriptParser;
 import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.core.Registry;
+import net.minecraft.server.MinecraftServer;
 import net.minecraft.world.inventory.MenuType;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.common.MinecraftForge;
@@ -85,12 +84,12 @@ public class JsonMore {
     public static final DeferredRegister<RecipeSerializer<?>> RECIPE_SERIALIZERS = DeferredRegister
             .create(ForgeRegistries.RECIPE_SERIALIZERS, MODID);
 
-    public static final RegistryObject<RecipeSerializer<ShapelessConsumingRecipe>> SHAPELESS_CONSUMING_RECIPE = 
-            RECIPE_SERIALIZERS.register("shapeless_consuming", () -> ShapelessConsumingRecipe.Serializer.INSTANCE);
-    public static final RegistryObject<RecipeSerializer<ShapedConsumingRecipe>> SHAPED_CONSUMING_RECIPE = 
-            RECIPE_SERIALIZERS.register("shaped_consuming", () -> ShapedConsumingRecipe.Serializer.INSTANCE);
-    public static final RegistryObject<RecipeSerializer<ItemApplicationRecipe>> ITEM_APPLICATION_RECIPE = 
-            RECIPE_SERIALIZERS.register("item_application", () -> ItemApplicationRecipe.Serializer.INSTANCE);
+    public static final RegistryObject<RecipeSerializer<ShapelessConsumingRecipe>> SHAPELESS_CONSUMING_RECIPE = RECIPE_SERIALIZERS
+            .register("shapeless_consuming", () -> ShapelessConsumingRecipe.Serializer.INSTANCE);
+    public static final RegistryObject<RecipeSerializer<ShapedConsumingRecipe>> SHAPED_CONSUMING_RECIPE = RECIPE_SERIALIZERS
+            .register("shaped_consuming", () -> ShapedConsumingRecipe.Serializer.INSTANCE);
+    public static final RegistryObject<RecipeSerializer<ItemApplicationRecipe>> ITEM_APPLICATION_RECIPE = RECIPE_SERIALIZERS
+            .register("item_application", () -> ItemApplicationRecipe.Serializer.INSTANCE);
 
     static {
         MinecraftPlugin.BARREL_TILE = BLOCK_ENTITY_TYPES.register("barrel",
@@ -117,6 +116,7 @@ public class JsonMore {
             qikahome.jsonmore.lib.ingredient.NBTCopyIngredient.register();
             qikahome.jsonmore.lib.ingredient.RemainderOverrideIngredient.register();
             qikahome.jsonmore.lib.ingredient.ItemDisplayOverrideIngredient.register();
+            qikahome.jsonmore.lib.ingredient.ConditionIngredient.register();
             CraftingHelper.register(GameRuleCondition.Serializer.INSTANCE);
         });
         if (ModList.get().isLoaded("tconstruct")) {
@@ -147,6 +147,7 @@ public class JsonMore {
                 MantlePlugin.onClientSetup();
             }
         }
+
     }
 
     public static void onFlexTypesLoad() {
