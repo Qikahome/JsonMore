@@ -7,8 +7,6 @@ import javax.annotation.Nullable;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParseException;
-import com.mojang.serialization.DataResult;
-import com.mojang.serialization.JsonOps;
 
 import net.minecraft.nbt.StringTag;
 import net.minecraft.network.FriendlyByteBuf;
@@ -24,25 +22,17 @@ public class CountedIngredient extends SelfConsumingIngredient {
     public static final StringTag NO_CONSUME = StringTag.valueOf("{\"translate\":\"ui.jsonmore.no_consume\"}");
 
     private final int count;
-    @Nullable
-    private final ItemStack remainder_override;
 
     public CountedIngredient(Ingredient ingredient, int count) {
-        this(ingredient, count, null);
-    }
-
-    public CountedIngredient(Ingredient ingredient, int count, ItemStack remainder_override) {
         super(ingredient);
         this.count = count;
-        this.remainder_override = remainder_override == null ? null : remainder_override.copy();
     }
 
     @Override
     public ItemStack consume(ItemStack stack) {
         if (stack.isEmpty())
             return stack;
-        ItemStack remainder = remainder_override != null ? remainder_override.copy()
-                : stack.getCraftingRemainingItem().copy();
+        ItemStack remainder = super.consume(stack).copy();
         if (count == 0) {
             ItemStack stack2 = stack.copy();
             stack2.setCount(1);
@@ -94,11 +84,6 @@ public class CountedIngredient extends SelfConsumingIngredient {
         json.addProperty("type", ID.toString());
         json.add("ingredient", ingredient.toJson());
         json.addProperty("count", count);
-        if (remainder_override != null) {
-            DataResult<JsonElement> result = ItemStack.CODEC.encodeStart(JsonOps.INSTANCE, remainder_override);
-            JsonElement element = result.getOrThrow(false, exception -> LOGGER.error(exception));
-            json.add("remainder_override", element);
-        }
         return json;
     }
 
@@ -109,12 +94,7 @@ public class CountedIngredient extends SelfConsumingIngredient {
         public CountedIngredient parse(FriendlyByteBuf buffer) {
             Ingredient ingredient = Ingredient.fromNetwork(buffer);
             int count = buffer.readVarInt();
-            boolean hasRemainderOverride = buffer.readBoolean();
-            ItemStack remainder_override = null;
-            if (hasRemainderOverride) {
-                remainder_override = buffer.readItem();
-            }
-            return new CountedIngredient(ingredient, count, remainder_override);
+            return new CountedIngredient(ingredient, count);
         }
 
         @Override
@@ -124,22 +104,21 @@ public class CountedIngredient extends SelfConsumingIngredient {
             }
 
             int count = GsonHelper.getAsInt(json, "count", 1);
-            ItemStack remainder_override = parseRemainderOverride(json);
+            Ingredient ingredient;
+            if (json.has("remainder_override")) {
+                ingredient = RemainderOverrideIngredient.Serializer.INSTANCE.parse(json);
+            } else {
+                JsonElement ingredientJson = json.get("ingredient");
+                ingredient = Ingredient.fromJson(ingredientJson);
+            }
 
-            JsonElement ingredientJson = json.get("ingredient");
-            Ingredient ingredient = Ingredient.fromJson(ingredientJson);
-
-            return new CountedIngredient(ingredient, count, remainder_override);
+            return new CountedIngredient(ingredient, count);
         }
 
         @Override
         public void write(FriendlyByteBuf buffer, CountedIngredient ingredient) {
             ingredient.ingredient.toNetwork(buffer);
             buffer.writeVarInt(ingredient.count);
-            buffer.writeBoolean(ingredient.remainder_override != null);
-            if (ingredient.remainder_override != null) {
-                buffer.writeItemStack(ingredient.remainder_override, false);
-            }
         }
     }
 

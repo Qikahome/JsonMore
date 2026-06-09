@@ -2,10 +2,6 @@ package qikahome.jsonmore.lib.ingredient;
 
 import javax.annotation.Nullable;
 
-import com.google.gson.JsonObject;
-import com.mojang.serialization.DataResult;
-import com.mojang.serialization.JsonOps;
-
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.crafting.Ingredient;
 import net.minecraftforge.common.crafting.AbstractIngredient;
@@ -14,8 +10,6 @@ public abstract class SelfConsumingIngredient extends AbstractIngredient {
     protected final Ingredient ingredient;
 
     public SelfConsumingIngredient(Ingredient ingredient) {
-        if (ingredient instanceof SelfConsumingIngredient)
-            throw new IllegalArgumentException("Self consuming ingredient must not be nested");
         this.ingredient = ingredient;
     }
 
@@ -40,7 +34,9 @@ public abstract class SelfConsumingIngredient extends AbstractIngredient {
      * @param stack 要消耗的物品栈（会直接修改，必须传入容器中的原始引用）
      * @return 消耗后的返还物品
      */
-    public abstract ItemStack consume(ItemStack stack);
+    public ItemStack consume(ItemStack stack) {
+        return consume(ingredient, stack);
+    }
 
     /**
      * 工具方法：实现原版默认消耗逻辑（返还容器物品）。
@@ -52,39 +48,7 @@ public abstract class SelfConsumingIngredient extends AbstractIngredient {
     protected static ItemStack vanillaConsume(ItemStack stack) {
         if (stack.isEmpty())
             return stack;
-        // ItemStack copy = stack.copy();
-        ItemStack remainder = stack.getCraftingRemainingItem();
-        /*
-         * ItemStack copy = stack.copy();
-         * copy.shrink(1);
-         * if (!remainder.isEmpty())
-         * if (!copy.isEmpty())
-         * output.accept(remainder);
-         * else
-         * copy = remainder;
-         * return copy;
-         */
-        return remainder;
-    }
-
-    /**
-     * 工具方法：从 JSON 对象中解析 remainder_override 字段。
-     * 提供统一的错误处理，当格式错误时抛出 JsonSyntaxException。
-     * 
-     * @param json JSON 对象
-     * @return 解析后的物品栈，如果不存在则返回 null
-     * @throws com.google.gson.JsonSyntaxException 当格式错误时抛出
-     */
-    protected static ItemStack parseRemainderOverride(JsonObject json) {
-        if (!json.has("remainder_override")) {
-            return null;
-        }
-        try {
-            DataResult<ItemStack> result = ItemStack.CODEC.parse(JsonOps.INSTANCE, json.get("remainder_override"));
-            return result.getOrThrow(false, String::new);
-        } catch (RuntimeException e) {
-            throw new com.google.gson.JsonSyntaxException("Invalid remainder_override: " + e.getMessage(), e);
-        }
+        return stack.getCraftingRemainingItem();
     }
 
     /**
@@ -108,6 +72,7 @@ public abstract class SelfConsumingIngredient extends AbstractIngredient {
      * @param output  输出物品（可直接修改其属性，如设置数量、NBT等）
      */
     public void outputModify(ItemStack matched, ItemStack output) {
+        outputModify(ingredient, matched, output);
     }
 
     @Override

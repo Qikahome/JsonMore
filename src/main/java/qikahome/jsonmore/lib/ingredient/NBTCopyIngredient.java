@@ -16,8 +16,6 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParseException;
-import com.mojang.serialization.DataResult;
-import com.mojang.serialization.JsonOps;
 
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
@@ -45,8 +43,6 @@ public class NBTCopyIngredient extends SelfConsumingIngredient {
     @Nullable
     private final List<String> tags;
     @Nullable
-    private final ItemStack remainder_override;
-    @Nullable
     private final transient Set<PathSpec> parsedPaths;
     @Nullable
     private final transient Set<PathSpec> excludedPaths;
@@ -62,23 +58,13 @@ public class NBTCopyIngredient extends SelfConsumingIngredient {
     }
 
     public NBTCopyIngredient(Ingredient ingredient, Mode mode) {
-        this(ingredient, mode, null, null);
+        this(ingredient, mode, null);
     }
 
     public NBTCopyIngredient(Ingredient ingredient, Mode mode, @Nullable List<String> tags) {
-        this(ingredient, mode, tags, null);
-    }
-
-    public NBTCopyIngredient(Ingredient ingredient, Mode mode, @Nullable ItemStack remainder_override) {
-        this(ingredient, mode, null, remainder_override);
-    }
-
-    public NBTCopyIngredient(Ingredient ingredient, Mode mode, @Nullable List<String> tags,
-            @Nullable ItemStack remainder_override) {
         super(ingredient);
         this.mode = mode;
         this.tags = tags;
-        this.remainder_override = remainder_override == null ? null : remainder_override.copy();
 
         if (tags != null && !tags.isEmpty()) {
             List<String> includes = new ArrayList<>();
@@ -137,15 +123,6 @@ public class NBTCopyIngredient extends SelfConsumingIngredient {
             }
         }
         return specs;
-    }
-
-    @Override
-    public ItemStack consume(ItemStack stack) {
-        if (stack.isEmpty())
-            return stack;
-        if (remainder_override != null)
-            return remainder_override.copy();
-        return vanillaConsume(stack);
     }
 
     @Override
@@ -334,11 +311,6 @@ public class NBTCopyIngredient extends SelfConsumingIngredient {
                 json.add("tags", tagsArray);
             }
         }
-        if (remainder_override != null) {
-            DataResult<JsonElement> result = ItemStack.CODEC.encodeStart(JsonOps.INSTANCE, remainder_override);
-            JsonElement element = result.getOrThrow(false, exception -> LOGGER.error(exception));
-            json.add("remainder_override", element);
-        }
         return json;
     }
 
@@ -359,12 +331,7 @@ public class NBTCopyIngredient extends SelfConsumingIngredient {
                     tags.add(buffer.readUtf());
                 }
             }
-            boolean hasRemainderOverride = buffer.readBoolean();
-            ItemStack remainder_override = null;
-            if (hasRemainderOverride) {
-                remainder_override = buffer.readItem();
-            }
-            return new NBTCopyIngredient(ingredient, mode, tags, remainder_override);
+            return new NBTCopyIngredient(ingredient, mode, tags);
         }
 
         @Override
@@ -396,12 +363,15 @@ public class NBTCopyIngredient extends SelfConsumingIngredient {
                 }
             }
 
-            ItemStack remainder_override = parseRemainderOverride(json);
+            Ingredient ingredient;
+            if (json.has("remainder_override")) {
+                ingredient = RemainderOverrideIngredient.Serializer.INSTANCE.parse(json);
+            } else {
+                JsonElement ingredientJson = json.get("ingredient");
+                ingredient = Ingredient.fromJson(ingredientJson);
+            }
 
-            JsonElement ingredientJson = json.get("ingredient");
-            Ingredient ingredient = Ingredient.fromJson(ingredientJson);
-
-            return new NBTCopyIngredient(ingredient, mode, tags, remainder_override);
+            return new NBTCopyIngredient(ingredient, mode, tags);
         }
 
         @Override
@@ -414,10 +384,6 @@ public class NBTCopyIngredient extends SelfConsumingIngredient {
                 for (String tag : ingredient.tags) {
                     buffer.writeUtf(tag);
                 }
-            }
-            buffer.writeBoolean(ingredient.remainder_override != null);
-            if (ingredient.remainder_override != null) {
-                buffer.writeItemStack(ingredient.remainder_override, false);
             }
         }
     }

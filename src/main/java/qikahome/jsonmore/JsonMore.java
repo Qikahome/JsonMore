@@ -115,6 +115,8 @@ public class JsonMore {
             qikahome.jsonmore.lib.ingredient.ToolDamagingIngredient.register();
             qikahome.jsonmore.lib.ingredient.CountedIngredient.register();
             qikahome.jsonmore.lib.ingredient.NBTCopyIngredient.register();
+            qikahome.jsonmore.lib.ingredient.RemainderOverrideIngredient.register();
+            qikahome.jsonmore.lib.ingredient.ItemDisplayOverrideIngredient.register();
             CraftingHelper.register(GameRuleCondition.Serializer.INSTANCE);
         });
         if (ModList.get().isLoaded("tconstruct")) {

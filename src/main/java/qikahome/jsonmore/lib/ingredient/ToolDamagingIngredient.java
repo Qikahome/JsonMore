@@ -1,14 +1,10 @@
 package qikahome.jsonmore.lib.ingredient;
 
-import static qikahome.jsonmore.JsonMore.LOGGER;
-
 import javax.annotation.Nullable;
 
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParseException;
-import com.mojang.serialization.DataResult;
-import com.mojang.serialization.JsonOps;
 
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.resources.ResourceLocation;
@@ -24,17 +20,10 @@ import qikahome.jsonmore.tconstruct.TConstructPlugin;
 public class ToolDamagingIngredient extends SelfConsumingIngredient {
     public static final ResourceLocation ID = new ResourceLocation("jsonmore:tool_damaging");
     private final int damage;
-    @Nullable
-    private final ItemStack remainder_override;
 
     public ToolDamagingIngredient(Ingredient ingredient, int damage) {
-        this(ingredient, damage, null);
-    }
-
-    public ToolDamagingIngredient(Ingredient ingredient, int damage, @Nullable ItemStack remainder_override) {
         super(ingredient);
         this.damage = damage;
-        this.remainder_override = remainder_override == null ? null : remainder_override.copy();
     }
 
     @Override
@@ -44,7 +33,7 @@ public class ToolDamagingIngredient extends SelfConsumingIngredient {
         if (stack.getCount() > 1)
             throw new IllegalArgumentException("ToolDamagingIngredient only consumes single items");
         ItemStack copy = stack.copy();
-        ItemStack remainder = remainder_override != null ? remainder_override.copy() : stack.getCraftingRemainingItem();
+        ItemStack remainder = super.consume(stack);
         if (copy.hurt(damage, RandomSource.create(), null)) {
             copy = remainder;
         }
@@ -87,11 +76,6 @@ public class ToolDamagingIngredient extends SelfConsumingIngredient {
         json.addProperty("type", ID.toString());
         json.add("ingredient", ingredient.toJson());
         json.addProperty("damage", damage);
-        if (remainder_override != null) {
-            DataResult<JsonElement> result = ItemStack.CODEC.encodeStart(JsonOps.INSTANCE, remainder_override);
-            JsonElement element = result.getOrThrow(false, exception -> LOGGER.error(exception));
-            json.add("remainder_override", element);
-        }
         return json;
     }
 
@@ -102,12 +86,7 @@ public class ToolDamagingIngredient extends SelfConsumingIngredient {
         public ToolDamagingIngredient parse(FriendlyByteBuf buffer) {
             Ingredient ingredient = Ingredient.fromNetwork(buffer);
             int damage = buffer.readVarInt();
-            boolean hasRemainderOverride = buffer.readBoolean();
-            ItemStack remainder_override = null;
-            if (hasRemainderOverride) {
-                remainder_override = buffer.readItem();
-            }
-            return new ToolDamagingIngredient(ingredient, damage, remainder_override);
+            return new ToolDamagingIngredient(ingredient, damage);
         }
 
         @Override
@@ -117,22 +96,21 @@ public class ToolDamagingIngredient extends SelfConsumingIngredient {
             }
 
             int damage = GsonHelper.getAsInt(json, "damage", 1);
-            ItemStack remainder_override = parseRemainderOverride(json);
+            Ingredient ingredient;
+            if (json.has("remainder_override")) {
+                ingredient = RemainderOverrideIngredient.Serializer.INSTANCE.parse(json);
+            } else {
+                JsonElement ingredientJson = json.get("ingredient");
+                ingredient = Ingredient.fromJson(ingredientJson);
+            }
 
-            JsonElement ingredientJson = json.get("ingredient");
-            Ingredient ingredient = Ingredient.fromJson(ingredientJson);
-
-            return new ToolDamagingIngredient(ingredient, damage, remainder_override);
+            return new ToolDamagingIngredient(ingredient, damage);
         }
 
         @Override
         public void write(FriendlyByteBuf buffer, ToolDamagingIngredient ingredient) {
             ingredient.ingredient.toNetwork(buffer);
             buffer.writeVarInt(ingredient.damage);
-            buffer.writeBoolean(ingredient.remainder_override != null);
-            if (ingredient.remainder_override != null) {
-                buffer.writeItemStack(ingredient.remainder_override, false);
-            }
         }
     }
 

@@ -5,7 +5,6 @@ import java.util.Map;
 import javax.annotation.Nullable;
 import com.google.common.collect.Maps;
 
-import dev.gigaherz.jsonthings.things.IFlexBlock;
 import dev.gigaherz.jsonthings.things.events.FlexEventContext;
 import dev.gigaherz.jsonthings.things.events.FlexEventHandler;
 import dev.gigaherz.jsonthings.things.events.FlexEventResult;
@@ -16,15 +15,20 @@ import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.BlockGetter;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.entity.BlockEntity;
+import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.properties.Property;
 import net.minecraft.world.level.material.PushReaction;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.shapes.CollisionContext;
 import net.minecraft.world.phys.shapes.VoxelShape;
+import qikahome.jsonmore.lib.IFlexEntityBlock;
+import slimeknights.tconstruct.smeltery.TinkerSmeltery;
 import slimeknights.tconstruct.smeltery.block.component.SearedTankBlock;
+import slimeknights.tconstruct.smeltery.block.entity.component.TankBlockEntity;
 
-public class FlexFluidTankBlock extends SearedTankBlock implements IFlexBlock {
+public class FlexFluidTankBlock extends SearedTankBlock implements IFlexEntityBlock<TankBlockEntity> {
     public FlexFluidTankBlock(Properties properties, int capacity,
             Map<Property<?>, Comparable<?>> propertyDefaultValues) {
         super(properties, capacity);
@@ -132,6 +136,11 @@ public class FlexFluidTankBlock extends SearedTankBlock implements IFlexBlock {
                 .withHand(player, handIn)
                 .withRayTrace(hit), () -> FlexEventResult.of(super.use(state, worldIn, pos, player, handIn, hit)))
                 .result();
+    }
+
+    @Override
+    public BlockEntityType<TankBlockEntity> getBlockEntityType() {
+        return TinkerSmeltery.tank.get();
     }
 
     // endregion
