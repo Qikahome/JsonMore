@@ -44,7 +44,31 @@ JsonMore follows JsonThings' JSON syntax. Check the `docs/` directory for exampl
 
 ## Developer Documentation
 
-See the [docs/](docs/) directory for complete JSON configuration documentation.
+See the [documentation index](docs/en/index.md) for complete JSON configuration documentation.
+
+## Mod File Use & Redistribution
+
+The mod file (`.jar`) may be freely used, copied, and redistributed in any modpack, server, or project without prior permission.
+
+For mod developers embedding JsonMore via jarjar, use the following in `META-INF/jarjar/metadata.json`:
+
+```json
+{
+  "jars": [
+    {
+      "identifier": {
+        "group": "qikahome.jsonmore",
+        "artifact": "jsonmore"
+      },
+      "version": {
+        "range": "[<version>,)",
+        "artifactVersion": "<version>"
+      },
+      "path": "META-INF/jarjar/jsonmore-<version>.jar"
+    }
+  ]
+}
+```
 
 ## License
 
@@ -54,8 +78,3 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 - Thanks to gigaherz for creating JsonThings
 - Thanks to all contributors to JsonThings and related mods
-
-## Downloads
-
-- [CurseForge](https://www.curseforge.com/minecraft/mc-mods/jsonmore)
-- [Modrinth](https://modrinth.com/mod/jsonmore)

@@ -44,7 +44,31 @@ JsonMore 遵循 JsonThings 的 JSON 语法。查看 `docs/` 目录中的示例�
 
 ## 开发者文档
 
-查看 [docs/](docs/) 目录获取完整的 JSON 配置文档。
+查看[文档目录](docs/zh_cn/目录.md)获取完整的 JSON 配置文档。
+
+## 模组文件使用与再分发
+
+模组文件（`.jar`）可被自由使用、复制和再分发，无需事先许可，适用于任何整合包、服务器或其他项目。
+
+对于通过 jarjar 嵌入 JsonMore 的模组开发者，请在 `META-INF/jarjar/metadata.json` 中使用以下配置：
+
+```json
+{
+  "jars": [
+    {
+      "identifier": {
+        "group": "qikahome.jsonmore",
+        "artifact": "jsonmore"
+      },
+      "version": {
+        "range": "[<version>,)",
+        "artifactVersion": "<version>"
+      },
+      "path": "META-INF/jarjar/jsonmore-<version>.jar"
+    }
+  ]
+}
+```
 
 ## 许可证
 
@@ -54,8 +78,3 @@ JsonMore 遵循 JsonThings 的 JSON 语法。查看 `docs/` 目录中的示例�
 
 - 感谢 gigaherz 创建了 JsonThings
 - 感谢所有为 JsonThings 和相关模组做出贡献的开发者
-
-## 下载地址
-
-- [CurseForge](https://www.curseforge.com/minecraft/mc-mods/jsonmore)
-- [Modrinth](https://modrinth.com/mod/jsonmore)
