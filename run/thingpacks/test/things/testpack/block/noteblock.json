@@ -1,0 +1,9 @@
+{
+  "type": "jsonmore:noteblock",
+  "instrument_block_tag": "crystal_sound_blocks",
+  "instrument_name": "block.minecraft.amethyst_block",
+  "sound": "block.amethyst_block.chime",
+  "volume": 100,
+  "not_solid": true,
+  "has_collision": false
+}

@@ -1,0 +1,6 @@
+{
+  "type": "jsonmore:standing_sign",
+  "wood_type": "oak",
+  "not_solid": true,
+  "has_collision": false
+}

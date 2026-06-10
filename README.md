@@ -1,61 +1,61 @@
-# JsonMore - 更多 JSON 魔改内容
+# JsonMore - More JSON-customizable content
 
 [English](README.md) | [简体中文](README-zh-cn.md)
 
-一个为 [JsonThings](https://github.com/gigaherz/JsonThings) 开发的强力扩展模组，让你可以通过 JSON 配置来创建各种自定义内容。
+A powerful extension mod for [JsonThings](https://github.com/gigaherz/JsonThings) that lets you create various custom content through JSON configuration.
 
-## 功能特性
+## Features
 
-### 容器系统
-- **自定义箱子** - 通过 JSON 配置创建任意大小的箱子
-- **过滤器支持** - 为箱子的每个面设置插入/提取过滤器
-- **保留模式** - 支持 always/silk_touch/never 三种保留模式
-- **朝向设置** - 支持 6 个方向的朝向配置
-- **搜索功能** - 支持原版箱子和 CyclopsCore 滚动容器两种界面
+### Container System
+- **Custom Chests** - Create chests of any size via JSON configuration
+- **Filter Support** - Set insert/extract filters for each face of the chest
+- **Retention Mode** - Supports always/silk_touch/never retention modes
+- **Facing Settings** - Supports 6-direction facing configuration
+- **Search Functionality** - Supports both vanilla chest and CyclopsCore scrollable container UIs
 
-### 匠魂集成
-- **自定义工具架** - 创建可扩展的匠魂工具架
-- **材料统计** - 自定义材料的属性和数值
-- **工具栏自定义** - 配置工具栏的显示内容
+### Tinkers' Construct Integration
+- **Custom Tool Shelves** - Create expandable Tinkers' tool shelves
+- **Material Stats** - Customize material properties and values
+- **Toolbar Customization** - Configure toolbar display content
 
-### 音乐盒集成
-- **音符方块** - 通过 JSON 配置自定义音符方块
+### Music Box Integration
+- **Note Blocks** - Customize note blocks via JSON configuration
 
-### 其他功能
-- **告示牌** - 支持原版木牌和墙式告示牌
-- **液体容器** - 创建自定义液体容器
-- **物品罐** - 创建可存储物品的罐子
+### Other Features
+- **Signs** - Supports both standing and wall signs
+- **Fluid Containers** - Create custom fluid containers
+- **Item Jars** - Create jars that can store items
 
-## 依赖项
+## Dependencies
 
-### 必需依赖
+### Required
 - [JsonThings](https://www.curseforge.com/minecraft/mc-mods/json-things) (0.9.9+)
 
-### 可选依赖
+### Optional
 - [JEI](https://www.curseforge.com/minecraft/mc-mods/jei) (15.20.0+)
 - [Mantle](https://www.curseforge.com/minecraft/mc-mods/mantle) (1.11.95+)
 - [Tinkers' Construct](https://www.curseforge.com/minecraft/mc-mods/tinkers-construct) (3.11.0.148+)
 - [Anvil MusBox](https://modrinth.com/mod/UHRtsv4j) (1.1.0+)
 - [CyclopsCore](https://www.curseforge.com/minecraft/mc-mods/cyclops-core) (1.19.1+)
 
-## 使用方法
+## Usage
 
-JsonMore 遵循 JsonThings 的 JSON 语法。查看 `docs/` 目录中的示例文件了解详细用法。
+JsonMore follows JsonThings' JSON syntax. Check the `docs/` directory for example files and detailed usage.
 
-## 开发者文档
+## Developer Documentation
 
-查看 [docs/](docs/) 目录获取完整的 JSON 配置文档。
+See the [docs/](docs/) directory for complete JSON configuration documentation.
 
-## 许可证
+## License
 
-本项目采用 MIT 许可证 - 详情请参阅 [LICENSE](LICENSE) 文件。
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-## 致谢
+## Acknowledgements
 
-- 感谢 gigaherz 创建了 JsonThings
-- 感谢所有为 JsonThings 和相关模组做出贡献的开发者
+- Thanks to gigaherz for creating JsonThings
+- Thanks to all contributors to JsonThings and related mods
 
-## 下载地址
+## Downloads
 
 - [CurseForge](https://www.curseforge.com/minecraft/mc-mods/jsonmore)
 - [Modrinth](https://modrinth.com/mod/jsonmore)

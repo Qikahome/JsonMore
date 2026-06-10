@@ -1,0 +1,13 @@
+{
+    "type": "jsonmore:plain",
+    "durability_field": "durability",
+    "stats": [
+        {
+            "type": "tconstruct:float",
+            "name": "durability",
+            "stat": "durability",
+            "default_value": 1.0,
+            "operation": "percent"
+        }
+    ]
+}

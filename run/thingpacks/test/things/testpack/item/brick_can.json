@@ -1,0 +1,6 @@
+{
+
+  "type": "jsonmore:copper_can",
+  "capacity": 250,
+  "max_stack_size": 16
+}

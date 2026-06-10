@@ -1,0 +1,24 @@
+{
+    "type": "jsonmore:plain",
+    "durability_field": "durability",
+    "stats": [
+        {
+            "type": "tconstruct:float",
+            "name": "durability",
+            "stat": "durability",
+            "default_value": 1.0,
+            "operation": "update",
+            "infoToolTip": "",
+            "descToolTip": ""
+        },
+                {
+            "type": "tconstruct:tier",
+            "name": "mining_tier",
+            "stat": "harvest_tier",
+            "default_value": "iron",
+            "operation": "update",
+            "infoToolTip": "",
+            "descToolTip": ""
+        }
+    ]
+}

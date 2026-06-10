@@ -1,0 +1,21 @@
+{
+  "type": "armor",
+  "material": "testpack:test",
+  "equipment_slot": "head",
+
+  "max_stack_size": 64,
+
+  "group": "combat",
+
+  "durability": {
+    "max_damage": 1536
+  },
+
+  "attribute_modifiers": [
+    { "slot":"head", "attribute": "generic.armor", "name": "test", "amount": 2, "operation": "addition" }
+  ],
+
+  "events": {
+    "use_on_block": "testpack:test"
+  }
+}

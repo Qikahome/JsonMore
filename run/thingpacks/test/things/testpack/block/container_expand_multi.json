@@ -1,0 +1,12 @@
+{
+  "parent": "jsonmore:container_base",
+  "type": "jsonmore:container",
+  "slots": 108,
+  "directions": "FACING_ALL",
+  "expandable": ["o","x", "y", "z"],
+  "screen": "cyclopscore:scrolling",
+  "material": "wood",
+  "hardness": 2.5,
+  "resistance": 2.5,
+  "item": true
+}

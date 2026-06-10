@@ -1,0 +1,7 @@
+{
+  "variants": {
+    "": {
+      "model": "testpack:block/test_container_plain"
+    }
+  }
+}

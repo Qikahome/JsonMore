@@ -1,0 +1,26 @@
+{
+    "type": "jsonmore:shapeless_consuming",
+    "ingredients": [
+        {
+            "type": "jsonmore:item_display_override",
+            "ingredient": {
+                "tag": "minecraft:planks"
+            },
+            "ops": [
+                {
+                    "op": "remove",
+                    "value": {
+                        "item": "minecraft:oak_planks"
+                    }
+                }
+            ]
+        },
+        {
+            "item": "minecraft:stick"
+        }
+    ],
+    "result": {
+        "item": "minecraft:stick",
+        "count": 4
+    }
+}

@@ -1,0 +1,7 @@
+{
+  "type": "jsonmore:tinker_chest",
+  "capacity": 8000,
+  "item": {
+    "group": "building_blocks"
+  }
+}

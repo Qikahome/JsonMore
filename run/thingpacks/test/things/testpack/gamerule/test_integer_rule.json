@@ -1,0 +1,5 @@
+{
+  "type": "jsonmore:integer",
+  "default_value": 10,
+  "category": "misc"
+}

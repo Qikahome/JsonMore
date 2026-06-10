@@ -1,0 +1,6 @@
+{
+    "type": "tconstruct:tool_part",
+    "group": "food_and_drinks",
+    "stat_type": "testpack:test2",
+    "max_stack_size": 64
+}

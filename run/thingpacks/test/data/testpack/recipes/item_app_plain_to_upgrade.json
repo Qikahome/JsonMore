@@ -1,0 +1,19 @@
+{
+    "type": "jsonmore:item_application",
+    "block": {
+        "type": "jsonmore:nbt_copy",
+        "ingredient": {
+            "item": "testpack:test_container_plain"
+        },
+        "mode": "REPLACE"
+    },
+    "tool": {
+        "item": "minecraft:paper"
+    },
+    "result": {
+        "item": "testpack:test_container_upgraded"
+    },
+    "drop_container": false,
+    "keep_block_state": true,
+    "sneaking": true
+}

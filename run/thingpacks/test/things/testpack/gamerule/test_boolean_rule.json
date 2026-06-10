@@ -1,0 +1,5 @@
+{
+  "type": "jsonmore:boolean",
+  "default_value": true,
+  "category": "MISC"
+}

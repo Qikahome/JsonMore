@@ -1,0 +1,12 @@
+{
+  "parent": "jsonmore:container_base",
+  "type": "jsonmore:container",
+  "slots": 27,
+  "expandable": ["o"],
+  "screen": "jsonmore:chest",
+  "connected_screen": "jsonmore:chest",
+  "material": "wood",
+  "hardness": 2.5,
+  "resistance": 2.5,
+  "item": true
+}

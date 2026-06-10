@@ -1,0 +1,16 @@
+{
+  "type": "drinkable_bottle",
+
+  "base_item": "bowl",
+  "container": "bowl",
+
+  "max_stack_size": 64,
+
+  "group": "food_and_drinks",
+
+  "food": {
+    "nutrition": 5,
+    "saturation": 1.5,
+    "meat": false
+  }
+}

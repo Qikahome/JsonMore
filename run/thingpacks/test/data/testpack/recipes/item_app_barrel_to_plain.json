@@ -1,0 +1,23 @@
+{
+    "type": "jsonmore:item_application",
+    "block": {
+        "type": "jsonmore:nbt_copy",
+        "ingredient": {
+            "item": "minecraft:barrel"
+        },
+        "mode": "REPLACE"
+    },
+    "tool": {
+        "type": "jsonmore:counted",
+        "ingredient": {
+            "item": "minecraft:paper"
+        },
+        "count": 0
+    },
+    "result": {
+        "item": "testpack:test_container_plain"
+    },
+    "drop_container": false,
+    "keep_block_state": true,
+    "sneaking": true
+}

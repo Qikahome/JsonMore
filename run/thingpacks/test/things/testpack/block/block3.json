@@ -1,0 +1,8 @@
+{
+  "type": "jsonmore:fluid_tank",
+  "capacity": 8000,
+  "item": {
+    "group": "building_blocks",
+    "type": "jsonmore:fluid_tank"
+  }
+}

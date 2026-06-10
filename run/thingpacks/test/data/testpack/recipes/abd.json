@@ -1,0 +1,37 @@
+{
+    "type": "jsonmore:shapeless_consuming",
+    "ingredients": [
+        {
+            "type": "jsonmore:counted",
+            "ingredient": {
+                "item": "minecraft:iron_nugget"
+            },
+            "count": 21
+        },
+        {
+            "type": "jsonmore:counted",
+            "ingredient": {
+                "item": "minecraft:iron_nugget"
+            },
+            "count": 20
+        },
+        {
+            "type": "jsonmore:counted",
+            "ingredient": {
+                "item": "minecraft:iron_nugget"
+            },
+            "count": 20
+        },
+        {
+            "type": "jsonmore:counted",
+            "ingredient": {
+                "item": "minecraft:iron_nugget"
+            },
+            "count": 20
+        }
+    ],
+    "result": {
+        "item": "minecraft:iron_block",
+        "count": 1
+    }
+}

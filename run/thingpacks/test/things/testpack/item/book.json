@@ -1,0 +1,12 @@
+{
+    "type": "jsonmore:book",
+    "book_id": "my_test:test_book",
+    "book_data": [
+        {
+            "type": "mantle:repository",
+            "id": "mantle:books/test"
+        },
+        "mantle:index",
+        "mantle:content_table"
+    ]
+}

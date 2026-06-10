@@ -1,0 +1,47 @@
+{
+  "conditions": [
+    {
+      "type": "not",
+      "condition": {
+        "type": "mod_loaded",
+        "modid": "nonexistant"
+      }
+    }
+  ],
+  "type": "axe",
+  "tier": "iron",
+  "damage": 1,
+  "speed": 1,
+  "max_damage": 1536,
+
+  "food": "testpack:chewing_gum",
+
+  "max_stack_size": 64,
+
+  "creative_menu_stacks": [
+    {
+      "nbt": { "tmp": 0 },
+      "tabs": [ "tools_and_utilities" ]
+    }
+  ],
+
+
+  "delayed_use": {
+    "duration": 120,
+    "animation": "eat",
+    "on_complete": "use_item"
+  },
+
+  "fluid_container": {
+    "contains": "water",
+    "empty_item": "empty_bucket"
+  },
+
+  "attribute_modifiers": [
+    { "slot":"head", "attribute": "generic.armor", "name": "test", "amount": 2, "operation": "addition" }
+  ],
+
+  "events": {
+    "use": "testpack:test"
+  }
+}

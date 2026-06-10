@@ -1,0 +1,9 @@
+{
+  "enchantment.testpack.deadly": "Deadly",
+  "block.testpack.container_expand_x": "Expand X Container",
+  "block.testpack.container_expand_y": "Expand Y Container",
+  "block.testpack.container_expand_z": "Expand Z Container",
+  "block.testpack.container_expand_o": "Expand O Container",
+  "block.testpack.container_expand_multi": "Multi Expand Container",
+  "block.testpack.container_expand_keep": "Keep Inventory Container"
+}
