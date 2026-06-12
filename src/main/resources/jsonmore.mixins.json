@@ -7,7 +7,9 @@
     "MixinStandingAndWallBlockItem",
     "MixinBlockEntityType",
     "MixinMechanicalCrafterBlockEntity",
-    "MixinLazyResultSlot"
+    "MixinLazyResultSlot",
+    "MixinUncraftingMenu",
+    "MixinTwilightForestJEICompat"
   ],
   "client": [],
   "server": [],

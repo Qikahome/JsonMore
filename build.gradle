@@ -218,6 +218,11 @@ dependencies {
     compileOnly fg.deobf("curse.maven:create-328085:7178761")
     runtimeOnly fg.deobf("curse.maven:create-328085:7178761")
 
+    // 暮色森林（Twilight Forest）- 可选依赖（用于自定义消耗原料和拆解台兼容性）
+    // CurseForge: https://www.curseforge.com/minecraft/mc-mods/the-twilight-forest
+    compileOnly fg.deobf("curse.maven:the-twilight-forest-227639:4635921")
+    runtimeOnly fg.deobf("curse.maven:the-twilight-forest-227639:4635921")
+
     // 更多依赖配置参考：
     // http://www.gradle.org/docs/current/userguide/artifact_dependencies_tutorial.html
     // http://www.gradle.org/docs/current/userguide/dependency_management.html
@@ -238,7 +243,8 @@ tasks.named('processResources', ProcessResources).configure {
             json_things_range: json_things_range,
             tconstruct_range: tconstruct_range,
             mantle_range: mantle_range,
-            anvil_musbox_range: anvil_musbox_range
+            anvil_musbox_range: anvil_musbox_range,
+            twilight_forest_range: twilight_forest_range
     ]
     inputs.properties replaceProperties // 将变量纳入任务输入（用于增量构建）
 
