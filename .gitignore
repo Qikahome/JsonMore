@@ -26,3 +26,5 @@ ext_files
 removed
 # Files from Forge MDK
 forge*changelog.txt
+# Ignore only root-level java files (e.g. reference copies)
+/*.java
