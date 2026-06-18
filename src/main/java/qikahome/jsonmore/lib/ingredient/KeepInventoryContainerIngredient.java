@@ -12,15 +12,11 @@ import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.resources.ResourceLocation;
-import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.crafting.Ingredient;
-import net.minecraft.world.level.block.Block;
 import net.minecraftforge.common.crafting.AbstractIngredient;
 import net.minecraftforge.common.crafting.CraftingHelper;
 import net.minecraftforge.common.crafting.IIngredientSerializer;
-import qikahome.jsonmore.lib.KeepInventoryMode;
-import qikahome.jsonmore.minecraft.FlexBarrelBlock;
 
 public class KeepInventoryContainerIngredient extends AbstractIngredient {
     public static final ResourceLocation ID = new ResourceLocation("jsonmore:keep_inventory_container");
@@ -42,26 +38,15 @@ public class KeepInventoryContainerIngredient extends AbstractIngredient {
         if (stack == null || stack.isEmpty()) {
             return false;
         }
-        if (!(stack.getItem() instanceof BlockItem blockItem)) {
-            return false;
-        }
-        Block block = blockItem.getBlock();
-        if (!(block instanceof FlexBarrelBlock flexBarrel)) {
-            return false;
-        }
-        
-        if (flexBarrel.keepInventory == KeepInventoryMode.NEVER) {
-            return false;
-        }
-        
+
         if (mode == Mode.MAY) {
-            return true;
+            return !stack.getItem().canFitInsideContainerItems();
         }
-        
+
         if (mode == Mode.CONTAINS) {
             return hasItems(stack);
         }
-        
+
         return false;
     }
 
@@ -70,12 +55,12 @@ public class KeepInventoryContainerIngredient extends AbstractIngredient {
         if (blockEntityTag == null) {
             return false;
         }
-        
+
         if (blockEntityTag.contains("Items", 9)) {
             ListTag items = blockEntityTag.getList("Items", 10);
             return !items.isEmpty();
         }
-        
+
         return false;
     }
 

@@ -23,7 +23,6 @@ import net.minecraft.nbt.ListTag;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraftforge.common.crafting.CompoundIngredient;
 import net.minecraftforge.network.NetworkHooks;
 import net.minecraft.sounds.SoundEvent;
 import net.minecraft.sounds.SoundEvents;
@@ -317,10 +316,7 @@ public class FlexBarrelBlock extends BaseEntityBlock
     static {
         DEFAULT_PLACE_FILTER = new ItemFilter(
                 NotIngredient.of(
-                        CompoundIngredient.of(
-                                Ingredient.of(TagKey.create(Registries.ITEM,
-                                        new ResourceLocation("jsonmore:keep_inventory_containers"))),
-                                new KeepInventoryContainerIngredient(KeepInventoryContainerIngredient.Mode.MAY))));
+                        new KeepInventoryContainerIngredient(KeepInventoryContainerIngredient.Mode.MAY)));
     }
 
     public boolean isConnectableBlock(BlockState neighbor) {
@@ -854,10 +850,6 @@ public class FlexBarrelBlock extends BaseEntityBlock
 
         @Override
         public boolean canPlaceItemThroughFace(int index, ItemStack stack, @Nullable Direction direction) {
-            if (!stack.getItem().canFitInsideContainerItems()) {
-                return false;
-            }
-
             if (flexBlock.insertFilters.isEmpty()) {
                 return true;
             }

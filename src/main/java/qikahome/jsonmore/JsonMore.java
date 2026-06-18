@@ -37,14 +37,12 @@ import qikahome.jsonmore.minecraft.MinecraftPlugin;
 import qikahome.jsonmore.minecraft.gamerule.GameRuleParser;
 import qikahome.jsonmore.musbox.AnvilMusBoxPlugin;
 import qikahome.jsonmore.tconstruct.TConstructPlugin;
-import slimeknights.tconstruct.TConstruct;
 import net.minecraft.world.item.crafting.RecipeSerializer;
 import net.minecraftforge.common.crafting.CraftingHelper;
 import qikahome.jsonmore.minecraft.gamerule.GameRuleCondition;
 
 // 这里的值应该与META-INF/mods.toml文件中的条目匹配
 @Mod(JsonMore.MODID)
-@EventBusSubscriber(modid = TConstruct.MOD_ID, value = Dist.CLIENT, bus = Bus.MOD)
 public class JsonMore {
     // 在一个公共位置定义mod id，以便所有内容都可以引用
     public static final String MODID = "jsonmore";

@@ -9,7 +9,8 @@
     "MixinMechanicalCrafterBlockEntity",
     "MixinLazyResultSlot",
     "MixinUncraftingMenu",
-    "MixinTwilightForestJEICompat"
+    "MixinTwilightForestJEICompat",
+    "MixinFlexBarrelBlockItem"
   ],
   "client": [],
   "server": [],
