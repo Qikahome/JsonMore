@@ -33,8 +33,9 @@ import qikahome.jsonmore.lib.recipe.ItemApplicationRecipe;
 import qikahome.jsonmore.lib.recipe.ShapedConsumingRecipe;
 import qikahome.jsonmore.lib.recipe.ShapelessConsumingRecipe;
 import qikahome.jsonmore.mantle.MantlePlugin;
-import qikahome.jsonmore.minecraft.MinecraftPlugin;
 import qikahome.jsonmore.minecraft.gamerule.GameRuleParser;
+import qikahome.jsonmore.minecraft.BuiltInDatapackParser;
+import qikahome.jsonmore.minecraft.MinecraftPlugin;
 import qikahome.jsonmore.musbox.AnvilMusBoxPlugin;
 import qikahome.jsonmore.tconstruct.TConstructPlugin;
 import net.minecraft.world.item.crafting.RecipeSerializer;
@@ -71,6 +72,9 @@ public class JsonMore {
 
         var manager = ThingResourceManager.instance();
         manager.registerParser(new GameRuleParser(modEventBus));
+        manager.registerParser(new BuiltInDatapackParser(modEventBus));
+
+
 
         onFlexTypesLoad();
     }

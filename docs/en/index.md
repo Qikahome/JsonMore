@@ -3,6 +3,7 @@
 - **General**
   - [Placing Directions](placing_directions.md)
   - [Game Rules](game_rules.md)
+  - [Built-in Datapack](built_in_datapack.md)
 - **Recipe Conditions**
   - [Game Rule Condition](game_rules.md#recipe-condition)
 - **Recipes**
