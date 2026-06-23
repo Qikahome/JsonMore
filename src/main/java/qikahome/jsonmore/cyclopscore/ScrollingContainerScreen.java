@@ -71,7 +71,7 @@ public class ScrollingContainerScreen extends ContainerScreenScrolling<Scrolling
 
     @Override
     protected ResourceLocation constructGuiTexture() {
-        return new ResourceLocation(JsonMore.MODID, "textures/gui/scrolling_container.png");
+        return ResourceLocation.fromNamespaceAndPath(JsonMore.MODID, "textures/gui/scrolling_container.png");
     }
 
     @Override

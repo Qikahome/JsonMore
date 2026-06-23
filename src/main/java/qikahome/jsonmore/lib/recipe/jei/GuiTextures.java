@@ -24,7 +24,7 @@ public enum GuiTextures {
     JEI_HEAT_BAR(0, 201, 169, 19),
     JEI_NO_HEAT_BAR(0, 221, 169, 19);
 
-    private static final ResourceLocation TEXTURE = new ResourceLocation("jsonmore", "textures/gui/jei/widgets.png");
+    private static final ResourceLocation TEXTURE = ResourceLocation.fromNamespaceAndPath("jsonmore", "textures/gui/jei/widgets.png");
 
     private final int startX;
     private final int startY;

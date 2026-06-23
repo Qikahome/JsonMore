@@ -1,30 +1,19 @@
 package qikahome.jsonmore;
 
-import com.google.common.base.Supplier;
+import com.mojang.serialization.Codec;
+import com.mojang.serialization.DataResult;
+import com.mojang.serialization.DynamicOps;
+import com.mojang.serialization.codecs.PrimitiveCodec;
+
 import static qikahome.jsonmore.JsonMore.LOGGER;
 
+import java.util.function.Supplier;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import javax.annotation.Nullable;
 
 public class Utils {
-    public static <T> T getOrDebug(Supplier<T> supplier, T defaultValue) {
-        return getOrDebug(supplier, defaultValue, null);
-    }
-
-    public static <T> T getOrDebug(Supplier<T> supplier, T defaultValue, @Nullable String errorMessage) {
-        return getOrElse(supplier, defaultValue, org.slf4j.event.Level.DEBUG, errorMessage);
-    }
-
-    public static <T> T getOrInfo(Supplier<T> supplier, T defaultValue) {
-        return getOrInfo(supplier, defaultValue, null);
-    }
-
-    public static <T> T getOrInfo(Supplier<T> supplier, T defaultValue, @Nullable String errorMessage) {
-        return getOrElse(supplier, defaultValue, org.slf4j.event.Level.INFO, errorMessage);
-    }
-
     /**
      * 执行Supplier类型的Lambda，捕获异常并返回默认值
      * 
@@ -38,12 +27,9 @@ public class Utils {
      */
     public static <T> T getOrElse(Supplier<T> supplier, T defaultValue, @Nullable org.slf4j.event.Level logLevel,
             @Nullable String errorMessage) {
-        // 捕获所有Exception（如需捕获Error，可改为catch (Throwable e)）
         try {
-            // 执行Lambda并返回结果
             return supplier.get();
-        } catch (Throwable e) {
-            // 可选：打印异常日志（便于排查问题）
+        } catch (Exception e) {
             if (logLevel != null)
                 switch (logLevel) {
                     case TRACE:
@@ -69,12 +55,71 @@ public class Utils {
                                 e);
                         break;
                 }
-            // 异常时返回默认值
             return defaultValue;
         }
     }
 
+    /**
+     * 创建枚举的 Codec，区分大小写。
+     */
+    public static <E extends Enum<E>> Codec<E> enumCodec(Class<E> enumClass) {
+        return Codec.STRING.xmap(
+                str -> Enum.valueOf(enumClass, str),
+                Enum::name);
+    }
+
+    /**
+     * 创建枚举的 Codec，不区分大小写。
+     */
+    public static <E extends Enum<E>> Codec<E> enumCodecIgnoreCase(Class<E> enumClass) {
+        return Codec.STRING.xmap(
+                str -> {
+                    for (var c : enumClass.getEnumConstants()) {
+                        if (c.name().equalsIgnoreCase(str))
+                            return c;
+                    }
+                    throw new IllegalArgumentException("No enum constant " + enumClass.getName() + "." + str);
+                },
+                e -> e.name().toLowerCase(java.util.Locale.ROOT));
+    }
+
     public static final class IntRange {
+        private static final Pattern RANGE_PATTERN = Pattern.compile(
+                "^\\s*" + // 开头的空白
+                        "(\\[|\\()" + // 左括号类型 (group 1)
+                        "\\s*" +
+                        "([-+]?\\d*)" + // 最小值 (group 2)，可以为空或带正负号
+                        "\\s*,\\s*" +
+                        "([-+]?\\d*)" + // 最大值 (group 3)，可以为空或带正负号
+                        "\\s*" +
+                        "(\\]|\\))" + // 右括号类型 (group 4)
+                        "\\s*$" // 结尾的空白
+        );
+
+        public static final PrimitiveCodec<IntRange> CODEC = new PrimitiveCodec<IntRange>() {
+            @Override
+            public <T> DataResult<IntRange> read(final DynamicOps<T> ops, final T input) {
+                DataResult<String> asString = ops.getStringValue(input);
+                if (asString.result().isPresent()) {
+                    return asString.map(IntRange::parse);
+                }
+                return ops.getNumberValue(input).flatMap(num -> {
+                    int v = num.intValue();
+                    return DataResult.success(new IntRange(v, v, true, true));
+                });
+            }
+
+            @Override
+            public <T> T write(final DynamicOps<T> ops, final IntRange value) {
+                return ops.createString(value.toString());
+            }
+
+            @Override
+            public String toString() {
+                return "JsonMore.Utils.IntRange";
+            }
+        };
+
         private final int min;
         private final int max;
         private final boolean minInclusive;
@@ -88,20 +133,7 @@ public class Utils {
         }
 
         public static IntRange parse(String rangeStr) {
-            // 正则表达式：支持 [a,b] [a,b) (a,b] (a,b) [a,) (a,) (,b] (,b) *
-            Pattern pattern = Pattern.compile(
-                    "^\\s*" + // 开头的空白
-                            "(\\[|\\()" + // 左括号类型 (group 1)
-                            "\\s*" +
-                            "([-+]?\\d*)" + // 最小值 (group 2)，可以为空或带正负号
-                            "\\s*,\\s*" +
-                            "([-+]?\\d*)" + // 最大值 (group 3)，可以为空或带正负号
-                            "\\s*" +
-                            "(\\]|\\))" + // 右括号类型 (group 4)
-                            "\\s*$" // 结尾的空白
-            );
-
-            Matcher matcher = pattern.matcher(rangeStr);
+            Matcher matcher = RANGE_PATTERN.matcher(rangeStr);
             if (!matcher.matches()) {
                 // 特殊处理通配符 "*"
                 if (rangeStr.trim().equals("*")) {
@@ -186,5 +218,24 @@ public class Utils {
     @FunctionalInterface
     public static interface TriConsumer<T, U, V> {
         void accept(T t, U u, V v);
+    }
+
+    public static class PackedValue<T> {
+        public PackedValue() {
+        }
+
+        public PackedValue(T v) {
+            value = v;
+        }
+
+        private T value;
+
+        public T getValue() {
+            return value;
+        }
+
+        public void setValue(T v) {
+            value = v;
+        }
     }
 }

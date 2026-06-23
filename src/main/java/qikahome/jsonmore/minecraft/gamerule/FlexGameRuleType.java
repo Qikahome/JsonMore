@@ -10,6 +10,7 @@ import com.mojang.serialization.Lifecycle;
 import dev.gigaherz.jsonthings.things.ThingRegistries;
 import dev.gigaherz.jsonthings.things.events.ContextValue;
 import dev.gigaherz.jsonthings.things.events.FlexEventContext;
+import dev.gigaherz.jsonthings.things.events.FlexEventType;
 import net.minecraft.core.MappedRegistry;
 import net.minecraft.core.Registry;
 import net.minecraft.resources.ResourceKey;
@@ -21,13 +22,14 @@ import qikahome.jsonmore.minecraft.gamerule.GameRuleBuilder.IGameRuleBuilderFact
 
 public class FlexGameRuleType<T extends GameRules.Type<?>> {
     public static final ResourceKey<Registry<FlexGameRuleType<?>>> key = ResourceKey
-            .createRegistryKey(new ResourceLocation("jsonmore:gamerule"));
+            .createRegistryKey(ResourceLocation.parse("jsonmore:gamerule"));
 
     public static final String DEFAULT_VALUE = "default_value";
 
     public static final ContextValue<MinecraftServer> SERVER = ContextValue.create("server", MinecraftServer.class);
     public static final ContextValue<GameRules.Value> GAMERULE = ContextValue.create("gamerule",
             GameRules.Value.class);
+        public static final FlexEventType<Void> GAMERULE_CHANGE = new FlexEventType<>("gamerule_change");
 
     public static final Registry<FlexGameRuleType<?>> INSTANCE = Registry.register(
             ThingRegistries.THING_REGISTRIES, key.location().toString(),
@@ -37,7 +39,7 @@ public class FlexGameRuleType<T extends GameRules.Type<?>> {
     public static <T extends GameRules.Value<T>> BiConsumer<MinecraftServer, T> createBiConsumer(
             GameRuleBuilder builder) {
         return (server, rule) -> {
-            builder.runEvent("change", new FlexEventContext().with(SERVER, server).with(GAMERULE, rule),
+            builder.runEvent(GAMERULE_CHANGE, new FlexEventContext().with(SERVER, server).with(GAMERULE, rule),
                     () -> null);
         };
     }

@@ -33,7 +33,7 @@ public class ContainerScreenType {
     private static final Map<ResourceLocation, ContainerScreenType> TYPES = new HashMap<>();
 
     public static final ContainerScreenType VANILLA_CHEST = register(
-            new ResourceLocation("minecraft:chest"),
+            ResourceLocation.parse("minecraft:chest"),
             (containers, containerSize) -> {
                 MultiContainer container = MultiContainer.of(containers);
                 int rows = containerSize / 9;
@@ -61,7 +61,7 @@ public class ContainerScreenType {
             },
             true);
 
-    public static final ContainerScreenType CHEST = register(new ResourceLocation("jsonmore:chest"),
+    public static final ContainerScreenType CHEST = register(ResourceLocation.parse("jsonmore:chest"),
             (containers, containerSize) -> {
                 MultiContainer container = MultiContainer.of(containers);
                 return new MenuProvider() {
@@ -92,7 +92,7 @@ public class ContainerScreenType {
     }
 
     private ContainerScreenType() {
-        this(new ResourceLocation("builtin:dynamic"), null, true, null);
+        this(ResourceLocation.parse("builtin:dynamic"), null, true, null);
     }
 
     public ContainerScreenType(ResourceLocation id, IMenuFactory menuFactory, boolean available) {
@@ -159,7 +159,7 @@ public class ContainerScreenType {
 
     @Nullable
     public static ContainerScreenType parse(@Nullable JsonElement json, String defaultId) {
-        return parse(json, new ResourceLocation(defaultId));
+        return parse(json, ResourceLocation.parse(defaultId));
     }
 
     @Nullable
@@ -177,7 +177,7 @@ public class ContainerScreenType {
             return null;
         }
         if (GsonHelper.isStringValue(json)) {
-            ResourceLocation id = new ResourceLocation(json.getAsString());
+            ResourceLocation id = ResourceLocation.parse(json.getAsString());
             if (TYPES.containsKey(id))
                 return getOrDefault(id);
             throw new ThingParseException("Screen type " + id + " is not available (mod may not be installed)");
@@ -189,7 +189,7 @@ public class ContainerScreenType {
                 for (String key : keys) {
                     IntRange range = IntRange.parse(key);
                     String val = jsonObject.get(key).getAsString();
-                    ResourceLocation id = new ResourceLocation(val);
+                    ResourceLocation id = ResourceLocation.parse(val);
                     if (!TYPES.containsKey(id))
                         throw new ThingParseException(
                                 "Screen type " + id + " is not available (mod may not be installed)");

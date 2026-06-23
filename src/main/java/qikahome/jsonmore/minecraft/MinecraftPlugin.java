@@ -15,11 +15,11 @@ import com.google.gson.JsonObject;
 import dev.gigaherz.jsonthings.things.parsers.ThingParseException;
 import dev.gigaherz.jsonthings.things.serializers.FlexBlockType;
 import dev.gigaherz.jsonthings.things.serializers.FlexItemType;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.sounds.SoundEvent;
 import net.minecraft.util.GsonHelper;
-import net.minecraftforge.registries.ForgeRegistries;
-import net.minecraftforge.registries.RegistryObject;
+import net.neoforged.neoforge.registries.DeferredHolder;
 import qikahome.jsonmore.Utils;
 import qikahome.jsonmore.lib.BlockedDirection;
 import qikahome.jsonmore.lib.ContainerScreenType;
@@ -39,73 +39,11 @@ import net.minecraft.world.level.block.state.properties.WoodType;
 
 public class MinecraftPlugin {
     public static void load() {
-        FlexItemType.register("jsonmore:sign", data -> {
-            String signName = data.get("standing_sign").getAsString();
-            String wallSignName = data.get("wall_sign").getAsString();
-            boolean useBlockName = GsonHelper.getAsBoolean(data, "use_block_name", true);
-            return (props, builder) -> {
-                ResourceLocation blockName = new ResourceLocation(signName);
-                ResourceLocation wallBlockName = new ResourceLocation(wallSignName);
-                return new FlexSignItem(RegistryObject.create(blockName, ForgeRegistries.BLOCKS),
-                        RegistryObject.create(wallBlockName, ForgeRegistries.BLOCKS), useBlockName,
-                        props, builder);
-            };
-        });
-        FlexBlockType.register("jsonmore:wall_sign", data -> {
-            var blockSetType = new MutableObject<ResourceLocation>();
-            var woodTypeName = Utils.getOrInfo(() -> data.get("wood_type").getAsString(), "oak");
-            blockSetType.setValue(new ResourceLocation(woodTypeName));
-            return (props, builder) -> {
-                List<Property<?>> _properties = builder.getProperties();
-                Map<Property<?>, Comparable<?>> propertyDefaultValues = builder.getPropertyDefaultValues();
-                var woodType = WoodType.values().filter(w -> Objects.equals(w.name(), woodTypeName)).findFirst()
-                        .orElseThrow(() -> new ThingParseException("Error parsing block "
-                                + builder.getRegistryName().toString() + ": wood type not found " + woodTypeName));
-                return new FlexWallSignBlock(props, woodType, propertyDefaultValues) {
-                    @Override
-                    protected void createBlockStateDefinition(StateDefinition.Builder<Block, BlockState> builder1) {
-                        super.createBlockStateDefinition(builder1);
-                                  for (Property<?> property : _properties) {
-                            try {
-                                builder1.add(property);
-                            } catch (IllegalArgumentException e) {
-                                //pass
-                            }
-                        }
-                    }
-                };
-            };
-        }, "cutout", false, false, false);
-        FlexBlockType.register("jsonmore:standing_sign", data -> {
-            var blockSetType = new MutableObject<ResourceLocation>();
-            var woodTypeName = Utils.getOrInfo(() -> data.get("wood_type").getAsString(), "oak");
-            blockSetType.setValue(new ResourceLocation(woodTypeName));
-            return (props, builder) -> {
-                List<Property<?>> _properties = builder.getProperties();
-                Map<Property<?>, Comparable<?>> propertyDefaultValues = builder.getPropertyDefaultValues();
-                var woodType = WoodType.values().filter(w -> Objects.equals(w.name(), woodTypeName)).findFirst()
-                        .orElseThrow(() -> new ThingParseException("Error parsing block "
-                                + builder.getRegistryName().toString() + ": wood type not found " + woodTypeName));
-                return new FlexStandingSignBlock(props, woodType, propertyDefaultValues) {
-                    @Override
-                    protected void createBlockStateDefinition(StateDefinition.Builder<Block, BlockState> builder1) {
-                        super.createBlockStateDefinition(builder1);
-                        for (Property<?> property : _properties) {
-                            try {
-                                builder1.add(property);
-                            } catch (IllegalArgumentException e) {
-                                throw new ThingParseException("Property " + property + " not found", e);
-                            }
-                        }
-                    }
-                };
-            };
-        }, "cutout", false, false, false);
         FlexBlockType.register("jsonmore:container", data -> {
             int slots = GsonHelper.getAsInt(data, "slots", 27);
-            ResourceLocation openSound = new ResourceLocation(
+            ResourceLocation openSound = ResourceLocation.parse(
                     GsonHelper.getAsString(data, "open_sound", "none:none"));
-            ResourceLocation closeSound = new ResourceLocation(
+            ResourceLocation closeSound = ResourceLocation.parse(
                     GsonHelper.getAsString(data, "close_sound", "none:none"));
             boolean waterlogged = GsonHelper.getAsBoolean(data, "can_waterlogged", false);
             String facing = GsonHelper.getAsString(data, "directions", "facing_horizontal");
@@ -160,13 +98,13 @@ public class MinecraftPlugin {
                 }
             }
             insertFilters.put(FaceFilter.ANY, placeFilter);
-            ResourceLocation connectableContainers = new ResourceLocation(
+            ResourceLocation connectableContainers = ResourceLocation.parse(
                     GsonHelper.getAsString(data, "connectable", "none:none"));
             return (props, builder) -> {
                 List<Property<?>> _properties = builder.getProperties();
                 Map<Property<?>, Comparable<?>> propertyDefaultValues = builder.getPropertyDefaultValues();
-                SoundEvent openSoundEvent = ForgeRegistries.SOUND_EVENTS.getValue(openSound);
-                SoundEvent closeSoundEvent = ForgeRegistries.SOUND_EVENTS.getValue(closeSound);
+                SoundEvent openSoundEvent = BuiltInRegistries.SOUND_EVENT.get(openSound);
+                SoundEvent closeSoundEvent = BuiltInRegistries.SOUND_EVENT.get(closeSound);
                 PlacingDirections facingDirection;
                 try {
                     facingDirection = PlacingDirections.valueOf(facing.toUpperCase());
@@ -215,7 +153,7 @@ public class MinecraftPlugin {
         return filters;
     }
 
-    public static RegistryObject<BlockEntityType<FlexBarrelBlockEntity>> BARREL_TILE;
+    public static DeferredHolder<BlockEntityType<?>, BlockEntityType<FlexBarrelBlockEntity>> BARREL_TILE;
     public static final Supplier<BlockEntityType<FlexBarrelBlockEntity>> BARREL_SUPPLIER = () -> BlockEntityType.Builder
             .of(FlexBarrelBlockEntity::new)
             .build(null);

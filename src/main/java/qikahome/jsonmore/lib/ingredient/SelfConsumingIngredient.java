@@ -1,12 +1,25 @@
 package qikahome.jsonmore.lib.ingredient;
 
+import java.util.stream.Stream;
+
 import javax.annotation.Nullable;
 
+import com.mojang.serialization.MapCodec;
+import com.mojang.serialization.codecs.RecordCodecBuilder;
+
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.crafting.Ingredient;
-import net.minecraftforge.common.crafting.AbstractIngredient;
+import net.neoforged.neoforge.common.crafting.ICustomIngredient;
 
-public abstract class SelfConsumingIngredient extends AbstractIngredient {
+public abstract class SelfConsumingIngredient implements ICustomIngredient {
+    protected static final MapCodec<Ingredient> INGREDIENT = Ingredient.CODEC.fieldOf("ingredient");
+
+    protected static <T extends SelfConsumingIngredient> RecordCodecBuilder<T, Ingredient> getIngredientField() {
+        return INGREDIENT.forGetter(ing -> ing.ingredient);
+    }
+
     protected final Ingredient ingredient;
 
     public SelfConsumingIngredient(Ingredient ingredient) {
@@ -20,11 +33,12 @@ public abstract class SelfConsumingIngredient extends AbstractIngredient {
      * @param stack      要消耗的物品栈（容器中的原始引用）
      * @return 消耗后的返还物品（由调用者决定如何处理）
      */
-    public static ItemStack consume(Ingredient ingredient, ItemStack stack) {
+    public static ItemStack consume(Ingredient ingredient, ItemStack stack, ServerLevel level,
+            @Nullable LivingEntity entity) {
         if (stack.isEmpty())
             return stack;
-        if (ingredient instanceof SelfConsumingIngredient selfConsumingIngredient)
-            return selfConsumingIngredient.consume(stack);
+        if (ingredient.getCustomIngredient() instanceof SelfConsumingIngredient selfConsumingIngredient)
+            return selfConsumingIngredient.consume(stack, level, entity);
         return vanillaConsume(stack);
     }
 
@@ -34,8 +48,8 @@ public abstract class SelfConsumingIngredient extends AbstractIngredient {
      * @param stack 要消耗的物品栈（会直接修改，必须传入容器中的原始引用）
      * @return 消耗后的返还物品
      */
-    public ItemStack consume(ItemStack stack) {
-        return consume(ingredient, stack);
+    public ItemStack consume(ItemStack stack, ServerLevel level, @Nullable LivingEntity entity) {
+        return consume(ingredient, stack, level, entity);
     }
 
     /**
@@ -61,7 +75,7 @@ public abstract class SelfConsumingIngredient extends AbstractIngredient {
     public static void outputModify(Ingredient ingredient, ItemStack matched, ItemStack output) {
         if (matched.isEmpty())
             return;
-        if (ingredient instanceof SelfConsumingIngredient selfConsumingIngredient)
+        if (ingredient.getCustomIngredient() instanceof SelfConsumingIngredient selfConsumingIngredient)
             selfConsumingIngredient.outputModify(matched, output);
     }
 
@@ -76,13 +90,8 @@ public abstract class SelfConsumingIngredient extends AbstractIngredient {
     }
 
     @Override
-    public ItemStack[] getItems() {
-        return ingredient.getItems();
-    }
-
-    @Override
-    public boolean isEmpty() {
-        return ingredient.isEmpty();
+    public Stream<ItemStack> getItems() {
+        return Stream.of(ingredient.getItems());
     }
 
     @Override
@@ -95,6 +104,4 @@ public abstract class SelfConsumingIngredient extends AbstractIngredient {
         return false;
     }
 
-    @Override
-    public abstract net.minecraftforge.common.crafting.IIngredientSerializer<? extends Ingredient> getSerializer();
 }

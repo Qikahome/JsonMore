@@ -15,7 +15,6 @@ public abstract class MixinBlockEntityType<T extends BlockEntity> {
         @Inject(method = "isValid", at = @At("HEAD"), cancellable = true)
         public void isValid(BlockState p_155263_, CallbackInfoReturnable<Boolean> cir) {
                 if (p_155263_.getBlock() instanceof IFlexEntityBlock<?> feb) {
-                        //LOGGER.debug("Validating flex block: {}", p_155263_.getBlock());
                         cir.setReturnValue(feb.isValid((BlockEntityType)(Object)this));
                         cir.cancel();
                 }

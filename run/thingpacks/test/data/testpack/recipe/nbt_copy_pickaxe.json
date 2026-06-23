@@ -1,0 +1,33 @@
+{
+    "type": "jsonmore:shaped_consuming",
+    "pattern": [
+        "ddd",
+        " p "
+    ],
+    "key": {
+        "d": {
+            "item": "minecraft:diamond"
+        },
+        "p": {
+            "type": "jsonmore:nbt_copy",
+            "ingredient": {
+                "type": "jsonmore:remainder_override",
+                "ingredient": {
+                    "tag": "minecraft:pickaxes"
+                },
+                "remainder_override": {
+                    "id": "minecraft:stick",
+                    "count": 2
+                }
+            },
+            "mode": "MERGE_SOURCE_FIRST",
+            "tags": [
+                "*",
+                "!minecraft:damage"
+            ]
+        }
+    },
+    "result": { "id": "minecraft:diamond_pickaxe",
+        "count": 1
+    }
+}

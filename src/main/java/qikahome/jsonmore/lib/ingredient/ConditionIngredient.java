@@ -3,43 +3,44 @@ package qikahome.jsonmore.lib.ingredient;
 import java.util.stream.Stream;
 
 import javax.annotation.Nullable;
+import com.mojang.serialization.Codec;
+import com.mojang.serialization.MapCodec;
+import com.mojang.serialization.codecs.RecordCodecBuilder;
 
-import com.google.gson.JsonElement;
-import com.google.gson.JsonObject;
-import com.google.gson.JsonParseException;
-
-import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.item.crafting.Ingredient;
-import net.minecraftforge.common.crafting.CraftingHelper;
-import net.minecraftforge.common.crafting.IIngredientSerializer;
-import net.minecraftforge.common.crafting.conditions.ICondition;
+import net.neoforged.neoforge.common.conditions.ICondition;
+import net.neoforged.neoforge.common.crafting.IngredientType;
+import net.neoforged.neoforge.registries.DeferredHolder;
+import qikahome.jsonmore.JsonMore;
 
 public class ConditionIngredient extends SelfConsumingIngredient {
-    public static final ResourceLocation ID = new ResourceLocation("jsonmore:condition");
+    public static final ResourceLocation ID = ResourceLocation.parse("jsonmore:condition");
     private static final String DEFAULT_MESSAGE = "recipe.jsonmore.disabled";
+
+    public static final MapCodec<ConditionIngredient> CODEC = RecordCodecBuilder.mapCodec(
+            v -> v.group(
+                    getIngredientField(),
+                    ICondition.CODEC.fieldOf("condition").forGetter(i -> i.condition),
+                    Codec.STRING.optionalFieldOf("message", DEFAULT_MESSAGE).forGetter(i -> i.message))
+                    .apply(v, ConditionIngredient::new));
+    public static final DeferredHolder<IngredientType<?>, IngredientType<ConditionIngredient>> TYPE = JsonMore.INGREDIENT_TYPES
+            .register(ID.getPath(), () -> new IngredientType<>(CODEC));
 
     @Nullable
     private final ICondition condition;
-    @Nullable
-    private final JsonObject conditionJson;
-    private final boolean networkPasses;
     private final String message;
 
-    private ConditionIngredient(Ingredient ingredient, @Nullable ICondition condition, @Nullable JsonObject conditionJson, boolean networkPasses, String message) {
+    private ConditionIngredient(Ingredient ingredient, @Nullable ICondition condition, String message) {
         super(ingredient);
         this.condition = condition;
-        this.conditionJson = conditionJson;
-        this.networkPasses = networkPasses;
         this.message = message;
     }
 
     private boolean passes() {
-        if (conditionJson == null)
-            return networkPasses; // 从网络来的，使用服务端评估结果
         return condition.test(ICondition.IContext.EMPTY);
     }
 
@@ -51,67 +52,20 @@ public class ConditionIngredient extends SelfConsumingIngredient {
     }
 
     @Override
-    public ItemStack[] getItems() {
+    public Stream<ItemStack> getItems() {
         if (!passes()) {
             ItemStack barrier = new ItemStack(Items.BARRIER);
-            barrier.setHoverName(Component.translatable(message));
-            return new ItemStack[]{ barrier };
+            barrier.set(net.minecraft.core.component.DataComponents.CUSTOM_NAME, Component.translatable(message));
+            return Stream.of(barrier);
         }
         return super.getItems();
     }
 
     @Override
-    public IIngredientSerializer<? extends Ingredient> getSerializer() {
-        return Serializer.INSTANCE;
-    }
-
-    @Override
-    public JsonElement toJson() {
-        JsonObject json = new JsonObject();
-        json.addProperty("type", ID.toString());
-        if (conditionJson != null)
-            json.add("condition", conditionJson.deepCopy());
-        json.add("ingredient", ingredient.toJson());
-        if (!DEFAULT_MESSAGE.equals(message))
-            json.addProperty("message", message);
-        return json;
-    }
-
-    public static class Serializer implements IIngredientSerializer<ConditionIngredient> {
-        public static final Serializer INSTANCE = new Serializer();
-
-        @Override
-        public ConditionIngredient parse(FriendlyByteBuf buffer) {
-            boolean passes = buffer.readBoolean();
-            Ingredient ingredient = Ingredient.fromNetwork(buffer);
-            String message = buffer.readUtf();
-            return new ConditionIngredient(ingredient, null, null, passes, message);
-        }
-
-        @Override
-        public ConditionIngredient parse(JsonObject json) {
-            if (!json.has("condition"))
-                throw new JsonParseException("Condition ingredient must have 'condition' field");
-            if (!json.has("ingredient"))
-                throw new JsonParseException("Condition ingredient must have 'ingredient' field");
-
-            JsonObject conditionJson = json.getAsJsonObject("condition").deepCopy();
-            ICondition condition = CraftingHelper.getCondition(conditionJson);
-            Ingredient ingredient = Ingredient.fromJson(json.get("ingredient"));
-            String message = json.has("message") ? json.get("message").getAsString() : DEFAULT_MESSAGE;
-
-            return new ConditionIngredient(ingredient, condition, conditionJson, false, message);
-        }
-
-        @Override
-        public void write(FriendlyByteBuf buffer, ConditionIngredient ingredient) {
-            buffer.writeBoolean(ingredient.passes());
-            ingredient.ingredient.toNetwork(buffer);
-            buffer.writeUtf(ingredient.message);
-        }
+    public IngredientType<?> getType() {
+        return TYPE.get();
     }
 
     public static void register() {
-        CraftingHelper.register(ID, Serializer.INSTANCE);
     }
 }

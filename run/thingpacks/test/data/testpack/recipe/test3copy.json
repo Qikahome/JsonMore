@@ -1,0 +1,22 @@
+{
+    "type": "jsonmore:shapeless_consuming",
+    "ingredients": [
+        {
+            "type": "jsonmore:counted",
+            "ingredient": {
+                "item": "minecraft:diamond"
+            },
+            "count": 3
+        },
+        {
+            "type": "jsonmore:tool_damaging",
+            "ingredient": {
+                "tag": "minecraft:pickaxes"
+            },
+            "damage": 1
+        }
+    ],
+    "result": { "id": "minecraft:diamond_block",
+        "count": 1
+    }
+}

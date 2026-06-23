@@ -1,0 +1,13 @@
+{
+  "type": "minecraft:crafting_shapeless",
+  "ingredients": [
+    {
+      "type": "jsonmore:not",
+      "ingredient": {
+        "tag": "planks"
+      }
+    }
+  ],
+  "result": { "id": "testpack:container_large"
+  }
+}

@@ -1,61 +1,49 @@
 package qikahome.jsonmore.lib.ingredient;
 
-import static qikahome.jsonmore.JsonMore.LOGGER;
-
 import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
-
 import javax.annotation.Nullable;
 
-import com.google.gson.JsonArray;
-import com.google.gson.JsonElement;
-import com.google.gson.JsonObject;
-import com.google.gson.JsonParseException;
+import com.mojang.serialization.Codec;
+import com.mojang.serialization.MapCodec;
+import com.mojang.serialization.codecs.RecordCodecBuilder;
 
-import net.minecraft.nbt.CompoundTag;
-import net.minecraft.nbt.ListTag;
-import net.minecraft.nbt.Tag;
-import net.minecraft.network.FriendlyByteBuf;
+import net.minecraft.core.component.DataComponentType;
+import net.minecraft.core.component.DataComponentPatch;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceLocation;
-import net.minecraft.util.GsonHelper;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.crafting.Ingredient;
-import net.minecraftforge.common.crafting.CraftingHelper;
-import net.minecraftforge.common.crafting.IIngredientSerializer;
+import net.neoforged.neoforge.common.crafting.IngredientType;
+import net.neoforged.neoforge.registries.DeferredHolder;
+import qikahome.jsonmore.JsonMore;
+import qikahome.jsonmore.Utils;
 
 public class NBTCopyIngredient extends SelfConsumingIngredient {
-    public static final ResourceLocation ID = new ResourceLocation("jsonmore:nbt_copy");
+    public static final ResourceLocation ID = ResourceLocation.parse("jsonmore:nbt_copy");
 
-    private static final Pattern PATH_PATTERN = Pattern.compile("(\\w+)(?:\\[(\\d+)\\])?");
+    public static final MapCodec<NBTCopyIngredient> CODEC = RecordCodecBuilder.mapCodec(
+            v -> v.group(
+                    getIngredientField(),
+                    Utils.enumCodec(Mode.class).fieldOf("mode").forGetter(i -> i.mode),
+                    Codec.STRING.listOf().optionalFieldOf("tags", List.of()).forGetter(i -> i.tags))
+                    .apply(v, NBTCopyIngredient::new));
+    public static final DeferredHolder<IngredientType<?>, IngredientType<NBTCopyIngredient>> TYPE = JsonMore.INGREDIENT_TYPES
+            .register(ID.getPath(), () -> new IngredientType<>(CODEC));
 
     public enum Mode {
+        REPLACE_ALL,
         REPLACE,
         MERGE_TARGET_FIRST,
-        MERGE_SOURCE_FIRST
+        MERGE_SOURCE_FIRST,
     }
 
     private final Mode mode;
     @Nullable
     private final List<String> tags;
-    @Nullable
-    private final transient Set<PathSpec> parsedPaths;
-    @Nullable
-    private final transient Set<PathSpec> excludedPaths;
-
-    private static class PathSpec {
-        final List<String> keys;
-        final List<Integer> indices;
-
-        PathSpec(List<String> keys, List<Integer> indices) {
-            this.keys = keys;
-            this.indices = indices;
-        }
-    }
+    private boolean hasWildcard = false;
+    final List<ResourceLocation> includes = new ArrayList<>();
+    final List<ResourceLocation> excludes = new ArrayList<>();
 
     public NBTCopyIngredient(Ingredient ingredient, Mode mode) {
         this(ingredient, mode, null);
@@ -67,62 +55,16 @@ public class NBTCopyIngredient extends SelfConsumingIngredient {
         this.tags = tags;
 
         if (tags != null && !tags.isEmpty()) {
-            List<String> includes = new ArrayList<>();
-            List<String> excludes = new ArrayList<>();
-            boolean hasWildcard = false;
-
             for (String tag : tags) {
                 if (tag.equals("*")) {
                     hasWildcard = true;
                 } else if (tag.startsWith("!")) {
-                    excludes.add(tag.substring(1));
+                    excludes.add(ResourceLocation.parse(tag.substring(1)));
                 } else {
-                    includes.add(tag);
+                    includes.add(ResourceLocation.parse(tag));
                 }
             }
-
-            this.parsedPaths = (hasWildcard || !includes.isEmpty()) ? parsePaths(includes, false) : null;
-            this.excludedPaths = !excludes.isEmpty() ? parsePaths(excludes, true) : null;
-        } else {
-            this.parsedPaths = null;
-            this.excludedPaths = null;
         }
-    }
-
-    private Set<PathSpec> parsePaths(List<String> paths, boolean negated) {
-        Set<PathSpec> specs = new HashSet<>();
-        for (String path : paths) {
-            List<String> keys = new ArrayList<>();
-            List<Integer> indices = new ArrayList<>();
-
-            Matcher matcher = PATH_PATTERN.matcher(path);
-            int pos = 0;
-            boolean valid = true;
-
-            while (pos < path.length() && matcher.find(pos)) {
-                String key = matcher.group(1);
-                String indexStr = matcher.group(2);
-
-                keys.add(key);
-                indices.add(indexStr != null ? Integer.parseInt(indexStr) : -1);
-                pos = matcher.end();
-
-                if (pos < path.length() && path.charAt(pos) != '.') {
-                    valid = false;
-                    break;
-                }
-                pos++;
-            }
-
-            if (!valid) {
-                throw new com.google.gson.JsonSyntaxException("Invalid tag path: " + path);
-            }
-            
-            if (!keys.isEmpty()) {
-                specs.add(new PathSpec(keys, indices));
-            }
-        }
-        return specs;
     }
 
     @Override
@@ -136,259 +78,50 @@ public class NBTCopyIngredient extends SelfConsumingIngredient {
         if (target.isEmpty() || source.isEmpty())
             return;
 
-        CompoundTag targetNBT = target.getTag();
-        CompoundTag sourceNBT = source.getTag();
-
-        if (sourceNBT == null)
-            return;
+        var sourceNBT = source.getComponentsPatch();
 
         switch (mode) {
-            case REPLACE:
-                if (targetNBT != null) {
-                    target.setTag(sourceNBT.copy());
-                } else {
-                    target.setTag(sourceNBT.copy());
-                }
-                break;
-
-            case MERGE_TARGET_FIRST:
-                if (targetNBT == null) {
-                    target.setTag(sourceNBT.copy());
-                } else {
-                    CompoundTag merged = targetNBT.copy();
-                    mergeNBT(merged, sourceNBT, false);
-                    target.setTag(merged);
-                }
-                break;
-
-            case MERGE_SOURCE_FIRST:
-                if (targetNBT == null) {
-                    target.setTag(sourceNBT.copy());
-                } else {
-                    CompoundTag merged = sourceNBT.copy();
-                    mergeNBT(merged, targetNBT, false);
-                    target.setTag(merged);
-                }
-                break;
-        }
-    }
-
-    private void mergeNBT(CompoundTag target, CompoundTag source, boolean sourceWins) {
-        mergeNBT(target, source, sourceWins, new ArrayList<>(), 0);
-    }
-
-    private void mergeNBT(CompoundTag target, CompoundTag source, boolean sourceWins,
-            List<String> currentPath, int depth) {
-        for (String key : source.getAllKeys()) {
-            List<String> newPath = new ArrayList<>(currentPath);
-            newPath.add(key);
-
-            if (parsedPaths != null && !parsedPaths.isEmpty()) {
-                if (!matchesAnyPath(newPath, depth)) {
-                    continue;
-                }
+            case REPLACE -> {
+                var targetPatch = target.getComponentsPatch();
+                targetPatch.forget(any -> true);
+                mergeAllFiltered(target, sourceNBT, true);
             }
-
-            Tag sourceTag = source.get(key);
-            if (sourceTag == null)
-                continue;
-
-            if (target.contains(key)) {
-                Tag targetTag = target.get(key);
-                if (targetTag instanceof CompoundTag && sourceTag instanceof CompoundTag) {
-                    mergeNBT((CompoundTag) targetTag, (CompoundTag) sourceTag, sourceWins, newPath, depth + 1);
-                } else if (targetTag instanceof ListTag && sourceTag instanceof ListTag) {
-                    if (sourceWins) {
-                        target.put(key, sourceTag.copy());
-                    }
-                } else {
-                    if (sourceWins) {
-                        target.put(key, sourceTag.copy());
-                    }
+            case MERGE_TARGET_FIRST -> {
+                mergeAllFiltered(target, sourceNBT, false);
+            }
+            case MERGE_SOURCE_FIRST -> {
+                mergeAllFiltered(target, sourceNBT, true);
+            }
+            case REPLACE_ALL -> {
+                var targetPatch = target.getComponentsPatch();
+                targetPatch.forget(any -> true);
+                for (var key : source.getComponents().keySet()) {
+                    target.set((DataComponentType) key, source.get(key));
                 }
-            } else {
-                target.put(key, sourceTag.copy());
             }
         }
     }
 
-    private boolean matchesAnyPath(List<String> currentPath, int depth) {
-        boolean excluded = isExcluded(currentPath);
-        if (excluded) {
-            return false;
-        }
-
-        if (parsedPaths == null || parsedPaths.isEmpty()) {
-            return true;
-        }
-
-        for (PathSpec spec : parsedPaths) {
-            if (currentPath.size() > spec.keys.size()) {
-                continue;
-            }
-
-            boolean matches = true;
-            for (int i = 0; i < currentPath.size() && i < spec.keys.size(); i++) {
-                if (!spec.keys.get(i).equals(currentPath.get(i))) {
-                    matches = false;
-                    break;
-                }
-                int index = spec.indices.get(i);
-                if (index >= 0) {
-                    matches = false;
-                    break;
-                }
-            }
-
-            if (matches) {
-                if (currentPath.size() == spec.keys.size()) {
-                    int lastIndex = spec.indices.get(spec.keys.size() - 1);
-                    if (lastIndex >= 0) {
-                        return true;
+    private void mergeAllFiltered(ItemStack target, DataComponentPatch source, boolean sourceWins) {
+        var targetPatch = target.getComponentsPatch();
+        for (var entry : source.entrySet()) {
+            DataComponentType key = entry.getKey();
+            ResourceLocation keyName = BuiltInRegistries.DATA_COMPONENT_TYPE.getKey(key);
+            if (this.hasWildcard || this.includes.isEmpty() || this.includes.contains(keyName)) {
+                if (!this.excludes.contains(keyName)) {
+                    if (sourceWins || targetPatch.entrySet().stream().noneMatch(e -> e.getKey() == key)) {
+                        entry.getValue().ifPresent(val -> target.set(key, val));
                     }
                 }
-                return true;
             }
         }
-        return false;
-    }
-
-    private boolean isExcluded(List<String> currentPath) {
-        if (excludedPaths == null || excludedPaths.isEmpty()) {
-            return false;
-        }
-
-        for (PathSpec spec : excludedPaths) {
-            if (currentPath.size() > spec.keys.size()) {
-                continue;
-            }
-
-            boolean matches = true;
-            for (int i = 0; i < currentPath.size() && i < spec.keys.size(); i++) {
-                if (!spec.keys.get(i).equals(currentPath.get(i))) {
-                    matches = false;
-                    break;
-                }
-                int index = spec.indices.get(i);
-                if (index >= 0) {
-                    matches = false;
-                    break;
-                }
-            }
-
-            if (matches) {
-                if (currentPath.size() == spec.keys.size()) {
-                    int lastIndex = spec.indices.get(spec.keys.size() - 1);
-                    if (lastIndex >= 0) {
-                        return true;
-                    }
-                }
-                return true;
-            }
-        }
-        return false;
     }
 
     @Override
-    public IIngredientSerializer<? extends Ingredient> getSerializer() {
-        return Serializer.INSTANCE;
-    }
-
-    @Override
-    public JsonElement toJson() {
-        JsonObject json = new JsonObject();
-        json.addProperty("type", ID.toString());
-        json.add("ingredient", ingredient.toJson());
-        json.addProperty("mode", mode.name());
-        if (tags != null && !tags.isEmpty()) {
-            if (tags.size() == 1) {
-                json.addProperty("tags", tags.get(0));
-            } else {
-                JsonArray tagsArray = new JsonArray();
-                for (String tag : tags) {
-                    tagsArray.add(tag);
-                }
-                json.add("tags", tagsArray);
-            }
-        }
-        return json;
-    }
-
-    public static class Serializer implements IIngredientSerializer<NBTCopyIngredient> {
-        public static final Serializer INSTANCE = new Serializer();
-
-        @Override
-        public NBTCopyIngredient parse(FriendlyByteBuf buffer) {
-            Ingredient ingredient = Ingredient.fromNetwork(buffer);
-            int modeOrdinal = buffer.readVarInt();
-            Mode mode = Mode.values()[modeOrdinal];
-            boolean hasTags = buffer.readBoolean();
-            List<String> tags = null;
-            if (hasTags) {
-                int tagCount = buffer.readVarInt();
-                tags = new java.util.ArrayList<>();
-                for (int i = 0; i < tagCount; i++) {
-                    tags.add(buffer.readUtf());
-                }
-            }
-            return new NBTCopyIngredient(ingredient, mode, tags);
-        }
-
-        @Override
-        public NBTCopyIngredient parse(JsonObject json) {
-            if (!json.has("ingredient")) {
-                throw new JsonParseException("NBTCopyIngredient must have 'ingredient' field");
-            }
-
-            Mode mode = Mode.REPLACE;
-            if (json.has("mode")) {
-                String modeStr = GsonHelper.getAsString(json, "mode");
-                try {
-                    mode = Mode.valueOf(modeStr);
-                } catch (IllegalArgumentException e) {
-                    throw new JsonParseException("Invalid mode: " + modeStr);
-                }
-            }
-
-            List<String> tags = null;
-            if (json.has("tags")) {
-                JsonElement tagsElement = json.get("tags");
-                if (tagsElement.isJsonArray()) {
-                    tags = new java.util.ArrayList<>();
-                    for (JsonElement element : tagsElement.getAsJsonArray()) {
-                        tags.add(element.getAsString());
-                    }
-                } else {
-                    tags = Arrays.asList(GsonHelper.getAsString(json, "tags"));
-                }
-            }
-
-            Ingredient ingredient;
-            if (json.has("remainder_override")) {
-                ingredient = RemainderOverrideIngredient.Serializer.INSTANCE.parse(json);
-            } else {
-                JsonElement ingredientJson = json.get("ingredient");
-                ingredient = Ingredient.fromJson(ingredientJson);
-            }
-
-            return new NBTCopyIngredient(ingredient, mode, tags);
-        }
-
-        @Override
-        public void write(FriendlyByteBuf buffer, NBTCopyIngredient ingredient) {
-            ingredient.ingredient.toNetwork(buffer);
-            buffer.writeVarInt(ingredient.mode.ordinal());
-            buffer.writeBoolean(ingredient.tags != null);
-            if (ingredient.tags != null) {
-                buffer.writeVarInt(ingredient.tags.size());
-                for (String tag : ingredient.tags) {
-                    buffer.writeUtf(tag);
-                }
-            }
-        }
+    public IngredientType<?> getType() {
+        return TYPE.get();
     }
 
     public static void register() {
-        CraftingHelper.register(ID, Serializer.INSTANCE);
     }
 }

@@ -24,7 +24,7 @@ SOFTWARE.
 package qikahome.jsonmore.cyclopscore;
 
 import com.google.common.collect.Lists;
-import net.minecraft.network.FriendlyByteBuf;
+import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.world.Container;
 import net.minecraft.world.CompoundContainer;
 import net.minecraft.world.entity.player.Inventory;
@@ -66,14 +66,14 @@ public class ScrollingContainerAdapter extends ScrollingInventoryContainer<Slot>
 
     private final List<Slot> chestSlots;
 
-    public ScrollingContainerAdapter(int id, Inventory playerInventory, FriendlyByteBuf data) {
+    public ScrollingContainerAdapter(int id, Inventory playerInventory, RegistryFriendlyByteBuf data) {
         this(id, playerInventory, new LargeInventory(data.readVarInt(), 64));
     }
 
     public ScrollingContainerAdapter(int id, Inventory playerInventory, Container inventory) {
         super(CyclopsCorePlugin.SCROLLING_CONTAINER_MENU.get(), id, playerInventory, inventory, Collections.<Slot>emptyList(), (item, pattern) -> true);
         //LOGGER.info("createAdapterMenu");
-        this.chestSlots = Lists.newArrayListWithCapacity(getSizeInventory());
+        this.chestSlots = Lists.newArrayListWithExpectedSize(getSizeInventory());
         this.addChestSlots(getSizeInventory() / CHEST_INVENTORY_COLUMNS, CHEST_INVENTORY_COLUMNS);
         this.addPlayerInventory(playerInventory, INVENTORY_OFFSET_X, INVENTORY_OFFSET_Y);
         updateFilter("");

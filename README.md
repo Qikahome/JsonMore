@@ -14,20 +14,17 @@ A [JsonThings](https://github.com/gigaherz/JsonThings) addon that adds more JSON
 - **Multiple GUI Types** - Vanilla chest UI, filtered chest UI, or CyclopsCore scrollable container UI
 - **Facing & Blocking** - Configurable facing direction and blocking direction (prevents opening when blocked)
 
-### Tinkers' Construct Integration
-- **Tinker Chest** - A Tinkers' Construct-style chest with configurable slot mode (`scaling` or `fixed`), max slots, stack limit, and item tag filters
-- **Fluid Tank** - A fluid tank block with configurable capacity
-- **Copper Can** - A fluid-holding item with configurable capacity
-- **Dynamic Material Stat Types** - Define custom material attributes (durability, mining speed, attack damage, harvest tier, etc.) using float and tier fields
+### ~~Tinkers' Construct Integration~~ *(not yet ported to 1.21.1)*
+- ~~**Tinker Chest** - A Tinkers' Construct-style chest with configurable slot mode (`scaling` or `fixed`), max slots, stack limit, and item tag filters~~
+- ~~**Fluid Tank** - A fluid tank block with configurable capacity~~
+- ~~**Copper Can** - A fluid-holding item with configurable capacity~~
+- ~~**Dynamic Material Stat Types** - Define custom material attributes (durability, mining speed, attack damage, harvest tier, etc.) using float and tier fields~~
 
 ### Note Blocks
 - **Custom Note Blocks** - (requires [Anvil MusBox](https://github.com/Qikahome/Anvil_MusBox)) Create note blocks with configurable instruments (via block tags), sounds, volume, and collision
 
-### Signs
-- **Standing & Wall Signs** - Configurable wood type, with separate block and item registration
-
-### Mantle Books
-- **Guide Books** - (requires [Mantle](https://github.com/SlimeKnights/Mantle)) Create custom guide books with Mantle and Tinkers' Construct book transformers
+### ~~Mantle Books~~ *(not yet ported to 1.21.1)*
+- ~~**Guide Books** - (requires [Mantle](https://github.com/SlimeKnights/Mantle)) Create custom guide books with Mantle and Tinkers' Construct book transformers~~
 
 ### Custom Game Rules
 - **Boolean & Integer Game Rules** - Define custom gamerules via JSON, usable as recipe loading conditions
@@ -55,9 +52,10 @@ A [JsonThings](https://github.com/gigaherz/JsonThings) addon that adds more JSON
 - [JsonThings](https://www.curseforge.com/minecraft/mc-mods/json-things) (0.9.9+)
 
 ### Optional
-- [JEI](https://www.curseforge.com/minecraft/mc-mods/jei) (15.20.0+) - Recipe display
-- [Mantle](https://www.curseforge.com/minecraft/mc-mods/mantle) (1.11.95+) - Guide book support
-- [Tinkers' Construct](https://www.curseforge.com/minecraft/mc-mods/tinkers-construct) (3.11.0.148+) - Tinker chest, fluid tank, copper can, material stats
+- [JEI](https://www.curseforge.com/minecraft/mc-mods/jei) - Recipe display
+### ~~Optional (not yet ported to 1.21.1)~~
+- ~~[Mantle](https://www.curseforge.com/minecraft/mc-mods/mantle) - Guide book support~~
+- ~~[Tinkers' Construct](https://www.curseforge.com/minecraft/mc-mods/tinkers-construct) - Tinker chest, fluid tank, copper can, material stats~~
 - [Anvil MusBox](https://modrinth.com/mod/UHRtsv4j) (1.1.0+) - Custom note blocks
 - [CyclopsCore](https://www.curseforge.com/minecraft/mc-mods/cyclops-core) (1.19.1+) - Scrollable container UI
 

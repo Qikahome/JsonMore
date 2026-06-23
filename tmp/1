@@ -299,7 +299,7 @@ public class ShapedRecipe implements CraftingRecipe, net.minecraftforge.common.c
    }
 
    public static class Serializer implements RecipeSerializer<ShapedRecipe> {
-      private static final ResourceLocation NAME = new ResourceLocation("minecraft", "crafting_shaped");
+      private static final ResourceLocation NAME = ResourceLocation.parse("minecraft", "crafting_shaped");
       public ShapedRecipe fromJson(ResourceLocation p_44236_, JsonObject p_44237_) {
          String s = GsonHelper.getAsString(p_44237_, "group", "");
          CraftingBookCategory craftingbookcategory = CraftingBookCategory.CODEC.byName(GsonHelper.getAsString(p_44237_, "category", (String)null), CraftingBookCategory.MISC);

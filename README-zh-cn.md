@@ -14,20 +14,17 @@
 - **多种界面** - 原版箱子界面、带过滤器的箱子界面、CyclopsCore 滚动容器界面
 - **朝向与阻挡** - 可配置放置方向，以及阻挡方向（对应方向有方块时禁止打开）
 
-### 匠魂 3 集成
-- **工匠箱** - 匠魂风格的箱子，可配置槽位模式（`scaling` 动态大小/`fixed` 固定大小）、最大槽位数、单槽堆叠上限和物品标签过滤器
-- **流体储罐** - 可配置容量的流体储罐方块
-- **铜罐** - 可配置容量的流体存储物品
-- **动态材料属性类型** - 自定义材料的属性字段（耐久、挖掘速度、攻击伤害、挖掘等级等），支持浮点数和挖掘等级类型
+### ~~匠魂 3 集成~~（尚未移植 1.21.1）
+- ~~**工匠箱** - 匠魂风格的箱子，可配置槽位模式（`scaling` 动态大小/`fixed` 固定大小）、最大槽位数、单槽堆叠上限和物品标签过滤器~~
+- ~~**流体储罐** - 可配置容量的流体储罐方块~~
+- ~~**铜罐** - 可配置容量的流体存储物品~~
+- ~~**动态材料属性类型** - 自定义材料的属性字段（耐久、挖掘速度、攻击伤害、挖掘等级等），支持浮点数和挖掘等级类型~~
 
 ### 音符盒
 - **自定义音符方块** - （需要 [Anvil MusBox](https://github.com/Qikahome/Anvil_MusBox)）通过 JSON 创建音符方块，可配置乐器（通过方块标签）、音效、音量和碰撞
 
-### 告示牌
-- **木牌与墙牌** - 可配置木材类型，方块和物品分开注册
-
-### 地幔指南书
-- **自定义指南书** - （需要 [Mantle](https://github.com/SlimeKnights/Mantle)）创建自定义指南书，支持 Mantle 和匠魂的书籍数据变换器
+### ~~地幔指南书~~（尚未移植 1.21.1）
+- ~~**自定义指南书** - （需要 [Mantle](https://github.com/SlimeKnights/Mantle)）创建自定义指南书，支持 Mantle 和匠魂的书籍数据变换器~~
 
 ### 自定义游戏规则
 - **布尔与整数游戏规则** - 通过 JSON 定义自定义游戏规则，可用作配方加载条件
@@ -55,9 +52,10 @@
 - [JsonThings](https://www.curseforge.com/minecraft/mc-mods/json-things) (0.9.9+)
 
 ### 可选依赖
-- [JEI](https://www.curseforge.com/minecraft/mc-mods/jei) (15.20.0+) - 配方显示
-- [Mantle](https://www.curseforge.com/minecraft/mc-mods/mantle) (1.11.95+) - 指南书支持
-- [Tinkers' Construct](https://www.curseforge.com/minecraft/mc-mods/tinkers-construct) (3.11.0.148+) - 工匠箱、流体储罐、铜罐、材料属性
+- [JEI](https://www.curseforge.com/minecraft/mc-mods/jei) - 配方显示
+### ~~可选依赖（尚未移植 1.21.1）~~
+- ~~[Mantle](https://www.curseforge.com/minecraft/mc-mods/mantle) - 指南书支持~~
+- ~~[Tinkers' Construct](https://www.curseforge.com/minecraft/mc-mods/tinkers-construct) - 工匠箱、流体储罐、铜罐、材料属性~~
 - [Anvil MusBox](https://modrinth.com/mod/UHRtsv4j) (1.1.0+) - 自定义音符方块
 - [CyclopsCore](https://www.curseforge.com/minecraft/mc-mods/cyclops-core) (1.19.1+) - 滚动容器界面
 

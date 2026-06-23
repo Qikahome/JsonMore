@@ -1,24 +1,31 @@
 package qikahome.jsonmore.lib.ingredient;
 
+import java.util.stream.Stream;
+
 import javax.annotation.Nullable;
 
-import com.google.gson.JsonElement;
-import com.google.gson.JsonObject;
-import com.google.gson.JsonParseException;
+import com.mojang.serialization.Codec;
+import com.mojang.serialization.MapCodec;
+import com.mojang.serialization.codecs.RecordCodecBuilder;
 
-import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.resources.ResourceLocation;
-import net.minecraft.util.GsonHelper;
-import net.minecraft.util.RandomSource;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.crafting.Ingredient;
-import net.minecraftforge.common.crafting.CraftingHelper;
-import net.minecraftforge.common.crafting.IIngredientSerializer;
-import net.minecraftforge.fml.ModList;
-import qikahome.jsonmore.tconstruct.TConstructPlugin;
+import net.neoforged.neoforge.common.crafting.IngredientType;
+import net.neoforged.neoforge.registries.DeferredHolder;
+import qikahome.jsonmore.JsonMore;
+import qikahome.jsonmore.Utils;
 
 public class ToolDamagingIngredient extends SelfConsumingIngredient {
-    public static final ResourceLocation ID = new ResourceLocation("jsonmore:tool_damaging");
+    public static final ResourceLocation ID = ResourceLocation.parse("jsonmore:tool_damaging");
+    public static final MapCodec<ToolDamagingIngredient> CODEC = RecordCodecBuilder
+            .mapCodec(v -> v.group(getIngredientField(), Codec.INT.fieldOf("damage").forGetter(i -> i.damage)).apply(v,
+                    ToolDamagingIngredient::new));
+    public static final DeferredHolder<IngredientType<?>, IngredientType<ToolDamagingIngredient>> TYPE = JsonMore.INGREDIENT_TYPES
+            .register(ID.getPath(), () -> new IngredientType<>(CODEC));
+
     private final int damage;
 
     public ToolDamagingIngredient(Ingredient ingredient, int damage) {
@@ -27,94 +34,50 @@ public class ToolDamagingIngredient extends SelfConsumingIngredient {
     }
 
     @Override
-    public ItemStack consume(ItemStack stack) {
+    public ItemStack consume(ItemStack stack, ServerLevel level, @Nullable LivingEntity entity) {
         if (stack.isEmpty())
             return stack;
         if (stack.getCount() > 1)
             throw new IllegalArgumentException("ToolDamagingIngredient only consumes single items");
         ItemStack copy = stack.copy();
-        ItemStack remainder = super.consume(stack);
-        if (copy.hurt(damage, RandomSource.create(), null)) {
+        ItemStack remainder = super.consume(stack, level, entity);
+        var breaked = new Utils.PackedValue<>(false);
+        copy.hurtAndBreak(damage, level, entity, item -> {
+            breaked.setValue(true);
+        });
+        if (breaked.getValue())
             copy = remainder;
-        }
         return copy;
     }
 
     @Override
-    public ItemStack[] getItems() {
-        ItemStack[] items = super.getItems();
-        for (int i = 0; i < items.length; i++) {
-            items[i] = items[i].copy();
-            if (items[i].getMaxDamage()>=damage){
-                items[i].setDamageValue(items[i].getMaxDamage()-damage);
-            }
-        }
-        return items;
+    public Stream<ItemStack> getItems() {
+        return super.getItems().map(stack -> {
+            stack = stack.copy();
+            if (stack.getMaxDamage() >= damage)
+                stack.setDamageValue(damage);
+            return stack;
+        });
     }
 
     @Override
     public boolean test(@Nullable ItemStack stack) {
         if (super.test(stack)) {
-            ModList modList = ModList.get();
+            // ModList modList = ModList.get();
             int maxDamage = stack.getMaxDamage();
-            if (modList.isLoaded("tconstruct"))
-                maxDamage = TConstructPlugin.getRealMaxDamage(stack, maxDamage);
+            // if (modList.isLoaded("tconstruct"))
+            // maxDamage = TConstructPlugin.getRealMaxDamage(stack, maxDamage);
             if (stack.isDamageableItem() && maxDamage - stack.getDamageValue() >= damage)
                 return true;
         }
         return false;
     }
 
-    @Override
-    public IIngredientSerializer<? extends Ingredient> getSerializer() {
-        return Serializer.INSTANCE;
-    }
-
-    @Override
-    public JsonElement toJson() {
-        JsonObject json = new JsonObject();
-        json.addProperty("type", ID.toString());
-        json.add("ingredient", ingredient.toJson());
-        json.addProperty("damage", damage);
-        return json;
-    }
-
-    public static class Serializer implements IIngredientSerializer<ToolDamagingIngredient> {
-        public static final Serializer INSTANCE = new Serializer();
-
-        @Override
-        public ToolDamagingIngredient parse(FriendlyByteBuf buffer) {
-            Ingredient ingredient = Ingredient.fromNetwork(buffer);
-            int damage = buffer.readVarInt();
-            return new ToolDamagingIngredient(ingredient, damage);
-        }
-
-        @Override
-        public ToolDamagingIngredient parse(JsonObject json) {
-            if (!json.has("ingredient")) {
-                throw new JsonParseException("Tool damaging ingredient must have 'ingredient' field");
-            }
-
-            int damage = GsonHelper.getAsInt(json, "damage", 1);
-            Ingredient ingredient;
-            if (json.has("remainder_override")) {
-                ingredient = RemainderOverrideIngredient.Serializer.INSTANCE.parse(json);
-            } else {
-                JsonElement ingredientJson = json.get("ingredient");
-                ingredient = Ingredient.fromJson(ingredientJson);
-            }
-
-            return new ToolDamagingIngredient(ingredient, damage);
-        }
-
-        @Override
-        public void write(FriendlyByteBuf buffer, ToolDamagingIngredient ingredient) {
-            ingredient.ingredient.toNetwork(buffer);
-            buffer.writeVarInt(ingredient.damage);
-        }
-    }
-
     public static void register() {
-        CraftingHelper.register(ID, Serializer.INSTANCE);
+    }
+
+    @Override
+    public IngredientType<?> getType() {
+        return TYPE.get();
     }
 }

@@ -1,0 +1,40 @@
+{
+    "type": "jsonmore:shaped_consuming",
+    "pattern": [
+        "T#T",
+        " W "
+    ],
+    "key": {
+        "T": {
+            "type": "jsonmore:tool_damaging",
+            "ingredient": {
+                "tag": "minecraft:pickaxes"
+            },
+            "damage": 5
+        },
+        "#": {
+            "type": "jsonmore:counted",
+            "ingredient": {
+                "item": "minecraft:iron_ingot"
+            },
+            "count": 3
+        },
+        "W": {
+            "type": "jsonmore:remainder_override",
+            "ingredient": {
+                "type": "jsonmore:counted",
+                "ingredient": {
+                    "item": "minecraft:water_bucket"
+                },
+                "count": 1
+            },
+            "remainder_override": {
+                "id": "minecraft:water_bucket",
+                "count": 1
+            }
+        }
+    },
+    "result": { "id": "minecraft:diamond",
+        "count": 1
+    }
+}

@@ -1,25 +1,35 @@
 package qikahome.jsonmore.lib.ingredient;
 
-import static qikahome.jsonmore.JsonMore.LOGGER;
+import java.util.ArrayList;
+import java.util.stream.Stream;
 
 import javax.annotation.Nullable;
 
-import com.google.gson.JsonElement;
-import com.google.gson.JsonObject;
-import com.google.gson.JsonParseException;
+import com.mojang.serialization.Codec;
+import com.mojang.serialization.MapCodec;
+import com.mojang.serialization.codecs.RecordCodecBuilder;
 
-import net.minecraft.nbt.StringTag;
-import net.minecraft.network.FriendlyByteBuf;
+import net.minecraft.core.component.DataComponents;
+import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
-import net.minecraft.util.GsonHelper;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.crafting.Ingredient;
-import net.minecraftforge.common.crafting.CraftingHelper;
-import net.minecraftforge.common.crafting.IIngredientSerializer;
+import net.minecraft.world.item.component.ItemLore;
+import net.neoforged.neoforge.common.crafting.IngredientType;
+import net.neoforged.neoforge.registries.DeferredHolder;
+import qikahome.jsonmore.JsonMore;
 
 public class CountedIngredient extends SelfConsumingIngredient {
-    public static final ResourceLocation ID = new ResourceLocation("jsonmore:counted");
-    public static final StringTag NO_CONSUME = StringTag.valueOf("{\"translate\":\"ui.jsonmore.no_consume\"}");
+    public static final ResourceLocation ID = ResourceLocation.parse("jsonmore:counted");
+    public static final MapCodec<CountedIngredient> CODEC = RecordCodecBuilder.mapCodec(
+            v -> v.group(
+                    getIngredientField(),
+                    Codec.INT.fieldOf("count").forGetter(i -> i.count))
+                    .apply(v, CountedIngredient::new));
+    public static final DeferredHolder<IngredientType<?>, IngredientType<CountedIngredient>> TYPE = JsonMore.INGREDIENT_TYPES
+            .register(ID.getPath(), () -> new IngredientType<>(CODEC));
 
     private final int count;
 
@@ -29,40 +39,39 @@ public class CountedIngredient extends SelfConsumingIngredient {
     }
 
     @Override
-    public ItemStack consume(ItemStack stack) {
+    public ItemStack consume(ItemStack stack, ServerLevel level, @Nullable LivingEntity entity) {
         if (stack.isEmpty())
             return stack;
-        ItemStack remainder = super.consume(stack).copy();
+        ItemStack remainder = super.consume(stack, level, entity).copy();
         if (count == 0) {
             ItemStack stack2 = stack.copy();
             stack2.setCount(1);
             return stack2;
         }
-        stack.shrink(count - 1); // Unsafe
+        stack.shrink(count - 1);
         remainder.setCount(remainder.getCount() * count);
         return remainder;
     }
 
     @Override
-    public ItemStack[] getItems() {
-        ItemStack[] items = super.getItems();
-        for (int i = 0; i < items.length; i++) {
-            items[i] = items[i].copy();
-            if (count > 0)
-                items[i].setCount(count);
-            else {
-                try {
-                    var display = items[i].getOrCreateTagElement(ItemStack.TAG_DISPLAY);
-                    var lore = display.getList(ItemStack.TAG_LORE, 8);
-                    if (!lore.contains(NO_CONSUME))
-                        lore.add(NO_CONSUME);
-                    display.put(ItemStack.TAG_LORE, lore);
-                } catch (Exception e) {
-                    LOGGER.warn("Failed to parse lore: {}", e.getMessage());
+    public Stream<ItemStack> getItems() {
+        return super.getItems().map(stack -> {
+            stack = stack.copy();
+            if (count > 0) {
+                stack.setCount(count);
+            } else {
+                ItemLore lore = stack.get(DataComponents.LORE);
+                Component noConsume = Component.translatable("ui.jsonmore.no_consume");
+                if (lore == null) {
+                    stack.set(DataComponents.LORE, new ItemLore(new ArrayList<>(java.util.List.of(noConsume))));
+                } else if (!lore.lines().contains(noConsume)) {
+                    var lines = new ArrayList<>(lore.lines());
+                    lines.add(noConsume);
+                    stack.set(DataComponents.LORE, new ItemLore(lines));
                 }
             }
-        }
-        return items;
+            return stack;
+        });
     }
 
     @Override
@@ -74,55 +83,10 @@ public class CountedIngredient extends SelfConsumingIngredient {
     }
 
     @Override
-    public IIngredientSerializer<? extends Ingredient> getSerializer() {
-        return Serializer.INSTANCE;
-    }
-
-    @Override
-    public JsonElement toJson() {
-        JsonObject json = new JsonObject();
-        json.addProperty("type", ID.toString());
-        json.add("ingredient", ingredient.toJson());
-        json.addProperty("count", count);
-        return json;
-    }
-
-    public static class Serializer implements IIngredientSerializer<CountedIngredient> {
-        public static final Serializer INSTANCE = new Serializer();
-
-        @Override
-        public CountedIngredient parse(FriendlyByteBuf buffer) {
-            Ingredient ingredient = Ingredient.fromNetwork(buffer);
-            int count = buffer.readVarInt();
-            return new CountedIngredient(ingredient, count);
-        }
-
-        @Override
-        public CountedIngredient parse(JsonObject json) {
-            if (!json.has("ingredient")) {
-                throw new JsonParseException("Counted ingredient must have 'ingredient' field");
-            }
-
-            int count = GsonHelper.getAsInt(json, "count", 1);
-            Ingredient ingredient;
-            if (json.has("remainder_override")) {
-                ingredient = RemainderOverrideIngredient.Serializer.INSTANCE.parse(json);
-            } else {
-                JsonElement ingredientJson = json.get("ingredient");
-                ingredient = Ingredient.fromJson(ingredientJson);
-            }
-
-            return new CountedIngredient(ingredient, count);
-        }
-
-        @Override
-        public void write(FriendlyByteBuf buffer, CountedIngredient ingredient) {
-            ingredient.ingredient.toNetwork(buffer);
-            buffer.writeVarInt(ingredient.count);
-        }
+    public IngredientType<?> getType() {
+        return TYPE.get();
     }
 
     public static void register() {
-        CraftingHelper.register(ID, Serializer.INSTANCE);
     }
 }

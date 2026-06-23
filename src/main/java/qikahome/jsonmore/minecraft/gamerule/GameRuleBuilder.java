@@ -2,21 +2,19 @@ package qikahome.jsonmore.minecraft.gamerule;
 
 import java.util.HashMap;
 import java.util.Map;
-import java.util.function.BiConsumer;
-
 import javax.annotation.Nullable;
 
 import com.google.gson.JsonObject;
 
 import dev.gigaherz.jsonthings.things.builders.BaseBuilder;
 import dev.gigaherz.jsonthings.things.events.FlexEventHandler;
+import dev.gigaherz.jsonthings.things.events.FlexEventType;
 import dev.gigaherz.jsonthings.things.events.IEventRunner;
 import dev.gigaherz.jsonthings.things.parsers.ThingParser;
 import net.minecraft.resources.ResourceLocation;
-import net.minecraft.server.MinecraftServer;
 import net.minecraft.world.level.GameRules;
 
-public class GameRuleBuilder extends BaseBuilder<GameRules.Type<?>, GameRuleBuilder> implements IEventRunner{
+public class GameRuleBuilder extends BaseBuilder<GameRules.Type<?>, GameRuleBuilder> implements IEventRunner {
 
     protected GameRuleBuilder(ThingParser<GameRuleBuilder> ownerParser, ResourceLocation registryName) {
         super(ownerParser, registryName);
@@ -77,16 +75,16 @@ public class GameRuleBuilder extends BaseBuilder<GameRules.Type<?>, GameRuleBuil
         IGameRuleBuilderFactory<T> createFactory(JsonObject data);
     }
 
-    private final Map<String, FlexEventHandler> eventHandlers = new HashMap<>();
+    private final Map<FlexEventType, FlexEventHandler> eventHandlers = new HashMap<>();
 
     @Override
-    public void addEventHandler(String eventName, FlexEventHandler eventHandler) {
-        eventHandlers.put(eventName, eventHandler);
+    public <T> void addEventHandler(FlexEventType<T> event, FlexEventHandler<T> eventHandler) {
+        eventHandlers.put(event, eventHandler);
     }
 
     @Override
     @Nullable
-    public FlexEventHandler getEventHandler(String eventName) {
-        return eventHandlers.get(eventName);
+    public <T> FlexEventHandler<T> getEventHandler(FlexEventType<T> event) {
+        return eventHandlers.get(event);
     }
 }

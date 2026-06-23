@@ -1,13 +1,4 @@
 {
-  "conditions": [
-    {
-      "type": "not",
-      "condition": {
-        "type": "mod_loaded",
-        "modid": "nonexistant"
-      }
-    }
-  ],
   "type": "axe",
   "tier": "iron",
   "damage": 1,
@@ -20,7 +11,7 @@
 
   "creative_menu_stacks": [
     {
-      "nbt": { "tmp": 0 },
+      "components": { "tmp": 0 },
       "tabs": [ "tools_and_utilities" ]
     }
   ],

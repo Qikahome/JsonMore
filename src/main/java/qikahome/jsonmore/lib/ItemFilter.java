@@ -7,17 +7,20 @@ import java.util.function.Predicate;
 import javax.annotation.Nullable;
 
 import com.google.gson.JsonElement;
+import com.google.gson.JsonParseException;
+import com.mojang.serialization.JsonOps;
 
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.crafting.Ingredient;
 
 public class ItemFilter implements Predicate<ItemStack> {
     private static final org.slf4j.Logger LOGGER = org.slf4j.LoggerFactory.getLogger("JsonMore/ItemFilter");
-    
+
     private Ingredient ingredient;
     private JsonElement pendingJson;
     private boolean resolved = false;
-    
+
     private final Map<ItemStackKey, Boolean> cache = new LinkedHashMap<ItemStackKey, Boolean>(16, 0.75f, true) {
         @Override
         protected boolean removeEldestEntry(Map.Entry<ItemStackKey, Boolean> eldest) {
@@ -52,7 +55,8 @@ public class ItemFilter implements Predicate<ItemStack> {
         if (pendingJson != null) {
             LOGGER.debug("Resolving ItemFilter from JSON: {}", pendingJson);
             try {
-                ingredient = Ingredient.fromJson(pendingJson);
+                ingredient = Ingredient.CODEC.parse(JsonOps.INSTANCE, pendingJson)
+                        .getOrThrow(JsonParseException::new);
                 LOGGER.debug("Resolved ingredient: {}", ingredient);
             } catch (Exception e) {
                 LOGGER.error("Failed to resolve ingredient from JSON", e);
@@ -68,7 +72,7 @@ public class ItemFilter implements Predicate<ItemStack> {
         if (ingredient == null) {
             return true;
         }
-        
+
         ItemStackKey key = new ItemStackKey(stack);
         synchronized (cache) {
             Boolean cached = cache.get(key);
@@ -76,13 +80,13 @@ public class ItemFilter implements Predicate<ItemStack> {
                 return cached;
             }
         }
-        
+
         boolean result = ingredient.test(stack);
-        
+
         synchronized (cache) {
             cache.put(key, result);
         }
-        
+
         return result;
     }
 
@@ -96,45 +100,18 @@ public class ItemFilter implements Predicate<ItemStack> {
         resolve();
         return ingredient;
     }
-    
+
     public void clearCache() {
         synchronized (cache) {
             cache.clear();
         }
     }
-    
-    private static class ItemStackKey {
-        private final int itemId;
-        private final int damage;
-        @Nullable
-        private final net.minecraft.nbt.CompoundTag tag;
-        private final int hashCode;
-        
+
+    private record ItemStackKey(int itemId, int damage, int componentsHash) {
         ItemStackKey(ItemStack stack) {
-            this.itemId = net.minecraft.core.registries.BuiltInRegistries.ITEM.getId(stack.getItem());
-            this.damage = stack.getDamageValue();
-            this.tag = stack.getTag();
-            this.hashCode = computeHashCode();
-        }
-        
-        private int computeHashCode() {
-            int result = itemId;
-            result = 31 * result + damage;
-            result = 31 * result + (tag != null ? tag.hashCode() : 0);
-            return result;
-        }
-        
-        @Override
-        public boolean equals(Object obj) {
-            if (this == obj) return true;
-            if (!(obj instanceof ItemStackKey other)) return false;
-            if (itemId != other.itemId || damage != other.damage) return false;
-            return java.util.Objects.equals(tag, other.tag);
-        }
-        
-        @Override
-        public int hashCode() {
-            return hashCode;
+            this(BuiltInRegistries.ITEM.getId(stack.getItem()),
+                    stack.getDamageValue(),
+                    stack.getComponents().hashCode());
         }
     }
 }

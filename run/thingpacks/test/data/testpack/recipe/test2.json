@@ -1,0 +1,15 @@
+{
+    "type": "jsonmore:shapeless_consuming",
+    "ingredients": [
+        {
+            "type": "jsonmore:counted",
+            "ingredient": {
+                "item": "minecraft:diamond"
+            },
+            "count": 9
+        }
+    ],
+    "result": { "id": "minecraft:diamond_block",
+        "count": 1
+    }
+}

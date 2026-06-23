@@ -5,18 +5,22 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import com.google.gson.JsonObject;
+import com.mojang.serialization.MapCodec;
 
+import net.minecraft.core.HolderLookup;
 import net.minecraft.core.NonNullList;
 import net.minecraft.core.RegistryAccess;
-import net.minecraft.network.FriendlyByteBuf;
-import net.minecraft.resources.ResourceLocation;
-import net.minecraft.world.inventory.CraftingContainer;
+import net.minecraft.network.RegistryFriendlyByteBuf;
+import net.minecraft.network.codec.StreamCodec;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.crafting.CraftingBookCategory;
+import net.minecraft.world.item.crafting.CraftingInput;
 import net.minecraft.world.item.crafting.Ingredient;
 import net.minecraft.world.item.crafting.RecipeSerializer;
 import net.minecraft.world.item.crafting.ShapelessRecipe;
+import net.neoforged.neoforge.server.ServerLifecycleHooks;
 import qikahome.jsonmore.lib.ingredient.SelfConsumingIngredient;
 
 public class ShapelessConsumingRecipe extends ShapelessRecipe implements IConsumingRecipe {
@@ -24,13 +28,18 @@ public class ShapelessConsumingRecipe extends ShapelessRecipe implements IConsum
     // 缓存上一次的匹配结果，transient 避免序列化
     private transient Map<Integer, Ingredient> lastMatch;
 
-    public ShapelessConsumingRecipe(ResourceLocation id, String group, CraftingBookCategory category,
+    public ShapelessConsumingRecipe(String group, CraftingBookCategory category,
             ItemStack result, NonNullList<Ingredient> ingredients) {
-        super(id, group, category, result, ingredients);
+        super(group, category, result, ingredients);
+    }
+
+    public static ShapelessConsumingRecipe fromVanilla(ShapelessRecipe shapelessRecipe) {
+        return new ShapelessConsumingRecipe(shapelessRecipe.getGroup(), shapelessRecipe.category(),
+                shapelessRecipe.getResultItem(RegistryAccess.EMPTY), shapelessRecipe.getIngredients());
     }
 
     // ==================== 共用匹配逻辑（带缓存） ====================
-    private Map<Integer, Ingredient> matchIngredients(CraftingContainer container) {
+    private Map<Integer, Ingredient> matchIngredients(CraftingInput container) {
         // 优先验证缓存
         if (lastMatch != null && isCacheValid(container, lastMatch)) {
             return lastMatch;
@@ -39,7 +48,7 @@ public class ShapelessConsumingRecipe extends ShapelessRecipe implements IConsum
         // 缓存无效，执行完整回溯匹配
         List<Ingredient> ingredients = new ArrayList<>(getIngredients());
         List<Integer> nonEmptySlots = new ArrayList<>();
-        for (int i = 0; i < container.getContainerSize(); i++) {
+        for (int i = 0; i < container.size(); i++) {
             if (!container.getItem(i).isEmpty()) {
                 nonEmptySlots.add(i);
             }
@@ -51,7 +60,7 @@ public class ShapelessConsumingRecipe extends ShapelessRecipe implements IConsum
         }
 
         Map<Integer, Ingredient> slotToIngredient = new HashMap<>();
-        boolean[] slotUsed = new boolean[container.getContainerSize()];
+        boolean[] slotUsed = new boolean[container.size()];
         boolean found = backtrackMatch(0, ingredients, nonEmptySlots, slotUsed, slotToIngredient, container);
 
         if (!found) {
@@ -66,11 +75,11 @@ public class ShapelessConsumingRecipe extends ShapelessRecipe implements IConsum
     /**
      * 验证缓存的匹配结果是否仍适用于当前容器。
      */
-    private boolean isCacheValid(CraftingContainer container, Map<Integer, Ingredient> cached) {
+    private boolean isCacheValid(CraftingInput container, Map<Integer, Ingredient> cached) {
         // 检查缓存中的每个槽位
         for (Map.Entry<Integer, Ingredient> entry : cached.entrySet()) {
             int slot = entry.getKey();
-            if (slot >= container.getContainerSize())
+            if (slot >= container.size())
                 return false;
             ItemStack stack = container.getItem(slot);
             if (stack.isEmpty())
@@ -80,7 +89,7 @@ public class ShapelessConsumingRecipe extends ShapelessRecipe implements IConsum
         }
 
         // 检查容器中是否有未被缓存覆盖的非空槽位（即多余物品）
-        for (int i = 0; i < container.getContainerSize(); i++) {
+        for (int i = 0; i < container.size(); i++) {
             if (!container.getItem(i).isEmpty() && !cached.containsKey(i)) {
                 return false;
             }
@@ -93,7 +102,7 @@ public class ShapelessConsumingRecipe extends ShapelessRecipe implements IConsum
     // 原回溯方法保持不变，但建议改为 private static（如需供 Shaped 使用，保持 public static）
     public static boolean backtrackMatch(int idx, List<Ingredient> ingredients, List<Integer> slots,
             boolean[] slotUsed, Map<Integer, Ingredient> slotToIngredient,
-            CraftingContainer container) {
+            CraftingInput container) {
         if (idx == ingredients.size())
             return true;
         Ingredient ingredient = ingredients.get(idx);
@@ -113,15 +122,23 @@ public class ShapelessConsumingRecipe extends ShapelessRecipe implements IConsum
 
     // ==================== 剩余物品处理 ====================
     @Override
-    public NonNullList<ItemStack> getRemainingItems(CraftingContainer container) {
-        NonNullList<ItemStack> remainingItems = NonNullList.withSize(container.getContainerSize(), ItemStack.EMPTY);
+    public NonNullList<ItemStack> getRemainingItems(CraftingInput container) {
+        NonNullList<ItemStack> remainingItems = NonNullList.withSize(container.size(), ItemStack.EMPTY);
         Map<Integer, Ingredient> slotToIngredient = matchIngredients(container);
-
+        Player player = net.neoforged.neoforge.common.CommonHooks.getCraftingPlayer();
+        ServerLevel level = null;
+        if (player != null && player.level() instanceof ServerLevel serverLevel)
+            level = serverLevel;
+        if (level == null) {
+            var server = ServerLifecycleHooks.getCurrentServer();
+            if (server != null) level = server.overworld();
+            else return remainingItems; // 客户端预览，跳过消耗逻辑
+        }
         for (var entry : slotToIngredient.entrySet()) {
             int slot = entry.getKey();
             ItemStack stack = container.getItem(slot);
             Ingredient ingredient = entry.getValue();
-            ItemStack remaining = SelfConsumingIngredient.consume(ingredient, stack);
+            ItemStack remaining = SelfConsumingIngredient.consume(ingredient, stack, level, player);
             remainingItems.set(slot, remaining);
         }
         return remainingItems;
@@ -129,8 +146,8 @@ public class ShapelessConsumingRecipe extends ShapelessRecipe implements IConsum
 
     // ==================== 合成输出处理 ====================
     @Override
-    public ItemStack assemble(CraftingContainer container, RegistryAccess registryAccess) {
-        ItemStack result = super.assemble(container, registryAccess);
+    public ItemStack assemble(CraftingInput container, HolderLookup.Provider lookup) {
+        ItemStack result = super.assemble(container, lookup);
         if (result.isEmpty()) {
             return result;
         }
@@ -154,26 +171,23 @@ public class ShapelessConsumingRecipe extends ShapelessRecipe implements IConsum
 
     public static class Serializer implements RecipeSerializer<ShapelessConsumingRecipe> {
         public static final Serializer INSTANCE = new Serializer();
+        private static final MapCodec<ShapelessConsumingRecipe> CODEC = net.minecraft.world.item.crafting.RecipeSerializer.SHAPELESS_RECIPE
+                .codec().xmap(ShapelessConsumingRecipe::fromVanilla, a -> a);
+        private static final StreamCodec<RegistryFriendlyByteBuf, ShapelessConsumingRecipe> STREAM_CODEC = StreamCodec
+                .of(
+                        (buf, recipe) -> net.minecraft.world.item.crafting.RecipeSerializer.SHAPELESS_RECIPE
+                                .streamCodec().encode(buf, recipe),
+                        (buf) -> fromVanilla(net.minecraft.world.item.crafting.RecipeSerializer.SHAPELESS_RECIPE
+                                .streamCodec().decode(buf)));
 
         @Override
-        public ShapelessConsumingRecipe fromJson(ResourceLocation id, JsonObject json) {
-            ShapelessRecipe recipe = net.minecraft.world.item.crafting.RecipeSerializer.SHAPELESS_RECIPE.fromJson(id,
-                    json);
-            return new ShapelessConsumingRecipe(recipe.getId(), recipe.getGroup(), recipe.category(),
-                    recipe.getResultItem(RegistryAccess.EMPTY), recipe.getIngredients());
+        public MapCodec<ShapelessConsumingRecipe> codec() {
+            return CODEC;
         }
 
         @Override
-        public ShapelessConsumingRecipe fromNetwork(ResourceLocation id, FriendlyByteBuf buffer) {
-            ShapelessRecipe recipe = net.minecraft.world.item.crafting.RecipeSerializer.SHAPELESS_RECIPE.fromNetwork(id,
-                    buffer);
-            return new ShapelessConsumingRecipe(recipe.getId(), recipe.getGroup(), recipe.category(),
-                    recipe.getResultItem(RegistryAccess.EMPTY), recipe.getIngredients());
-        }
-
-        @Override
-        public void toNetwork(FriendlyByteBuf buffer, ShapelessConsumingRecipe recipe) {
-            net.minecraft.world.item.crafting.RecipeSerializer.SHAPELESS_RECIPE.toNetwork(buffer, recipe);
+        public StreamCodec<RegistryFriendlyByteBuf, ShapelessConsumingRecipe> streamCodec() {
+            return STREAM_CODEC;
         }
     }
 }

@@ -8,22 +8,22 @@ import java.util.Set;
 import javax.annotation.Nullable;
 
 import com.google.common.collect.Maps;
+import com.mojang.serialization.MapCodec;
 
 import dev.gigaherz.jsonthings.things.events.FlexEventContext;
 import dev.gigaherz.jsonthings.things.events.FlexEventHandler;
-import dev.gigaherz.jsonthings.things.events.FlexEventResult;
+import dev.gigaherz.jsonthings.things.events.FlexEventType;
 import dev.gigaherz.jsonthings.things.shapes.DynamicShape;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
+import net.minecraft.core.HolderLookup;
 import net.minecraft.core.NonNullList;
 import net.minecraft.core.Vec3i;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.nbt.CompoundTag;
-import net.minecraft.nbt.ListTag;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraftforge.network.NetworkHooks;
 import net.minecraft.sounds.SoundEvent;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
@@ -36,13 +36,17 @@ import net.minecraft.world.WorldlyContainer;
 import net.minecraft.world.Containers;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
+import net.minecraft.world.ItemInteractionResult;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.monster.piglin.PiglinAi;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.inventory.AbstractContainerMenu;
 import net.minecraft.world.inventory.ChestMenu;
+import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.core.component.DataComponents;
+import net.minecraft.world.item.component.ItemContainerContents;
 import net.minecraft.world.item.TooltipFlag;
 import net.minecraft.world.item.context.BlockPlaceContext;
 import net.minecraft.world.item.crafting.Ingredient;
@@ -120,7 +124,7 @@ public class FlexBarrelBlock extends BaseEntityBlock
     private DynamicShape collisionShape;
     private DynamicShape raytraceShape;
     private DynamicShape renderShape;
-    private final Map<String, FlexEventHandler> eventHandlers = Maps.newHashMap();
+    private final Map<FlexEventType, FlexEventHandler> eventHandlers = Maps.newHashMap();
 
     @SuppressWarnings({ "rawtypes", "unchecked" })
     private void initializeFlex(Map<Property<?>, Comparable<?>> propertyDefaultValues) {
@@ -137,13 +141,14 @@ public class FlexBarrelBlock extends BaseEntityBlock
     }
 
     @Override
-    public void addEventHandler(String eventName, FlexEventHandler eventHandler) {
-        eventHandlers.put(eventName, eventHandler);
+    public <T> void addEventHandler(FlexEventType<T> event, FlexEventHandler<T> eventHandler) {
+        eventHandlers.put(event, eventHandler);
     }
 
     @Override
-    public FlexEventHandler getEventHandler(String eventName) {
-        return eventHandlers.get(eventName);
+    @Nullable
+    public <T> FlexEventHandler<T> getEventHandler(FlexEventType<T> event) {
+        return eventHandlers.get(event);
     }
 
     @Override
@@ -201,16 +206,22 @@ public class FlexBarrelBlock extends BaseEntityBlock
     }
 
     @Override
-    public InteractionResult use(BlockState state, Level worldIn, BlockPos pos, Player player, InteractionHand handIn,
-            BlockHitResult hit) {
-        return runEvent("use", FlexEventContext.of(worldIn, pos, state)
-                .withHand(player, handIn)
-                .withRayTrace(hit), () -> FlexEventResult.of(fallbackUse(state, worldIn, pos, player, handIn, hit)))
-                .result();
+    protected InteractionResult useWithoutItem(BlockState state, Level level, BlockPos pos, Player player,
+            BlockHitResult hitResult) {
+        return runEvent(FlexEventType.USE_BLOCK_WITHOUT_ITEM, FlexEventContext.of(level, pos, state)
+                .with(FlexEventContext.USER, player)
+                .withRayTrace(hitResult), () -> fallbackUse(state, level, pos, player, hitResult));
+    }
+
+    @Override
+    protected ItemInteractionResult useItemOn(ItemStack stack, BlockState state, Level level, BlockPos pos,
+            Player player, InteractionHand hand, BlockHitResult hitResult) {
+        return runEvent(FlexEventType.USE_BLOCK_WITH_ITEM, FlexEventContext.of(level, pos, state)
+                .with(FlexEventContext.USER, player)
+                .withRayTrace(hitResult), () -> super.useItemOn(stack, state, level, pos, player, hand, hitResult));
     }
 
     // endregion
-
     // region BarrelBlock
 
     @Override
@@ -266,30 +277,26 @@ public class FlexBarrelBlock extends BaseEntityBlock
 
     // region ShulkerBoxBlock
     @Override
-    public void appendHoverText(ItemStack stack, @Nullable BlockGetter level, List<Component> tooltip,
+    public void appendHoverText(ItemStack stack, Item.TooltipContext context, List<Component> tooltip,
             TooltipFlag flag) {
-        super.appendHoverText(stack, level, tooltip, flag);
-        CompoundTag blockEntityTag = stack.getTagElement("BlockEntityTag");
-        if (blockEntityTag != null && blockEntityTag.contains("Items")) {
-            ListTag itemsList = blockEntityTag.getList("Items", 10);
-            if (!itemsList.isEmpty()) {
+        super.appendHoverText(stack, context, tooltip, flag);
+        ItemContainerContents contents = stack.get(DataComponents.CONTAINER);
+        if (contents != null) {
+            var items = NonNullList.withSize(contents.getSlots(), ItemStack.EMPTY);
+            contents.copyInto(items);
+            var nonEmpty = items.stream().filter(s -> !s.isEmpty()).toList();
+            if (!nonEmpty.isEmpty()) {
                 tooltip.add(Component.empty());
-                // tooltip.add(Component.translatable("container.shulkerBox.contains",
-                // itemsList.size(), containerSize));
-
                 int shown = 0;
-                for (int i = 0; i < itemsList.size() && shown < 5; i++) {
-                    CompoundTag itemTag = itemsList.getCompound(i);
-                    ItemStack itemStack = ItemStack.of(itemTag);
-                    if (!itemStack.isEmpty()) {
-                        tooltip.add(Component.literal(" ").append(itemStack.getDisplayName())
-                                .append(Component.literal(" x"))
-                                .append(Component.literal(String.valueOf(itemStack.getCount()))));
-                        shown++;
-                    }
+                for (ItemStack itemStack : nonEmpty) {
+                    if (shown >= 5) break;
+                    tooltip.add(Component.literal(" ").append(itemStack.getDisplayName())
+                            .append(Component.literal(" x"))
+                            .append(Component.literal(String.valueOf(itemStack.getCount()))));
+                    shown++;
                 }
-                if (itemsList.size() > 5) {
-                    tooltip.add(Component.translatable("container.shulkerBox.more", itemsList.size() - 5));
+                if (nonEmpty.size() > 5) {
+                    tooltip.add(Component.translatable("container.shulkerBox.more", nonEmpty.size() - 5));
                 }
             }
         }
@@ -316,7 +323,7 @@ public class FlexBarrelBlock extends BaseEntityBlock
     static {
         DEFAULT_PLACE_FILTER = new ItemFilter(
                 NotIngredient.of(
-                        new KeepInventoryContainerIngredient(KeepInventoryContainerIngredient.Mode.MAY)));
+                        KeepInventoryContainerIngredient.MAY.toVanilla()));
     }
 
     public boolean isConnectableBlock(BlockState neighbor) {
@@ -324,7 +331,7 @@ public class FlexBarrelBlock extends BaseEntityBlock
     }
 
     public InteractionResult fallbackUse(BlockState state, Level level, BlockPos pos, Player player,
-            InteractionHand hand, BlockHitResult hit) {
+            BlockHitResult hit) {
         if (level.isClientSide) {
             return InteractionResult.SUCCESS;
         } else {
@@ -356,7 +363,7 @@ public class FlexBarrelBlock extends BaseEntityBlock
                             : screenType;
                     var containers = getContainers(level, pos, state);
                     var containerSize = MultiContainer.of(containers).getContainerSize();
-                    NetworkHooks.openScreen(serverPlayer, screen.createMenuProvider(containers, containerSize),
+                    serverPlayer.openMenu(screen.createMenuProvider(containers, containerSize),
                             buffer -> screen.writeAdditionalData(buffer, this.getContainers(level, pos, state),
                                     containerSize));
                 }
@@ -370,16 +377,16 @@ public class FlexBarrelBlock extends BaseEntityBlock
     }
 
     @Override
-    public void playerWillDestroy(Level level, BlockPos pos, BlockState state, Player player) {
+    public BlockState playerWillDestroy(Level level, BlockPos pos, BlockState state, Player player) {
         BlockEntity blockEntity = level.getBlockEntity(pos);
         if (blockEntity instanceof FlexBarrelBlockEntity flexEntity) {
             if (shouldKeepInventory(player)) {
                 if (!level.isClientSide) {
                     if (!player.isCreative() || !flexEntity.isEmpty()) {
                         ItemStack itemStack = new ItemStack(this);
-                        blockEntity.saveToItem(itemStack);
+                        blockEntity.saveToItem(itemStack, level.registryAccess());
                         if (flexEntity.hasCustomName()) {
-                            itemStack.setHoverName(flexEntity.getCustomName());
+                            itemStack.set(DataComponents.CUSTOM_NAME, flexEntity.getCustomName());
                         }
                         popResource(level, pos, itemStack);
                     }
@@ -389,14 +396,17 @@ public class FlexBarrelBlock extends BaseEntityBlock
                 flexEntity.unpackLootTable(player);
             }
         }
-        super.playerWillDestroy(level, pos, state, player);
+        return super.playerWillDestroy(level, pos, state, player);
     }
 
     private boolean shouldKeepInventory(Player player) {
         return switch (keepInventory) {
             case ALWAYS -> true;
-            case SILK_TOUCH -> player.getMainHandItem().getEnchantmentLevel(
-                    net.minecraft.world.item.enchantment.Enchantments.SILK_TOUCH) > 0;
+            case SILK_TOUCH -> {
+                var silkTouch = player.level().registryAccess()
+                        .holderOrThrow(net.minecraft.world.item.enchantment.Enchantments.SILK_TOUCH);
+                yield player.getMainHandItem().getEnchantmentLevel(silkTouch) > 0;
+            }
             case NEVER -> false;
         };
     }
@@ -433,12 +443,6 @@ public class FlexBarrelBlock extends BaseEntityBlock
     @Override
     public void setPlacedBy(Level level, BlockPos pos, BlockState state, @Nullable LivingEntity placer,
             ItemStack stack) {
-        if (stack.hasCustomHoverName()) {
-            BlockEntity blockentity = level.getBlockEntity(pos);
-            if (blockentity instanceof FlexBarrelBlockEntity flexEntity) {
-                flexEntity.setCustomName(stack.getHoverName());
-            }
-        }
         var connection = state.getValue(PART);
         var facing = state.getValue(BlockStateProperties.FACING);
         if (connection.isConnected()) {
@@ -446,20 +450,6 @@ public class FlexBarrelBlock extends BaseEntityBlock
                 level.setBlock(pos, state.setValue(PART, ContainerPart.NONE), 0);
             }
         }
-    }
-
-    @Override
-    public boolean canPlaceLiquid(BlockGetter getter, BlockPos pos, BlockState state, Fluid fluid) {
-        return waterloggedIn && state.hasProperty(BlockStateProperties.WATERLOGGED)
-                && SimpleWaterloggedBlock.super.canPlaceLiquid(getter, pos, state, fluid);
-    }
-
-    @Override
-    public ItemStack pickupBlock(net.minecraft.world.level.LevelAccessor level, BlockPos pos, BlockState state) {
-        if (!waterloggedIn || !state.hasProperty(BlockStateProperties.WATERLOGGED)) {
-            return ItemStack.EMPTY;
-        }
-        return SimpleWaterloggedBlock.super.pickupBlock(level, pos, state);
     }
 
     @Override
@@ -703,19 +693,21 @@ public class FlexBarrelBlock extends BaseEntityBlock
                 throw new IllegalArgumentException("Not a FlexBarrelBlock");
         }
 
-        protected void saveAdditional(CompoundTag tag) {
-            super.saveAdditional(tag);
+        @Override
+        protected void saveAdditional(CompoundTag tag, HolderLookup.Provider registries) {
+            super.saveAdditional(tag, registries);
             if (!this.trySaveLootTable(tag)) {
-                ContainerHelper.saveAllItems(tag, this.items);
+                ContainerHelper.saveAllItems(tag, this.items, registries);
             }
 
         }
 
-        public void load(CompoundTag tag) {
-            super.load(tag);
+        @Override
+        protected void loadAdditional(CompoundTag tag, HolderLookup.Provider registries) {
+            super.loadAdditional(tag, registries);
             this.items = NonNullList.withSize(this.getContainerSize(), ItemStack.EMPTY);
             if (!this.tryLoadLootTable(tag)) {
-                ContainerHelper.loadAllItems(tag, this.items);
+                ContainerHelper.loadAllItems(tag, this.items, registries);
             }
         }
 
@@ -760,42 +752,9 @@ public class FlexBarrelBlock extends BaseEntityBlock
             }
         }
 
-        private net.minecraftforge.common.util.LazyOptional<net.minecraftforge.items.IItemHandlerModifiable> itemHandler;
-
         @Override
         public void setBlockState(BlockState state) {
             super.setBlockState(state);
-            if (this.itemHandler != null) {
-                net.minecraftforge.common.util.LazyOptional<?> oldHandler = this.itemHandler;
-                this.itemHandler = null;
-                oldHandler.invalidate();
-            }
-        }
-
-        @Override
-        public <T> net.minecraftforge.common.util.LazyOptional<T> getCapability(
-                net.minecraftforge.common.capabilities.Capability<T> cap, @Nullable Direction side) {
-            if (cap == net.minecraftforge.common.capabilities.ForgeCapabilities.ITEM_HANDLER && !this.remove) {
-                if (this.itemHandler == null) {
-                    this.itemHandler = net.minecraftforge.common.util.LazyOptional.of(this::createHandler);
-                }
-                return this.itemHandler.cast();
-            }
-            return super.getCapability(cap, side);
-        }
-
-        private net.minecraftforge.items.IItemHandlerModifiable createHandler() {
-            return new net.minecraftforge.items.wrapper.InvWrapper(
-                    MultiContainer.of(flexBlock.getContainers(getLevel(), getBlockPos(), getBlockState())));
-        }
-
-        @Override
-        public void invalidateCaps() {
-            super.invalidateCaps();
-            if (itemHandler != null) {
-                itemHandler.invalidate();
-                itemHandler = null;
-            }
         }
 
         public void recheckOpen() {
@@ -884,5 +843,10 @@ public class FlexBarrelBlock extends BaseEntityBlock
 
             return true;
         }
+    }
+
+    @Override
+    protected MapCodec<? extends BaseEntityBlock> codec() {
+        return MapCodec.unit(this);
     }
 }

@@ -1,13 +1,11 @@
 {
   "required": true,
-  "compatibilityLevel": "JAVA_17",
+  "compatibilityLevel": "JAVA_21",
   "package": "qikahome.jsonmore.mixin",
   "refmap": "jsonmore.refmap.json",
   "mixins": [
-    "MixinStandingAndWallBlockItem",
     "MixinBlockEntityType",
     "MixinMechanicalCrafterBlockEntity",
-    "MixinLazyResultSlot",
     "MixinUncraftingMenu",
     "MixinTwilightForestJEICompat",
     "MixinFlexBarrelBlockItem"

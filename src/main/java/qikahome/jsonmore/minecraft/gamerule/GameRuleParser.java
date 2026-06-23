@@ -2,13 +2,13 @@ package qikahome.jsonmore.minecraft.gamerule;
 
 import com.google.gson.JsonObject;
 
-import dev.gigaherz.jsonthings.things.builders.BaseBuilder;
 import dev.gigaherz.jsonthings.things.parsers.ThingParser;
 import dev.gigaherz.jsonthings.util.parse.JParse;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.level.GameRules;
-import net.minecraftforge.eventbus.api.IEventBus;
-import net.minecraftforge.registries.RegisterEvent;
+import net.neoforged.bus.api.IEventBus;
+import net.neoforged.neoforge.registries.RegisterEvent;
+
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -44,7 +44,7 @@ public class GameRuleParser extends ThingParser<GameRuleBuilder> {
         final GameRuleBuilder builder = new GameRuleBuilder(this, key);
 
         JParse.begin(data)
-                .key("type", val -> val.string().map(ResourceLocation::new).handle(builder::setType))
+                .key("type", val -> val.string().map(ResourceLocation::parse).handle(builder::setType))
                 .ifKey("category", val -> val.string().map(String::toUpperCase).map(GameRules.Category::valueOf).handle(builder::setCategory))
                 .ifKey("events", val -> val.obj().map(super::parseEvents).handle(builder::setEventMap));
         builderModification.accept(builder);

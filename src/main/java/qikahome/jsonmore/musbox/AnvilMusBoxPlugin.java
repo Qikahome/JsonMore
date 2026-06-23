@@ -16,7 +16,7 @@ import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.StateDefinition;
 import net.minecraft.world.level.block.state.properties.Property;
-import net.minecraftforge.registries.ForgeRegistries;
+import net.minecraft.core.registries.BuiltInRegistries;
 import qikahome.anvil_musbox.AnvilMusBoxMod;
 
 public class AnvilMusBoxPlugin {
@@ -25,13 +25,13 @@ public class AnvilMusBoxPlugin {
         FlexBlockType.register("jsonmore:noteblock", data -> {
             String instrumentBlockTag = GsonHelper.getAsString(data, "instrument_block_tag");
             String instrumentName = GsonHelper.getAsString(data, "instrument_name");
-            ResourceLocation sound = new ResourceLocation(GsonHelper.getAsString(data, "sound"));
+            ResourceLocation sound = ResourceLocation.parse(GsonHelper.getAsString(data, "sound"));
             float volume = GsonHelper.getAsFloat(data, "volume", 1.0F);
             return (props, builder) -> {
                 List<Property<?>> _properties = builder.getProperties();
                 Map<Property<?>, Comparable<?>> propertyDefaultValues = builder.getPropertyDefaultValues();
-                TagKey<Block> tag = TagKey.create(Registries.BLOCK, new ResourceLocation(instrumentBlockTag));
-                SoundEvent soundEvent = ForgeRegistries.SOUND_EVENTS.getValue(sound);
+                TagKey<Block> tag = TagKey.create(Registries.BLOCK, ResourceLocation.parse(instrumentBlockTag));
+                SoundEvent soundEvent = BuiltInRegistries.SOUND_EVENT.get(sound);
                 if (soundEvent == null)
                     throw new ThingParseException("Sound event " + sound + " not found");
                 FlexNoteBlock noteBlock = new FlexNoteBlock(props, propertyDefaultValues, tag, instrumentName,

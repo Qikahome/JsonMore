@@ -1,0 +1,20 @@
+{
+    "type": "jsonmore:shaped_consuming",
+    "pattern": [
+        "DDD",
+        "DDD",
+        "DDD"
+    ],
+    "key": {
+        "D": {
+            "type": "jsonmore:counted",
+            "ingredient": {
+                "item": "minecraft:deepslate"
+            },
+            "count": 64
+        }
+    },
+    "result": { "id": "minecraft:reinforced_deepslate",
+        "count": 1
+    }
+}

@@ -4,44 +4,35 @@ import java.util.stream.Stream;
 
 import javax.annotation.Nullable;
 
-import com.google.gson.JsonElement;
-import com.google.gson.JsonObject;
-
-import net.minecraft.core.registries.Registries;
-import net.minecraft.network.FriendlyByteBuf;
+import com.mojang.serialization.MapCodec;
+import net.minecraft.core.component.DataComponents;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
-import net.minecraft.world.item.crafting.Ingredient;
-import net.minecraftforge.common.crafting.AbstractIngredient;
-import net.minecraftforge.common.crafting.CraftingHelper;
-import net.minecraftforge.common.crafting.IIngredientSerializer;
-//import net.minecraftforge.registries.ForgeRegistries;
+import net.neoforged.neoforge.common.crafting.ICustomIngredient;
+import net.neoforged.neoforge.common.crafting.IngredientType;
+import net.neoforged.neoforge.registries.DeferredHolder;
+import qikahome.jsonmore.JsonMore;
 
-public class TrueIngredient extends AbstractIngredient {
-    public static final ResourceLocation ID = new ResourceLocation("jsonmore:true");
+public class TrueIngredient implements ICustomIngredient {
+    public static final ResourceLocation ID = ResourceLocation.parse("jsonmore:true");
     public static final TrueIngredient INSTANCE = new TrueIngredient();
+    public static final MapCodec<TrueIngredient> CODEC = MapCodec.unit(INSTANCE);
+    public static final DeferredHolder<IngredientType<?>, IngredientType<TrueIngredient>> TYPE = JsonMore.INGREDIENT_TYPES
+            .register(ID.getPath(), () -> new IngredientType<>(CODEC));
 
-    private TrueIngredient() {
-        super(Stream.empty());
-    }
-
-    private static final ItemStack ANYTHING_STACK;
+    private static final Stream<ItemStack> ANYTHING_STACK;
 
     static {
-        ANYTHING_STACK = new ItemStack(Items.STICK);
-        ANYTHING_STACK.setHoverName(Component.translatable("ingredient.jsonmore.true"));
+        ItemStack stack = new ItemStack(Items.STICK);
+        stack.set(DataComponents.CUSTOM_NAME, Component.translatable("ingredient.jsonmore.true"));
+        ANYTHING_STACK = Stream.of(stack);
     }
 
     @Override
-    public ItemStack[] getItems() {
-        return new ItemStack[] { ANYTHING_STACK.copy() }; // 注意要copy，避免修改原实例
-    }
-
-    @Override
-    public boolean isEmpty() {
-        return false;
+    public Stream<ItemStack> getItems() {
+        return ANYTHING_STACK;
     }
 
     @Override
@@ -54,37 +45,11 @@ public class TrueIngredient extends AbstractIngredient {
         return false;
     }
 
-    @Override
-    public IIngredientSerializer<? extends Ingredient> getSerializer() {
-        return Serializer.INSTANCE;
-    }
-
-    @Override
-    public JsonElement toJson() {
-        JsonObject json = new JsonObject();
-        json.addProperty("type", ID.toString());
-        return json;
-    }
-
-    public static class Serializer implements IIngredientSerializer<TrueIngredient> {
-        public static final Serializer INSTANCE = new Serializer();
-
-        @Override
-        public TrueIngredient parse(FriendlyByteBuf buffer) {
-            return TrueIngredient.INSTANCE;
-        }
-
-        @Override
-        public TrueIngredient parse(JsonObject json) {
-            return TrueIngredient.INSTANCE;
-        }
-
-        @Override
-        public void write(FriendlyByteBuf buffer, TrueIngredient ingredient) {
-        }
-    }
-
     public static void register() {
-        CraftingHelper.register(ID, Serializer.INSTANCE);
+    }
+
+    @Override
+    public IngredientType<?> getType() {
+        return TYPE.get();
     }
 }

@@ -2,6 +2,7 @@ package qikahome.jsonmore.lib.recipe.jei;
 
 import net.minecraft.client.Minecraft;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.world.item.crafting.RecipeHolder;
 import net.minecraft.world.item.crafting.RecipeManager;
 
 import mezz.jei.api.IModPlugin;
@@ -15,7 +16,7 @@ import java.util.List;
 
 @JeiPlugin
 public class JsonMoreJEIPlugin implements IModPlugin {
-    private static final ResourceLocation ID = new ResourceLocation("jsonmore:jei_plugin");
+    private static final ResourceLocation ID = ResourceLocation.parse("jsonmore:jei_plugin");
 
     @Override
     public ResourceLocation getPluginUid() {
@@ -31,7 +32,7 @@ public class JsonMoreJEIPlugin implements IModPlugin {
     @Override
     public void registerRecipes(IRecipeRegistration registration) {
         RecipeManager recipeManager = Minecraft.getInstance().level.getRecipeManager();
-        List<ItemApplicationRecipe> recipes = recipeManager.getAllRecipesFor(ItemApplicationRecipe.TYPE);
-        registration.addRecipes(ItemApplicationRecipeCategory.TYPE, recipes);
+        List<RecipeHolder<ItemApplicationRecipe>> recipes = recipeManager.getAllRecipesFor(ItemApplicationRecipe.TYPE);
+        registration.addRecipes(ItemApplicationRecipeCategory.TYPE, recipes.stream().map(RecipeHolder::value).toList());
     }
 }

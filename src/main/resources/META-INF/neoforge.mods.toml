@@ -1,0 +1,64 @@
+modLoader="javafml"
+loaderVersion="${loader_version_range}"
+license="${mod_license}"
+issueTrackerURL="https://github.com/Qikahome/JsonMore/issues/"
+
+[[mixins]]
+config="jsonmore.mixins.json"
+
+[[mods]]
+modId="${mod_id}"
+version="${mod_version}"
+displayName="${mod_name}"
+authors="${mod_authors}"
+description='''${mod_description}'''
+
+[[dependencies.${mod_id}]]
+    modId="neoforge"
+    type="required"
+    side="BOTH"
+
+[[dependencies.${mod_id}]]
+    modId="minecraft"
+    type="required"
+    ordering="NONE"
+    side="BOTH"
+
+# JSON Things 依赖 - 强制依赖
+[[dependencies.${mod_id}]]
+    modId="jsonthings"
+    type="required"
+    ordering="BEFORE"
+    side="BOTH"
+
+# JEI（Just Enough Items）依赖 - 可选依赖
+[[dependencies.${mod_id}]]
+    modId="jei"
+    type="optional"
+    ordering="NONE"
+    side="BOTH"
+
+# CyclopsCore 依赖 - 可选依赖
+[[dependencies.${mod_id}]]
+    modId="cyclopscore"
+    type="optional"
+    ordering="NONE"
+    side="BOTH"
+
+# Anvil MusBox 依赖 - 可选依赖
+[[dependencies.${mod_id}]]
+    modId="anvil_musbox"
+    type="optional"
+    ordering="AFTER"
+    side="BOTH"
+
+# 暮色森林（Twilight Forest）依赖 - 可选依赖
+[[dependencies.${mod_id}]]
+    modId="twilightforest"
+    type="optional"
+    ordering="AFTER"
+    side="BOTH"
+
+# AccessTransformer 配置
+[[accessTransformers]]
+    file="META-INF/accesstransformer.cfg"

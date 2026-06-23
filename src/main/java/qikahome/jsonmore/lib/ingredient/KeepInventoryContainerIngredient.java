@@ -4,54 +4,63 @@ import java.util.stream.Stream;
 
 import javax.annotation.Nullable;
 
-import com.google.gson.JsonElement;
-import com.google.gson.JsonObject;
-import com.google.gson.JsonParseException;
+import com.mojang.serialization.MapCodec;
 
-import net.minecraft.nbt.CompoundTag;
+import net.minecraft.core.component.DataComponents;
 import net.minecraft.nbt.ListTag;
-import net.minecraft.network.FriendlyByteBuf;
+import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.item.crafting.Ingredient;
-import net.minecraftforge.common.crafting.AbstractIngredient;
-import net.minecraftforge.common.crafting.CraftingHelper;
-import net.minecraftforge.common.crafting.IIngredientSerializer;
+import net.minecraft.world.item.Items;
+import net.neoforged.neoforge.common.crafting.ICustomIngredient;
+import net.neoforged.neoforge.common.crafting.IngredientType;
+import net.neoforged.neoforge.registries.DeferredHolder;
+import qikahome.jsonmore.JsonMore;
+import qikahome.jsonmore.Utils;
 
-public class KeepInventoryContainerIngredient extends AbstractIngredient {
-    public static final ResourceLocation ID = new ResourceLocation("jsonmore:keep_inventory_container");
+public enum KeepInventoryContainerIngredient implements ICustomIngredient {
+    MAY {
+        {
+            ItemStack stack = new ItemStack(Items.SHULKER_BOX);
+            stack.set(DataComponents.CUSTOM_NAME, Component.translatable("ingredient.jsonmore.container.may"));
+            items = Stream.of(stack);
+        }
 
-    public enum Mode {
-        MAY,
-        CONTAINS
-    }
+        @Override
+        public boolean test(@Nullable ItemStack stack) {
+            return super.test(stack) && !stack.canFitInsideContainerItems();
+        }
 
-    private final Mode mode;
+    },
+    CONTAINS {
+        {
+            ItemStack stack = new ItemStack(Items.SHULKER_BOX);
+            stack.set(DataComponents.CUSTOM_NAME, Component.translatable("ingredient.jsonmore.container.contains"));
+            items = Stream.of(stack);
+        }
 
-    public KeepInventoryContainerIngredient(Mode mode) {
-        super(Stream.empty());
-        this.mode = mode;
-    }
+        @Override
+        public boolean test(@Nullable ItemStack stack) {
+            return super.test(stack) && !hasItems(stack);
+        }
+    };
+
+    public static final ResourceLocation ID = ResourceLocation.parse("jsonmore:keep_inventory_container");
+    public static final MapCodec<KeepInventoryContainerIngredient> CODEC = Utils.enumCodecIgnoreCase(KeepInventoryContainerIngredient.class).fieldOf("mode");
+    public static final DeferredHolder<IngredientType<?>, IngredientType<KeepInventoryContainerIngredient>> TYPE = JsonMore.INGREDIENT_TYPES
+            .register(ID.getPath(), () -> new IngredientType<>(CODEC));
+    protected Stream<ItemStack> items;
 
     @Override
     public boolean test(@Nullable ItemStack stack) {
         if (stack == null || stack.isEmpty()) {
             return false;
         }
-
-        if (mode == Mode.MAY) {
-            return !stack.getItem().canFitInsideContainerItems();
-        }
-
-        if (mode == Mode.CONTAINS) {
-            return hasItems(stack);
-        }
-
-        return false;
+        return true;
     }
 
-    private boolean hasItems(ItemStack stack) {
-        CompoundTag blockEntityTag = stack.getTagElement("BlockEntityTag");
+    private static boolean hasItems(ItemStack stack) {
+        var blockEntityTag = stack.get(DataComponents.BLOCK_ENTITY_DATA).copyTag();
         if (blockEntityTag == null) {
             return false;
         }
@@ -65,51 +74,20 @@ public class KeepInventoryContainerIngredient extends AbstractIngredient {
     }
 
     @Override
+    public Stream<ItemStack> getItems() {
+        return items;
+    }
+
+    @Override
     public boolean isSimple() {
         return false;
     }
 
-    @Override
-    public IIngredientSerializer<? extends Ingredient> getSerializer() {
-        return Serializer.INSTANCE;
-    }
-
-    @Override
-    public JsonElement toJson() {
-        JsonObject json = new JsonObject();
-        json.addProperty("type", ID.toString());
-        json.addProperty("mode", mode.name().toLowerCase());
-        return json;
-    }
-
-    public static class Serializer implements IIngredientSerializer<KeepInventoryContainerIngredient> {
-        public static final Serializer INSTANCE = new Serializer();
-
-        @Override
-        public KeepInventoryContainerIngredient parse(FriendlyByteBuf buffer) {
-            String modeStr = buffer.readUtf();
-            Mode mode = Mode.valueOf(modeStr.toUpperCase());
-            return new KeepInventoryContainerIngredient(mode);
-        }
-
-        @Override
-        public KeepInventoryContainerIngredient parse(JsonObject json) {
-            String modeStr = json.has("mode") ? json.get("mode").getAsString().toUpperCase() : "MAY";
-            try {
-                Mode mode = Mode.valueOf(modeStr);
-                return new KeepInventoryContainerIngredient(mode);
-            } catch (IllegalArgumentException e) {
-                throw new JsonParseException("Invalid mode: " + modeStr + ". Expected 'may' or 'contains'");
-            }
-        }
-
-        @Override
-        public void write(FriendlyByteBuf buffer, KeepInventoryContainerIngredient ingredient) {
-            buffer.writeUtf(ingredient.mode.name().toLowerCase());
-        }
-    }
-
     public static void register() {
-        CraftingHelper.register(ID, Serializer.INSTANCE);
+    }
+
+    @Override
+    public IngredientType<?> getType() {
+        return TYPE.get();
     }
 }

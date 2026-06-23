@@ -1,31 +1,40 @@
 package qikahome.jsonmore.minecraft.gamerule;
 
-import com.google.gson.JsonObject;
+import java.util.Optional;
+
+import com.mojang.serialization.Codec;
+import com.mojang.serialization.MapCodec;
+import com.mojang.serialization.codecs.RecordCodecBuilder;
 
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
-import net.minecraft.util.GsonHelper;
-import net.minecraftforge.server.ServerLifecycleHooks;
 import net.minecraft.world.level.GameRules;
-import net.minecraftforge.common.crafting.conditions.ICondition;
-import net.minecraftforge.common.crafting.conditions.IConditionSerializer;
-
+import net.neoforged.neoforge.common.conditions.ICondition;
+import net.neoforged.neoforge.registries.DeferredHolder;
+import net.neoforged.neoforge.server.ServerLifecycleHooks;
+import qikahome.jsonmore.JsonMore;
 import qikahome.jsonmore.Utils;
+import qikahome.jsonmore.Utils.IntRange;
 
 public class GameRuleCondition implements ICondition {
-    public static final ResourceLocation ID = new ResourceLocation("jsonmore:gamerule");
+    public static final ResourceLocation ID = ResourceLocation.parse("jsonmore:gamerule");
+    public static final MapCodec<GameRuleCondition> CODEC = RecordCodecBuilder.mapCodec(
+            v -> v.group(
+                    Codec.STRING.fieldOf("rule").forGetter(c -> c.ruleName),
+                    Utils.IntRange.CODEC.optionalFieldOf("value").forGetter(c -> c.valueRange))
+                    .apply(v, GameRuleCondition::new));
+    public static final DeferredHolder<MapCodec<? extends ICondition>, MapCodec<GameRuleCondition>> HOLDER = JsonMore.CONDITION_CODECS
+            .register("gamerule", () -> CODEC);
 
-    private final String ruleName;
-    private final String valueRange;
-
-    public GameRuleCondition(String ruleName, String valueRange) {
-        this.ruleName = ruleName;
-        this.valueRange = valueRange;
+    public static void register() {
     }
 
-    @Override
-    public ResourceLocation getID() {
-        return ID;
+    private final String ruleName;
+    private final Optional<IntRange> valueRange;
+
+    public GameRuleCondition(String ruleName, Optional<IntRange> valueRange) {
+        this.ruleName = ruleName;
+        this.valueRange = valueRange;
     }
 
     @Override
@@ -43,20 +52,14 @@ public class GameRuleCondition implements ICondition {
         if (value == null)
             return false;
 
-        if (valueRange == null) {
+        if (!valueRange.isPresent()) {
             if (value instanceof GameRules.BooleanValue bv)
                 return bv.get();
             return false;
         }
 
         if (value instanceof GameRules.IntegerValue iv) {
-            try {
-                int exact = Integer.parseInt(valueRange);
-                return iv.get() == exact;
-            } catch (NumberFormatException e) {
-                Utils.IntRange range = Utils.IntRange.parse(valueRange);
-                return range.contains(iv.get());
-            }
+            return valueRange.get().contains(iv.get());
         }
         return false;
     }
@@ -69,41 +72,8 @@ public class GameRuleCondition implements ICondition {
         return null;
     }
 
-    public static class Serializer implements IConditionSerializer<GameRuleCondition> {
-        public static final Serializer INSTANCE = new Serializer();
-
-        @Override
-        public void write(JsonObject json, GameRuleCondition condition) {
-            json.addProperty("rule", condition.ruleName);
-            if (condition.valueRange != null) {
-                try {
-                    int exact = Integer.parseInt(condition.valueRange);
-                    json.addProperty("value", exact);
-                } catch (NumberFormatException e) {
-                    json.addProperty("value", condition.valueRange);
-                }
-            }
-        }
-
-        @Override
-        public GameRuleCondition read(JsonObject json) {
-            String rule = GsonHelper.getAsString(json, "rule");
-            String valueRange = null;
-            if (json.has("value")) {
-                var valueEl = json.get("value");
-                if (valueEl.isJsonPrimitive() && valueEl.getAsJsonPrimitive().isNumber()) {
-                    int exact = valueEl.getAsInt();
-                    valueRange = "[" + exact + "," + exact + "]";
-                } else {
-                    valueRange = GsonHelper.getAsString(json, "value");
-                }
-            }
-            return new GameRuleCondition(rule, valueRange);
-        }
-
-        @Override
-        public ResourceLocation getID() {
-            return GameRuleCondition.ID;
-        }
+    @Override
+    public MapCodec<? extends ICondition> codec() {
+        return CODEC;
     }
 }
