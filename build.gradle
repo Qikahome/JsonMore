@@ -10,7 +10,7 @@ version = mod_version    // 模组版本（引用外部定义的变量）
 group = mod_group_id     // 模组 Maven 组ID（引用外部定义的变量）
 
 base {
-    archivesName = mod_id // 构建产物（Jar包）的基础名称，使用模组ID
+    archivesName = "${mod_id}-${minecraft_version}" // 构建产物（Jar包）的基础名称
 }
 
 // Mojang 在 1.18+ 版本向终端用户分发 Java 17，因此你的模组应基于 Java 17 开发
