@@ -24,6 +24,9 @@ run/*
 run/thingpacks/disabled/
 ext_files
 removed
+
+# local (per-machine) config
+local.properties
 # Files from Forge MDK
 forge*changelog.txt
 # Ignore only root-level java files (e.g. reference copies)
