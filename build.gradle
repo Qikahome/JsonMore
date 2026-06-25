@@ -256,6 +256,17 @@ tasks.named('processResources', ProcessResources).configure {
 
 // 示例：将属性写入 Jar 清单文件，供运行时读取
 tasks.named('jar', Jar).configure {
+    // 从 local.properties 读取输出目录（不提交到 Git）
+    def localProps = new Properties()
+    def localFile = file('local.properties')
+    if (localFile.exists()) {
+        localFile.withInputStream { localProps.load(it) }
+        def outputDir = localProps.getProperty('build_output_dir')
+        if (outputDir) {
+            destinationDirectory = file(outputDir)
+        }
+    }
+
     manifest {
         attributes([
                 'Specification-Title'     : mod_id,          // 规范标题（模组ID）
