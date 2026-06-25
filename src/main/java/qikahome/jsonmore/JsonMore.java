@@ -26,6 +26,7 @@ import net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext;
 import net.minecraftforge.registries.DeferredRegister;
 import net.minecraftforge.registries.ForgeRegistries;
 import net.minecraftforge.registries.RegistryObject;
+import qikahome.jsonmore.create.CreatePlugin;
 import qikahome.jsonmore.cyclopscore.CyclopsCorePlugin;
 import qikahome.jsonmore.cyclopscore.ScrollingContainerScreen;
 import qikahome.jsonmore.lib.ContainerPart;
@@ -165,8 +166,11 @@ public class JsonMore {
         if (modList.isLoaded("tconstruct")) {
             TConstructPlugin.load();
         }
-        if (ModList.get().isLoaded("anvil_musbox")) {
+        if (modList.isLoaded("anvil_musbox")) {
             AnvilMusBoxPlugin.load();
+        }
+        if (modList.isLoaded("create")) {
+            CreatePlugin.load();
         }
         // if (modList.isLoaded("minecraft")) {
         MinecraftPlugin.load();
