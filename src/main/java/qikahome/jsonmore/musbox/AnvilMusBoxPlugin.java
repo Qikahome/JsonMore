@@ -7,6 +7,7 @@ import java.util.Map;
 
 import dev.gigaherz.jsonthings.things.parsers.ThingParseException;
 import dev.gigaherz.jsonthings.things.serializers.FlexBlockType;
+import dev.gigaherz.jsonthings.things.serializers.FlexBlockType.DefaultTypeProperties;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.sounds.SoundEvent;
@@ -51,6 +52,6 @@ public class AnvilMusBoxPlugin {
                 AnvilMusBoxMod.INSTRUMENTS.add(noteBlock);
                 return noteBlock;
             };
-        }, "solid", false, false, false);
+        }, DefaultTypeProperties.builder().defaultLayer("solid").defaultSeeThrough(false).defaultReplaceable(false));
     }
 }

@@ -4,15 +4,20 @@ import org.slf4j.Logger;
 
 import com.mojang.logging.LogUtils;
 import com.mojang.serialization.MapCodec;
+import com.simibubi.create.api.contraption.storage.item.MountedItemStorageType;
 
 import dev.gigaherz.jsonthings.things.ThingRegistries;
 import dev.gigaherz.jsonthings.things.parsers.ThingResourceManager;
 import net.minecraft.core.Registry;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.world.inventory.MenuType;
+import net.minecraft.world.item.BucketItem;
 import net.minecraft.world.item.crafting.RecipeSerializer;
+import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.entity.BlockEntityType;
+import net.minecraft.world.level.block.state.BlockState;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.bus.api.SubscribeEvent;
@@ -30,9 +35,13 @@ import net.neoforged.neoforge.common.conditions.ICondition;
 import net.neoforged.neoforge.common.crafting.CraftingHelper;
 import net.neoforged.neoforge.common.crafting.IngredientType;
 import net.neoforged.neoforge.event.server.ServerStartingEvent;
+import net.neoforged.neoforge.fluids.capability.wrappers.FluidBucketWrapper;
+import net.neoforged.neoforge.items.IItemHandler;
+import net.neoforged.neoforge.items.wrapper.InvWrapper;
 import net.neoforged.neoforge.registries.DeferredHolder;
 import net.neoforged.neoforge.registries.DeferredRegister;
 import net.neoforged.neoforge.registries.NeoForgeRegistries;
+import qikahome.jsonmore.create.CreatePlugin;
 import qikahome.jsonmore.cyclopscore.CyclopsCorePlugin;
 import qikahome.jsonmore.cyclopscore.ScrollingContainerScreen;
 import qikahome.jsonmore.lib.ContainerPart;
@@ -42,6 +51,15 @@ import qikahome.jsonmore.lib.recipe.ShapelessConsumingRecipe;
 import qikahome.jsonmore.minecraft.gamerule.GameRuleParser;
 import qikahome.jsonmore.minecraft.BuiltInDatapackParser;
 import qikahome.jsonmore.lib.MultiContainer;
+import qikahome.jsonmore.lib.ingredient.ConditionIngredient;
+import qikahome.jsonmore.lib.ingredient.CountedIngredient;
+import qikahome.jsonmore.lib.ingredient.ItemDisplayOverrideIngredient;
+import qikahome.jsonmore.lib.ingredient.KeepInventoryContainerIngredient;
+import qikahome.jsonmore.lib.ingredient.NBTCopyIngredient;
+import qikahome.jsonmore.lib.ingredient.NotIngredient;
+import qikahome.jsonmore.lib.ingredient.RemainderOverrideIngredient;
+import qikahome.jsonmore.lib.ingredient.ToolDamagingIngredient;
+import qikahome.jsonmore.lib.ingredient.TrueIngredient;
 import qikahome.jsonmore.minecraft.FlexBarrelBlock;
 import qikahome.jsonmore.minecraft.MinecraftPlugin;
 import qikahome.jsonmore.musbox.AnvilMusBoxPlugin;
@@ -58,24 +76,9 @@ public class JsonMore {
     public JsonMore(IEventBus modEventBus) {
         // 注册 mod 加载的 commonSetup 方法
         modEventBus.addListener(this::commonSetup);
-
+                modEventBus.addListener(this::registerCapabilities);
         // 为服务器和其他我们感兴趣的游戏事件注册自己
         NeoForge.EVENT_BUS.register(this);
-
-        modEventBus.addListener(RegisterCapabilitiesEvent.class, event -> {
-            event.registerBlockEntity(
-                    Capabilities.ItemHandler.BLOCK,
-                    MinecraftPlugin.BARREL_TILE.get(),
-                    (be, side) -> {
-                        var level = be.getLevel();
-                        if (level == null) return null;
-                        if (be.getBlockState().getBlock() instanceof FlexBarrelBlock block) {
-                            return new net.neoforged.neoforge.items.wrapper.InvWrapper(
-                                    MultiContainer.of(block.getContainers(level, be.getBlockPos(), be.getBlockState())));
-                        }
-                        return null;
-                    });
-        });
 
         BLOCK_ENTITY_TYPES.register(modEventBus);
         MENU_TYPES.register(modEventBus);
@@ -87,6 +90,24 @@ public class JsonMore {
         manager.registerParser(new BuiltInDatapackParser(modEventBus));
 
         onFlexTypesLoad();
+    }
+
+    public void registerCapabilities(RegisterCapabilitiesEvent event) {
+        for (var blk : BuiltInRegistries.BLOCK) {
+            if (blk instanceof FlexBarrelBlock barrel) {
+                event.registerBlock(
+                        Capabilities.ItemHandler.BLOCK, // capability to register for
+                        (level, pos, state, be, side) -> {
+                            if(state.getBlock() instanceof FlexBarrelBlock flex)
+                            {
+                                return new InvWrapper(MultiContainer.of(flex.getContainers(level,pos,state)));
+                            }
+                            LOGGER.warn("Wrong Block Type for ItemCapability!");
+                            return null;
+                        },
+                        barrel);
+            }
+        }
     }
 
     public static final DeferredRegister<BlockEntityType<?>> BLOCK_ENTITY_TYPES = DeferredRegister
@@ -107,15 +128,15 @@ public class JsonMore {
             .register("item_application", () -> ItemApplicationRecipe.Serializer.INSTANCE);
 
     static {
-        qikahome.jsonmore.lib.ingredient.NotIngredient.register();
-        qikahome.jsonmore.lib.ingredient.KeepInventoryContainerIngredient.register();
-        qikahome.jsonmore.lib.ingredient.TrueIngredient.register();
-        qikahome.jsonmore.lib.ingredient.ToolDamagingIngredient.register();
-        qikahome.jsonmore.lib.ingredient.CountedIngredient.register();
-        qikahome.jsonmore.lib.ingredient.NBTCopyIngredient.register();
-        qikahome.jsonmore.lib.ingredient.RemainderOverrideIngredient.register();
-        qikahome.jsonmore.lib.ingredient.ItemDisplayOverrideIngredient.register();
-        qikahome.jsonmore.lib.ingredient.ConditionIngredient.register();
+        NotIngredient.register();
+        KeepInventoryContainerIngredient.register();
+        TrueIngredient.register();
+        ToolDamagingIngredient.register();
+        CountedIngredient.register();
+        NBTCopyIngredient.register();
+        RemainderOverrideIngredient.register();
+        ItemDisplayOverrideIngredient.register();
+        ConditionIngredient.register();
         GameRuleCondition.register();
 
         MinecraftPlugin.BARREL_TILE = BLOCK_ENTITY_TYPES.register("barrel",
@@ -160,6 +181,9 @@ public class JsonMore {
         }
         if (ModList.get().isLoaded("anvil_musbox")) {
             AnvilMusBoxPlugin.load();
+        }
+        if (ModList.get().isLoaded("create")) {
+            CreatePlugin.load();
         }
         // if (modList.isLoaded("minecraft")) {
         MinecraftPlugin.load();

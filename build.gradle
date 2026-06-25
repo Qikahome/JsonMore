@@ -91,7 +91,7 @@ repositories {
 
 dependencies {
     // JSON Things - 必需依赖
-    implementation "dev.gigaherz.jsonthings:JsonThings-1.21:${json_things_version}"
+    implementation "dev.gigaherz.jsonthings:JsonThings-1.21.1:${json_things_version}"
 
     // JEI - 可选依赖
     compileOnly "mezz.jei:jei-${minecraft_version}-neoforge-api:${jei_version}"

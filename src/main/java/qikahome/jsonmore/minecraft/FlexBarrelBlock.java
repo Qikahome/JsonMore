@@ -19,9 +19,11 @@ import net.minecraft.core.Direction;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.core.NonNullList;
 import net.minecraft.core.Vec3i;
+import net.minecraft.core.component.DataComponents;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundEvent;
@@ -29,14 +31,14 @@ import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.tags.TagKey;
 import net.minecraft.util.RandomSource;
+import net.minecraft.world.CompoundContainer;
 import net.minecraft.world.Container;
 import net.minecraft.world.ContainerHelper;
-import net.minecraft.world.CompoundContainer;
-import net.minecraft.world.WorldlyContainer;
 import net.minecraft.world.Containers;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.ItemInteractionResult;
+import net.minecraft.world.WorldlyContainer;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.monster.piglin.PiglinAi;
 import net.minecraft.world.entity.player.Inventory;
@@ -45,16 +47,15 @@ import net.minecraft.world.inventory.AbstractContainerMenu;
 import net.minecraft.world.inventory.ChestMenu;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.core.component.DataComponents;
-import net.minecraft.world.item.component.ItemContainerContents;
 import net.minecraft.world.item.TooltipFlag;
+import net.minecraft.world.item.component.ItemContainerContents;
 import net.minecraft.world.item.context.BlockPlaceContext;
-import net.minecraft.world.item.crafting.Ingredient;
 import net.minecraft.world.level.BlockGetter;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.LevelAccessor;
 import net.minecraft.world.level.block.BaseEntityBlock;
 import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.Mirror;
 import net.minecraft.world.level.block.RenderShape;
 import net.minecraft.world.level.block.Rotation;
 import net.minecraft.world.level.block.SimpleWaterloggedBlock;
@@ -67,28 +68,26 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.StateDefinition;
 import net.minecraft.world.level.block.state.properties.BlockStateProperties;
 import net.minecraft.world.level.block.state.properties.Property;
-import net.minecraft.world.level.material.Fluid;
 import net.minecraft.world.level.material.Fluids;
 import net.minecraft.world.level.storage.loot.LootParams;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.shapes.CollisionContext;
 import net.minecraft.world.phys.shapes.VoxelShape;
+import qikahome.jsonmore.JsonMore;
 import qikahome.jsonmore.lib.BlockedDirection;
 import qikahome.jsonmore.lib.ContainerPart;
+import static qikahome.jsonmore.lib.ContainerPart.PART;
+import qikahome.jsonmore.lib.ContainerScreenType;
 import qikahome.jsonmore.lib.ExpandableMode;
 import qikahome.jsonmore.lib.FaceFilter;
 import qikahome.jsonmore.lib.IFlexContainer;
 import qikahome.jsonmore.lib.IFlexEntityBlock;
-import net.minecraft.resources.ResourceLocation;
-import qikahome.jsonmore.lib.ContainerScreenType;
 import qikahome.jsonmore.lib.ItemFilter;
 import qikahome.jsonmore.lib.KeepInventoryMode;
 import qikahome.jsonmore.lib.MultiContainer;
 import qikahome.jsonmore.lib.PlacingDirections;
 import qikahome.jsonmore.lib.ingredient.KeepInventoryContainerIngredient;
 import qikahome.jsonmore.lib.ingredient.NotIngredient;
-import net.minecraft.world.level.block.Mirror;
-import static qikahome.jsonmore.lib.ContainerPart.PART;
 
 public class FlexBarrelBlock extends BaseEntityBlock
         implements IFlexEntityBlock<FlexBarrelBlock.FlexBarrelBlockEntity>, SimpleWaterloggedBlock {
@@ -289,7 +288,8 @@ public class FlexBarrelBlock extends BaseEntityBlock
                 tooltip.add(Component.empty());
                 int shown = 0;
                 for (ItemStack itemStack : nonEmpty) {
-                    if (shown >= 5) break;
+                    if (shown >= 5)
+                        break;
                     tooltip.add(Component.literal(" ").append(itemStack.getDisplayName())
                             .append(Component.literal(" x"))
                             .append(Component.literal(String.valueOf(itemStack.getCount()))));
@@ -419,7 +419,7 @@ public class FlexBarrelBlock extends BaseEntityBlock
         return super.getDrops(state, builder);
     }
 
-    public boolean retryConnection(LevelAccessor level, BlockPos pos, BlockState state) {
+    public boolean retryConnection(Level level, BlockPos pos, BlockState state) {
         var connection = state.getValue(PART);
         var facing = state.getValue(BlockStateProperties.FACING);
         boolean connected = false;
@@ -433,6 +433,7 @@ public class FlexBarrelBlock extends BaseEntityBlock
                     connected = mode.connect(neighborState, neighborPos, level, neighborDir.getOpposite());
                 }
                 if (connected) {
+                    level.invalidateCapabilities(neighborPos);
                     return true;
                 }
             }
@@ -606,62 +607,30 @@ public class FlexBarrelBlock extends BaseEntityBlock
                 var neiPart = neighborState.getValue(PART);
                 var neiFacing = neighborState.getValue(BlockStateProperties.FACING);
                 if (neiPart.getWorldDirection(neiFacing) != direction) {
+                    if (level instanceof Level l) l.invalidateCapabilities(pos);
                     return super.updateShape(state, direction, neighborState, level, pos, neighborPos)
                             .setValue(PART, ContainerPart.NONE);
                 }
-            } else
+            } else {
+                if (level instanceof Level l) l.invalidateCapabilities(pos);
                 return super.updateShape(state, direction, neighborState, level, pos, neighborPos)
                         .setValue(PART, ContainerPart.NONE);
-        return super.updateShape(state, direction, neighborState, level, pos, neighborPos);
-    }
-
-    public BlockState disconnect(LevelAccessor level, BlockPos pos, BlockState state) {
-
-        ContainerPart part = state.getValue(PART);
-        if (!part.isConnected())
-            return state;
-
-        Direction facing = state.getValue(BlockStateProperties.FACING);
-        Direction neighborDir = part.getWorldDirection(facing).getOpposite();
-        if (neighborDir != null) {
-            BlockPos neighborPos = pos.relative(neighborDir);
-            BlockState neighborState = level.getBlockState(neighborPos);
-            if (isConnectableBlock(neighborState) && neighborState.getValue(PART).isConnected()) {
-                // 清除邻居的连接状态
-                level.setBlock(neighborPos, neighborState.setValue(PART, ContainerPart.NONE), 3);
             }
-        }
-        return state.setValue(PART, ContainerPart.NONE);
+        return super.updateShape(state, direction, neighborState, level, pos, neighborPos);
     }
     // endregion
 
     public static class FlexBarrelBlockEntity extends RandomizableContainerBlockEntity implements WorldlyContainer {
         private NonNullList<ItemStack> items;
         private final ContainerOpenersCounter openersCounter = new ContainerOpenersCounter() {
-            private boolean shouldPlaySound(Level level, BlockPos pos, BlockState state) {
-                var part = state.getValue(PART);
-                var facing = state.getValue(BlockStateProperties.FACING);
-                switch (part) {
-                    case FRONT: {
-                        if (facing == Direction.DOWN || facing == Direction.SOUTH || facing == Direction.EAST)
-                            if (level.getBlockState(pos.relative(facing.getOpposite()))
-                                    .getValue(PART) == ContainerPart.FRONT)
-                                return false;
-                    }
-                    case LEFT, TOP, NONE:
-                        return true;
-                }
-                return false;
-            }
-
             protected void onOpen(Level level, BlockPos pos, BlockState state) {
-                if (shouldPlaySound(level, pos, state))
+                if (isMajor(level, pos, state))
                     FlexBarrelBlockEntity.this.playSound(state, flexBlock.open);
                 FlexBarrelBlockEntity.this.updateBlockState(state, true);
             }
 
             protected void onClose(Level level, BlockPos pos, BlockState state) {
-                if (shouldPlaySound(level, pos, state))
+                if (isMajor(level, pos, state))
                     FlexBarrelBlockEntity.this.playSound(state, flexBlock.close);
                 FlexBarrelBlockEntity.this.updateBlockState(state, false);
             }
@@ -750,11 +719,6 @@ public class FlexBarrelBlock extends BaseEntityBlock
                 this.openersCounter.decrementOpeners(player, this.getLevel(), this.getBlockPos(),
                         this.getBlockState());
             }
-        }
-
-        @Override
-        public void setBlockState(BlockState state) {
-            super.setBlockState(state);
         }
 
         public void recheckOpen() {
@@ -848,5 +812,26 @@ public class FlexBarrelBlock extends BaseEntityBlock
     @Override
     protected MapCodec<? extends BaseEntityBlock> codec() {
         return MapCodec.unit(this);
+    }
+
+    public static boolean isMajor(Level level, BlockPos pos, BlockState state) {
+        if(!(state.getBlock() instanceof FlexBarrelBlock))
+        {
+            JsonMore.LOGGER.warn("Block is not FlexBarrelBlock, idk if its major.");
+            return false;
+        }
+        var part = state.getValue(PART);
+        var facing = state.getValue(BlockStateProperties.FACING);
+        switch (part) {
+            case FRONT: {
+                if (facing == Direction.DOWN || facing == Direction.SOUTH || facing == Direction.EAST)
+                    if (level.getBlockState(pos.relative(facing.getOpposite()))
+                            .getValue(PART) == ContainerPart.FRONT)
+                        return false;
+            }
+            case LEFT, TOP, NONE:
+                return true;
+        }
+        return false;
     }
 }

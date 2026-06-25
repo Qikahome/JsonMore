@@ -5,23 +5,28 @@ import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Set;
 import java.util.function.Supplier;
-import org.apache.commons.lang3.mutable.MutableObject;
 
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
+
 import dev.gigaherz.jsonthings.things.parsers.ThingParseException;
 import dev.gigaherz.jsonthings.things.serializers.FlexBlockType;
-import dev.gigaherz.jsonthings.things.serializers.FlexItemType;
+import dev.gigaherz.jsonthings.things.serializers.FlexBlockType.DefaultTypeProperties;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.sounds.SoundEvent;
 import net.minecraft.util.GsonHelper;
+import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.entity.BlockEntityType;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.block.state.StateDefinition;
+import net.minecraft.world.level.block.state.properties.BlockStateProperties;
+import net.minecraft.world.level.block.state.properties.Property;
 import net.neoforged.neoforge.registries.DeferredHolder;
-import qikahome.jsonmore.Utils;
 import qikahome.jsonmore.lib.BlockedDirection;
+import qikahome.jsonmore.lib.ContainerPart;
 import qikahome.jsonmore.lib.ContainerScreenType;
 import qikahome.jsonmore.lib.ExpandableMode;
 import qikahome.jsonmore.lib.FaceFilter;
@@ -29,13 +34,6 @@ import qikahome.jsonmore.lib.ItemFilter;
 import qikahome.jsonmore.lib.KeepInventoryMode;
 import qikahome.jsonmore.lib.PlacingDirections;
 import qikahome.jsonmore.minecraft.FlexBarrelBlock.FlexBarrelBlockEntity;
-import net.minecraft.world.level.block.Block;
-import net.minecraft.world.level.block.entity.BlockEntityType;
-import net.minecraft.world.level.block.state.BlockState;
-import net.minecraft.world.level.block.state.StateDefinition;
-import net.minecraft.world.level.block.state.properties.BlockStateProperties;
-import net.minecraft.world.level.block.state.properties.Property;
-import net.minecraft.world.level.block.state.properties.WoodType;
 
 public class MinecraftPlugin {
     public static void load() {
@@ -108,7 +106,7 @@ public class MinecraftPlugin {
                 PlacingDirections facingDirection;
                 try {
                     facingDirection = PlacingDirections.valueOf(facing.toUpperCase());
-                                } catch (IllegalArgumentException e) {
+                } catch (IllegalArgumentException e) {
                     throw new ThingParseException("Direction " + facing + " not found", e);
                 }
                 if (openSoundEvent == null && !openSound.toString().equals("none:none")
@@ -121,12 +119,10 @@ public class MinecraftPlugin {
                     @Override
                     protected void createBlockStateDefinition(StateDefinition.Builder<Block, BlockState> builder1) {
                         super.createBlockStateDefinition(builder1);
-                        for (Property<?> property : _properties) {
-                            try {
-                                builder1.add(property);
-                            } catch (IllegalArgumentException e) {
-                                //pass
-                            }
+                        for (var prop : _properties) {
+                            if (prop != BlockStateProperties.OPEN && prop != BlockStateProperties.FACING
+                                    && prop != ContainerPart.PART && prop != BlockStateProperties.WATERLOGGED)
+                                builder1.add(prop);
                         }
                         if (waterlogged) {
                             builder1.add(BlockStateProperties.WATERLOGGED);
@@ -134,7 +130,9 @@ public class MinecraftPlugin {
                     }
                 };
             };
-        }, "solid", false, false, false);
+        }, DefaultTypeProperties.builder().defaultLayer("solid").defaultSeeThrough(false).defaultReplaceable(false)
+                .stockProperties(BlockStateProperties.OPEN, BlockStateProperties.FACING, ContainerPart.PART,
+                        BlockStateProperties.WATERLOGGED));
     }
 
     private static Map<FaceFilter, ItemFilter> parseFaceFilterMap(JsonObject data, String key) {
