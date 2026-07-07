@@ -1,0 +1,17 @@
+{
+    "type": "jsonmore:item_application",
+    "block": {
+        "item": "minecraft:stone"
+    },
+    "tool": {
+        "type": "jsonmore:tool_damaging",
+        "ingredient": {
+            "tag": "minecraft:pickaxes"
+        },
+        "damage": 1
+    },
+    "result": {
+        "item": "minecraft:cobblestone"
+    },
+    "sneaking": false
+}

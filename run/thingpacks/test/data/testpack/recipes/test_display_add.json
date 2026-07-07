@@ -1,0 +1,33 @@
+{
+    "type": "jsonmore:shapeless_consuming",
+    "ingredients": [
+        {
+            "type": "jsonmore:item_display_override",
+            "ingredient": {
+                "item": "minecraft:diamond"
+            },
+            "ops": [
+                {
+                    "op": "add",
+                    "value": {
+                        "id": "minecraft:netherite_scrap",
+                        "Count": 1
+                    }
+                },
+                {
+                    "op": "add_all",
+                    "value": {
+                        "tag": "minecraft:coals"
+                    }
+                }
+            ]
+        },
+        {
+            "item": "minecraft:stick"
+        }
+    ],
+    "result": {
+        "item": "minecraft:diamond",
+        "count": 1
+    }
+}

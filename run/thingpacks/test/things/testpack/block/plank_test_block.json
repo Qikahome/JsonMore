@@ -1,0 +1,11 @@
+{
+  "properties": {},
+  "default_state": {},
+  "shape": [[0,0,0,16,16,16]],
+  "item": {
+    "group": "building_blocks"
+  },
+  "events": {
+    "use": "testpack:plank_test"
+  }
+}

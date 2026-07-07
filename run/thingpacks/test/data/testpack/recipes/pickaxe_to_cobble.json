@@ -1,0 +1,20 @@
+{
+    "type": "jsonmore:shaped_consuming",
+    "pattern": [
+        "TT",
+        "TT"
+    ],
+    "key": {
+        "T": {
+            "type": "jsonmore:tool_damaging",
+            "ingredient": {
+                "tag": "minecraft:pickaxes"
+            },
+            "damage": 1
+        }
+    },
+    "result": {
+        "item": "minecraft:cobblestone",
+        "count": 1
+    }
+}
