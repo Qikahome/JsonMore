@@ -1,0 +1,22 @@
+{
+  "type": "horizontal_directional",
+  "properties": {
+    "facing": "horizontal_facing",
+    "servings": {
+      "type": "int",
+      "min": 0,
+      "max": 4
+    }
+  },
+  "default_state": {
+    "servings": 4
+  },
+  "not_solid": true,
+  "shape": [[0,0,0,16,4,16]],
+  "item": {
+    "max_stack_size": 1
+  },
+  "events": {
+    "use": "testpack:stuffed_frogport"
+  }
+}

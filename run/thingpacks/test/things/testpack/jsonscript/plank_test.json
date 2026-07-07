@@ -1,0 +1,44 @@
+{
+  "nodes": [
+    {
+      "type": "if",
+      "condition": {
+        "type": "item_predicate",
+        "item": "$stack",
+        "predicate": {"tag": "minecraft:planks"}
+      },
+      "if_true": [
+        {
+          "type": "if",
+          "condition": "$(server.exists)",
+          "if_true": [
+            {
+              "type": "set_var",
+              "var": "cmd_result",
+              "value": {
+                "type": "run_command",
+                "command": "execute as ${user.name} run say 是木板"
+              }
+            },
+            {
+              "type": "run_command",
+              "command": "say ${cmd_result}"
+            }
+          ]
+        },
+        {"type": "return", "value": "SUCCESS"}
+      ],
+      "if_false": [
+        {
+          "type": "if",
+          "condition": "$(server.exists)",
+          "if_true": {
+            "type": "run_command",
+            "command": "say ${stack.item}"
+          }
+        },
+        {"type": "return", "value": "PASS"}
+      ]
+    }
+  ]
+}

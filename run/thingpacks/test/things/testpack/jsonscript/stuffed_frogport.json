@@ -1,0 +1,144 @@
+{
+  "nodes": [
+    {
+      "type": "if",
+      "condition": "$(server.exists)",
+      "if_true": [
+        {
+          "type": "set_var",
+          "var": "sv",
+          "value": "$(block_state.properties.servings.number)"
+        },
+        {
+          "type": "set_var",
+          "var": "fc",
+          "value": "$(block_state.properties.facing)"
+        },
+        {
+          "type": "if",
+          "condition": {
+            "type": "number_predicate",
+            "value": "$(sv)",
+            "predicate": "(,0]"
+          },
+          "if_true": [
+            {
+              "type": "run_command",
+              "command": "setblock $(block_pos) minecraft:air"
+            },
+            {
+              "type": "run_command",
+              "command": "playsound minecraft:block.wood.break block @a $(block_pos)"
+            },
+            {
+              "type": "return",
+              "value": "success"
+            }
+          ]
+        },
+        {
+          "type": "set_var",
+          "var": "is_bowl",
+          "value": {
+            "type": "item_predicate",
+            "item": "$(stack)",
+            "predicate": {
+              "item": "minecraft:bowl"
+            }
+          }
+        },
+        {
+          "type": "if",
+          "condition": "$(is_bowl.negate)",
+          "if_true": [
+            {
+              "type": "run_command",
+              "command": "title $(user.name) actionbar {\"translate\":\"block.testpack.stuffed_frogport_block.need_bowl\"}"
+            },
+            {
+              "type": "return",
+              "value": "pass"
+            }
+          ]
+        },
+        {
+          "type": "if",
+          "condition": {
+            "type": "number_predicate",
+            "value": "$(sv)",
+            "predicate": "(1,]"
+          },
+          "if_true": [
+            {
+              "type": "set_var",
+              "var": "nv",
+              "value": {
+                "type": "minus",
+                "a": "$(sv)",
+                "b": 1
+              }
+            },
+            {
+              "type": "run_command",
+              "command": "setblock $(block_pos) testpack:stuffed_frogport_block[servings=$(nv),facing=$(fc)]"
+            }
+          ]
+        },
+        {
+          "type": "if",
+          "condition": {
+            "type": "number_predicate",
+            "value": "$(sv)",
+            "predicate": "[1,1]"
+          },
+          "if_true": [
+            {
+              "type": "run_command",
+              "command": "setblock $(block_pos) minecraft:air"
+            }
+          ]
+        },
+        {
+          "type": "run_command",
+          "command": "playsound minecraft:item.armor.equip_generic block @a $(block_pos)"
+        },
+        {
+          "type": "run_command",
+          "command": "give $(user.name) minecraft:mushroom_stew"
+        },
+        {
+          "type": "run_command",
+          "command": "execute as $(user.name) run item modify entity @s[gamemode=!creative] $(hand) testpack:decrement"
+        },
+        {
+          "type": "return",
+          "value": "success"
+        }
+      ],
+      "if_false": [
+        {
+          "type": "if",
+          "condition": {
+            "type": "item_predicate",
+            "item": "$(stack)",
+            "predicate": {
+              "item": "minecraft:bowl"
+            }
+          },
+          "if_true": [
+            {
+              "type": "return",
+              "value": "success"
+            }
+          ],
+          "if_false": [
+            {
+              "type": "return",
+              "value": "pass"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

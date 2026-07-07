@@ -37,6 +37,7 @@ import qikahome.jsonmore.mantle.MantlePlugin;
 import qikahome.jsonmore.minecraft.gamerule.GameRuleParser;
 import qikahome.jsonmore.minecraft.BuiltInDatapackParser;
 import qikahome.jsonmore.minecraft.MinecraftPlugin;
+import qikahome.jsonmore.minecraft.jsonscript.JsonScriptParser;
 import qikahome.jsonmore.musbox.AnvilMusBoxPlugin;
 import qikahome.jsonmore.tconstruct.TConstructPlugin;
 import net.minecraft.world.item.crafting.RecipeSerializer;
@@ -70,12 +71,12 @@ public class JsonMore {
 
         // 注册我们mod的ForgeConfigSpec，以便Forge可以为我们创建和加载配置文件
         context.registerConfig(ModConfig.Type.COMMON, Config.SPEC);
-
         var manager = ThingResourceManager.instance();
         manager.registerParser(new GameRuleParser(modEventBus));
         manager.registerParser(new BuiltInDatapackParser(modEventBus));
 
-
+        var scriptParser = new JsonScriptParser();
+        manager.registerParser(scriptParser);
 
         onFlexTypesLoad();
     }

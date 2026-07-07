@@ -5,5 +5,7 @@
   "block.testpack.container_expand_z": "Expand Z Container",
   "block.testpack.container_expand_o": "Expand O Container",
   "block.testpack.container_expand_multi": "Multi Expand Container",
-  "block.testpack.container_expand_keep": "Keep Inventory Container"
+  "block.testpack.container_expand_keep": "Keep Inventory Container",
+  "block.testpack.stuffed_frogport_block": "Stuffed Frogport Block",
+  "block.testpack.stuffed_frogport_block.need_bowl": "You need a bowl to take food from this block!"
 }

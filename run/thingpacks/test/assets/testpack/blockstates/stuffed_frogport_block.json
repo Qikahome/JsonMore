@@ -1,0 +1,8 @@
+{
+  "variants": {
+    "facing=north": {"model": "testpack:block/stuffed_frogport_block"},
+    "facing=east": {"model": "testpack:block/stuffed_frogport_block","y": 90},
+    "facing=south": {"model": "testpack:block/stuffed_frogport_block","y": 180},
+    "facing=west": {"model": "testpack:block/stuffed_frogport_block","y": 270}
+  }
+}

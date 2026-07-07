@@ -9,6 +9,7 @@
     "MixinMechanicalCrafterBlockEntity",
     "MixinLazyResultSlot",
     "MixinUncraftingMenu",
+    "MixinScriptParser",
     "MixinTwilightForestJEICompat",
     "MixinFlexBarrelBlockItem",
     "MixinFlexHorizontalDirectionalBlock"
