@@ -10,7 +10,8 @@
     "MixinLazyResultSlot",
     "MixinUncraftingMenu",
     "MixinTwilightForestJEICompat",
-    "MixinFlexBarrelBlockItem"
+    "MixinFlexBarrelBlockItem",
+    "MixinFlexHorizontalDirectionalBlock"
   ],
   "client": [],
   "server": [],

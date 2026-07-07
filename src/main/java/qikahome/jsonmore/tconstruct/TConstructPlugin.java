@@ -36,6 +36,10 @@ import slimeknights.tconstruct.library.client.book.sectiontransformer.materials.
 import slimeknights.tconstruct.library.tools.item.IModifiable;
 import slimeknights.tconstruct.library.tools.nbt.ToolStack;
 import slimeknights.tconstruct.library.tools.stat.ToolStats;
+import net.minecraft.world.item.Item;
+import net.minecraft.world.level.block.DispenserBlock;
+import net.minecraftforge.registries.ForgeRegistries;
+import slimeknights.tconstruct.shared.block.PlaceBlockDispenserBehavior;
 import slimeknights.tconstruct.smeltery.block.component.SearedTankBlock;
 
 public class TConstructPlugin {
@@ -89,9 +93,10 @@ public class TConstructPlugin {
                 props.isValidSpawn((a, b, c, d) -> false).isRedstoneConductor((a, b, c) -> false)
                         .isSuffocating((a, b, c) -> false).isViewBlocking((a, b, c) -> false).noOcclusion()
                         .lightLevel(SearedTankBlock.LIGHT_GETTER);
+                var pushReaction = builder.getPushReaction();
                 List<Property<?>> _properties = builder.getProperties();
                 Map<Property<?>, Comparable<?>> propertyDefaultValues = builder.getPropertyDefaultValues();
-                return new FlexFluidTankBlock(props, capacity, propertyDefaultValues) {
+                return new FlexFluidTankBlock(props, capacity, propertyDefaultValues, pushReaction) {
                     @Override
                     protected void createBlockStateDefinition(StateDefinition.Builder<Block, BlockState> builder1) {
                         super.createBlockStateDefinition(builder1);
@@ -166,6 +171,13 @@ public class TConstructPlugin {
 
     public static void onCommonSetup(final FMLCommonSetupEvent event) {
         parser.onCommonSetup(event);
+        event.enqueueWork(() -> {
+            for (Item item : ForgeRegistries.ITEMS) {
+                if (item instanceof FlexFluidTankItem) {
+                    DispenserBlock.registerBehavior(item, PlaceBlockDispenserBehavior.INSTANCE);
+                }
+            }
+        });
     }
 
     public static MaterialStatTypeParser parser = null;

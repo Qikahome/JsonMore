@@ -30,18 +30,9 @@ import slimeknights.tconstruct.smeltery.block.entity.component.TankBlockEntity;
 
 public class FlexFluidTankBlock extends SearedTankBlock implements IFlexEntityBlock<TankBlockEntity> {
     public FlexFluidTankBlock(Properties properties, int capacity,
-            Map<Property<?>, Comparable<?>> propertyDefaultValues) {
-        super(properties, capacity);
-        initializeFlex(propertyDefaultValues);
-    }
-
-    public FlexFluidTankBlock(Properties properties, int capacity, PushReaction destroy) {
+            Map<Property<?>, Comparable<?>> propertyDefaultValues, PushReaction destroy) {
         super(properties, capacity, destroy);
-    }
-
-    @Override
-    public PushReaction getPistonPushReaction(BlockState state) {
-        return null;
+        initializeFlex(propertyDefaultValues);
     }
 
     // region IFlexBlock
