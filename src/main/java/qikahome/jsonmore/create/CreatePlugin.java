@@ -8,7 +8,6 @@ import qikahome.jsonmore.minecraft.FlexBarrelBlock;
 public class CreatePlugin {
     public static void load(){
         BlockMovementChecks.registerMovementAllowedCheck(
-                (s, w, p) -> s.getBlock() instanceof FlexBarrelBlock && !s.getValue(FlexBarrelBlock.CONNECTED)
-                        ? CheckResult.SUCCESS : CheckResult.PASS);
+                (s, w, p) -> s.getBlock() instanceof FlexBarrelBlock ? CheckResult.SUCCESS : CheckResult.PASS);
     }
 }

@@ -305,33 +305,6 @@ tasks.named('jar', Jar).configure {
     finalizedBy 'reobfJar'
 }
 
-// 每次 build 后自动将 jarJar 的 -all.jar 复制到配置的输出目录
-build.finalizedBy('copyJarJarOutput')
-
-tasks.register('copyJarJarOutput') {
-    dependsOn 'reobfJar'
-    doLast {
-        def localProps = new Properties()
-        def localFile = file('local.properties')
-        if (localFile.exists()) {
-            localFile.withInputStream { localProps.load(it) }
-        }
-        def outputDir = localProps.getProperty('build_output_dir') ?: "${buildDir}/libs"
-        def src = file("${buildDir}/libs/${base.archivesName.get()}-${project.version}-all.jar")
-        def dst = file("${outputDir}/${base.archivesName.get()}-${project.version}.jar")
-        if (src.exists()) {
-            copy {
-                from src
-                into dst.parentFile
-                rename { dst.name }
-            }
-            logger.lifecycle("Copied ${src.name} -> ${dst}")
-        } else {
-            logger.warn("Source jar not found: ${src}")
-        }
-    }
-}
-
 // 若为多项目构建，开发阶段需要未混淆的 Jar 包，可将混淆延迟到发布阶段：
 // tasks.named('publish').configure {
 //     dependsOn 'reobfJar'

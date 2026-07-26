@@ -19,14 +19,15 @@ import dev.gigaherz.jsonthings.things.shapes.DynamicShape;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.NonNullList;
+import net.minecraft.core.registries.Registries;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.sounds.SoundEvent;
+import net.minecraft.sounds.SoundSource;
 import net.minecraft.tags.TagKey;
-import net.minecraftforge.network.NetworkHooks;
-import net.minecraft.core.registries.Registries;
 import net.minecraft.world.Container;
 import net.minecraft.world.ContainerHelper;
 import net.minecraft.world.Containers;
@@ -39,8 +40,6 @@ import net.minecraft.world.inventory.AbstractContainerMenu;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.BlockGetter;
 import net.minecraft.world.level.Level;
-import net.minecraft.sounds.SoundEvent;
-import net.minecraft.sounds.SoundSource;
 import net.minecraft.world.level.block.BaseEntityBlock;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.RenderShape;
@@ -55,10 +54,10 @@ import net.minecraft.world.level.block.state.properties.Property;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.shapes.CollisionContext;
 import net.minecraft.world.phys.shapes.VoxelShape;
+import net.minecraftforge.network.NetworkHooks;
+import static qikahome.jsonmore.JsonMore.LOGGER;
 import qikahome.jsonmore.lib.ContainerScreenType;
 import qikahome.jsonmore.lib.IFlexEntityBlock;
-
-import static qikahome.jsonmore.JsonMore.LOGGER;
 
 public class StorageConnectorBlock extends BaseEntityBlock
         implements IFlexEntityBlock<StorageConnectorBlock.ControllerBlockEntity> {
