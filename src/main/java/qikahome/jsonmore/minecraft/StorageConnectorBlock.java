@@ -10,8 +10,8 @@ import java.util.Set;
 
 import javax.annotation.Nullable;
 
-import com.mojang.serialization.MapCodec;
 import com.google.common.collect.Maps;
+import com.mojang.serialization.MapCodec;
 
 import dev.gigaherz.jsonthings.things.events.FlexEventContext;
 import dev.gigaherz.jsonthings.things.events.FlexEventHandler;
@@ -57,10 +57,9 @@ import net.minecraft.world.level.block.state.properties.Property;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.shapes.CollisionContext;
 import net.minecraft.world.phys.shapes.VoxelShape;
+import static qikahome.jsonmore.JsonMore.LOGGER;
 import qikahome.jsonmore.lib.ContainerScreenType;
 import qikahome.jsonmore.lib.IFlexEntityBlock;
-
-import static qikahome.jsonmore.JsonMore.LOGGER;
 
 public class StorageConnectorBlock extends BaseEntityBlock
         implements IFlexEntityBlock<StorageConnectorBlock.ControllerBlockEntity> {
@@ -279,7 +278,7 @@ public class StorageConnectorBlock extends BaseEntityBlock
                     level.playSound(null, pos, scb.soundDisassemble, SoundSource.BLOCKS, 1.0F, 1.0F);
                 }
                 cbe.disassemble(level);
-                level.setBlock(pos, oldState, 2); // Restore self
+                level.setBlock(pos, oldState.setValue(CONNECTED, false), 2); // Restore self
                 return;
             }
             super.onRemove(oldState, level, pos, newState, isMoving);
@@ -388,6 +387,9 @@ public class StorageConnectorBlock extends BaseEntityBlock
                     continue;
                 }
                 if (level.getBlockState(target).getValue(FlexBarrelBlock.CONNECTED)) {
+                    continue;
+                }
+                if (fbe.getController() != null) {
                     continue;
                 }
 

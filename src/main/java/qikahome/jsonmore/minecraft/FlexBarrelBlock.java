@@ -558,6 +558,10 @@ public class FlexBarrelBlock extends BaseEntityBlock
         builder1.add(BlockStateProperties.OPEN, BlockStateProperties.FACING, PART, CONNECTED);
     }
 
+    private static boolean isNotCaptured(BlockState neighborState) {
+        return !neighborState.hasProperty(CONNECTED) || !neighborState.getValue(CONNECTED);
+    }
+
     @Override
     public BlockState getStateForPlacement(BlockPlaceContext context) {
         // 基础状态：朝向 + 未连接
@@ -592,7 +596,8 @@ public class FlexBarrelBlock extends BaseEntityBlock
                 BlockState neighborState = level.getBlockState(neighborPos);
 
                 if (isConnectableBlock(neighborState)
-                        && neighborState.getValue(PART) == ContainerPart.NONE) {
+                        && neighborState.getValue(PART) == ContainerPart.NONE
+                        && isNotCaptured(neighborState)) {
                     BlockState newState = mode.tryForceConnect(state, neighborState, neighborPos, level, clickedFace,
                             true);
                     if (newState != state) {
@@ -610,8 +615,9 @@ public class FlexBarrelBlock extends BaseEntityBlock
                 BlockState neighborState = level.getBlockState(neighborPos);
 
                 if (isConnectableBlock(neighborState)
-                        && neighborState.getValue(PART) == ContainerPart.NONE) {
-                    // 自动扫描时，将 dir 作为“虚拟点击面”传入
+                        && neighborState.getValue(PART) == ContainerPart.NONE
+                        && isNotCaptured(neighborState)) {
+                    // 自动扫描时，将 dir 作为"虚拟点击面"传入
                     BlockState newState = mode.tryConnect(state, neighborState, neighborPos, level, dir.getOpposite(),
                             true);
                     if (newState != state) {
