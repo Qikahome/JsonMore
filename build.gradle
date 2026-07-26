@@ -55,7 +55,7 @@ minecraft {
     // 访问转换器文件可放在项目任意位置，但最终需打包到模组 Jar 包的 "META-INF/accesstransformer.cfg" 路径才能被 Forge 加载
     // 以下默认路径是最佳实践，可自动将文件放入最终 Jar 包的正确位置
     // 参考文档：https://docs.minecraftforge.net/en/latest/advanced/accesstransformers/
-    // accessTransformer = file('src/main/resources/META-INF/accesstransformer.cfg')
+    accessTransformer = file('src/main/resources/META-INF/accesstransformer.cfg')
 
     // 默认运行配置
     // 可根据需要调整、删除或复制这些配置
@@ -111,17 +111,34 @@ minecraft {
             args '--mod', mod_id, '--all', '--output', file('src/generated/resources/'), '--existing', file('src/main/resources/')
         }
     }
-    accessTransformer = file('src/main/resources/META-INF/accesstransformer.cfg')
 }
 
 // 将数据生成器生成的资源纳入源码集
 sourceSets.main.resources { srcDir 'src/generated/resources' }
+
+// 加载 secret.properties（上级目录，供多个子项目共享）
+def secretFile = file('../secret.properties')
+if (secretFile.exists()) {
+    def secretProps = new Properties()
+    secretFile.withInputStream { secretProps.load(it) }
+    secretProps.each { key, value -> project.ext.set(key, value) }
+}
 
 // 依赖仓库配置
 repositories {
     // 国内镜像（加速 Forge / Minecraft / 通用库下载）
     maven { url = 'https://bmclapi2.bangbang93.com/maven' }  // Minecraft 综合镜像
     maven { url = 'https://maven.aliyun.com/repository/public' } // 阿里云 Maven 镜像
+
+    // AutoSizedGUI - GitHub Packages
+    maven {
+        name = "GitHubPackages"
+        url = "https://maven.pkg.github.com/Qikahome/AutoSizedGUI"
+        credentials {
+            username = project.findProperty("gpr.user") ?: System.getenv("GITHUB_ACTOR")
+            password = project.findProperty("gpr.key") ?: System.getenv("GITHUB_TOKEN")
+        }
+    }
 
     // 原有仓库
     flatDir {
@@ -173,6 +190,11 @@ dependencies {
 
     // JSON Things - 必需依赖
     implementation fg.deobf("dev.gigaherz.jsonthings:JsonThings-${minecraft_version}:${json_things_version}")
+
+    // AutoSizedGUI - 自动布局GUI（jarjar 嵌入）
+    implementation jarJar(fg.deobf("qikahome:AutoSizedGUI-1.20.1:1.0.5")) {
+        jarJar.ranged(it, "[1.0,2.0)")
+    }
     
     // Mixin 依赖
     annotationProcessor 'org.spongepowered:mixin:0.8.5:processor'

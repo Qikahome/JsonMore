@@ -13,6 +13,7 @@
   - [Sign](block_types/sign.md)
   - [Tinker Chest](block_types/tinker_chest.md) *(requires [Tinkers' Construct 3](https://github.com/SlimeKnights/TinkersConstruct))*
   - [Container](block_types/container.md)
+  - [Storage Connector](block_types/storage_connector.md)
   - [Fluid Tank](block_types/fluid_tank.md) *(requires [Tinkers' Construct 3](https://github.com/SlimeKnights/TinkersConstruct))*
   - [Note Block](block_types/note_block.md) *(requires [Anvil MusBox](https://github.com/Qikahome/Anvil_MusBox))*
 - **Item Types**

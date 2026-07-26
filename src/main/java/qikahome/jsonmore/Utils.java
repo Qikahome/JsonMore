@@ -1,8 +1,12 @@
 package qikahome.jsonmore;
 
 import com.google.common.base.Supplier;
+
+
+
 import static qikahome.jsonmore.JsonMore.LOGGER;
 
+import java.util.function.Predicate;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -74,7 +78,7 @@ public class Utils {
         }
     }
 
-    public static final class IntRange {
+    public static final class IntRange implements Predicate<Integer> {
         private final int min;
         private final int max;
         private final boolean minInclusive;
@@ -103,8 +107,19 @@ public class Utils {
 
             Matcher matcher = pattern.matcher(rangeStr);
             if (!matcher.matches()) {
+                // Minecraft 风格范围：a..b, ..b, a.., ..
+                String trimmed = rangeStr.trim();
+                if (trimmed.contains("..")) {
+                    String[] parts = trimmed.split("\\.\\.", -1);
+                    String minStr = parts[0].trim();
+                    String maxStr = parts.length > 1 ? parts[1].trim() : "";
+                    int min = minStr.isEmpty() ? Integer.MIN_VALUE : Integer.parseInt(minStr);
+                    int max = maxStr.isEmpty() ? Integer.MAX_VALUE : Integer.parseInt(maxStr);
+                    if (min > max) throw new IllegalArgumentException("min > max");
+                    return new IntRange(min, max, true, true);
+                }
                 // 特殊处理通配符 "*"
-                if (rangeStr.trim().equals("*")) {
+                if (trimmed.equals("*")) {
                     return new IntRange(Integer.MIN_VALUE, Integer.MAX_VALUE, true, true);
                 }
                 throw new IllegalArgumentException("Invalid range format: " + rangeStr);
@@ -180,6 +195,11 @@ public class Utils {
                     (min == Integer.MIN_VALUE ? "" : min) + "," +
                     (max == Integer.MAX_VALUE ? "" : max) +
                     (maxInclusive ? "]" : ")");
+        }
+
+        @Override
+        public boolean test(Integer t) {
+            return contains(t);
         }
     }
 

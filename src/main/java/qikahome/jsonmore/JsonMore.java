@@ -7,8 +7,8 @@ import com.mojang.logging.LogUtils;
 import dev.gigaherz.jsonthings.things.ThingRegistries;
 import dev.gigaherz.jsonthings.things.parsers.ThingResourceManager;
 import net.minecraft.world.level.block.entity.BlockEntityType;
+import net.minecraft.client.gui.screens.MenuScreens;
 import net.minecraft.core.Registry;
-import net.minecraft.server.MinecraftServer;
 import net.minecraft.world.inventory.MenuType;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.common.MinecraftForge;
@@ -17,8 +17,6 @@ import net.minecraftforge.eventbus.api.IEventBus;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.ModList;
 import net.minecraftforge.fml.common.Mod;
-import net.minecraftforge.fml.common.Mod.EventBusSubscriber;
-import net.minecraftforge.fml.common.Mod.EventBusSubscriber.Bus;
 import net.minecraftforge.fml.config.ModConfig;
 import net.minecraftforge.fml.event.lifecycle.FMLClientSetupEvent;
 import net.minecraftforge.fml.event.lifecycle.FMLCommonSetupEvent;
@@ -26,6 +24,9 @@ import net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext;
 import net.minecraftforge.registries.DeferredRegister;
 import net.minecraftforge.registries.ForgeRegistries;
 import net.minecraftforge.registries.RegistryObject;
+import qikahome.autosizedgui.screen.AutoSizedContainerScreen;
+import qikahome.jsonmore.autosizedgui.AutoSizedGUIPlugin;
+import qikahome.jsonmore.autosizedgui.AutoSizedMenu;
 import qikahome.jsonmore.create.CreatePlugin;
 import qikahome.jsonmore.cyclopscore.CyclopsCorePlugin;
 import qikahome.jsonmore.cyclopscore.ScrollingContainerScreen;
@@ -75,8 +76,6 @@ public class JsonMore {
         manager.registerParser(new GameRuleParser(modEventBus));
         manager.registerParser(new BuiltInDatapackParser(modEventBus));
 
-
-
         onFlexTypesLoad();
     }
 
@@ -97,6 +96,8 @@ public class JsonMore {
     static {
         MinecraftPlugin.BARREL_TILE = BLOCK_ENTITY_TYPES.register("barrel",
                 MinecraftPlugin.BARREL_SUPPLIER);
+        MinecraftPlugin.STORAGE_CONNECTOR_TILE = BLOCK_ENTITY_TYPES.register("storage_connector",
+                MinecraftPlugin.STORAGE_CONNECTOR_SUPPLIER);
         if (ModList.get().isLoaded("tconstruct")) {
             LOGGER.info("Registering JsonMore TConstructPlugin Block Entities");
             TConstructPlugin.TINKER_CHEST_TILE = BLOCK_ENTITY_TYPES.register("tinker_chest",
@@ -105,6 +106,10 @@ public class JsonMore {
         if (ModList.get().isLoaded("cyclopscore")) {
             CyclopsCorePlugin.SCROLLING_CONTAINER_MENU = MENU_TYPES.register("scrolling_container",
                     CyclopsCorePlugin.supplier);
+        }
+        if (ModList.get().isLoaded("autosizedgui")) {
+            AutoSizedGUIPlugin.AUTO_SIZED_MENU = MENU_TYPES.register("autosized_menu",
+                    AutoSizedGUIPlugin.supplier);
         }
     }
 
@@ -141,9 +146,14 @@ public class JsonMore {
         public static void onClientSetup(FMLClientSetupEvent event) {
             event.enqueueWork(() -> {
                 if (ModList.get().isLoaded("cyclopscore")) {
-                    net.minecraft.client.gui.screens.MenuScreens.register(
+                    MenuScreens.register(
                             CyclopsCorePlugin.SCROLLING_CONTAINER_MENU.get(),
                             ScrollingContainerScreen::new);
+                }
+                if (ModList.get().isLoaded("autosizedgui")) {
+                    MenuScreens.<AutoSizedMenu,AutoSizedContainerScreen<AutoSizedMenu>>register(
+                            AutoSizedGUIPlugin.AUTO_SIZED_MENU.get(),
+                            AutoSizedContainerScreen<AutoSizedMenu>::new);
                 }
             });
             if (ModList.get().isLoaded("mantle")) {
@@ -171,6 +181,9 @@ public class JsonMore {
         }
         if (modList.isLoaded("create")) {
             CreatePlugin.load();
+        }
+        if (modList.isLoaded("autosizedgui")) {
+            AutoSizedGUIPlugin.load();
         }
         // if (modList.isLoaded("minecraft")) {
         MinecraftPlugin.load();
