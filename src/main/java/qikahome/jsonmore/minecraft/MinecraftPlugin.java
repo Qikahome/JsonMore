@@ -34,6 +34,7 @@ import qikahome.jsonmore.lib.ItemFilter;
 import qikahome.jsonmore.lib.KeepInventoryMode;
 import qikahome.jsonmore.lib.PlacingDirections;
 import qikahome.jsonmore.minecraft.FlexBarrelBlock.FlexBarrelBlockEntity;
+import qikahome.jsonmore.minecraft.StorageConnectorBlock.ControllerBlockEntity;
 
 public class MinecraftPlugin {
     public static void load() {
@@ -133,6 +134,50 @@ public class MinecraftPlugin {
         }, DefaultTypeProperties.builder().defaultLayer("solid").defaultSeeThrough(false).defaultReplaceable(false)
                 .stockProperties(BlockStateProperties.OPEN, BlockStateProperties.FACING, ContainerPart.PART,
                         BlockStateProperties.WATERLOGGED));
+
+        // ========== Storage Connector ==========
+        FlexBlockType.register("jsonmore:storage_connector", data -> {
+            int radius = GsonHelper.getAsInt(data, "radius", 4);
+            if (!data.has("connectable")) {
+                throw new ThingParseException("storage_connector requires 'connectable' field");
+            }
+            String connectableStr = GsonHelper.getAsString(data, "connectable");
+            if (connectableStr.startsWith("#")) connectableStr = connectableStr.substring(1);
+            ResourceLocation connectable = ResourceLocation.parse(connectableStr);
+            ContainerScreenType screenType = ContainerScreenType.parse(data.get("screen"), "autosizedgui:auto");
+
+            ResourceLocation assembleSoundId = ResourceLocation.parse(
+                    GsonHelper.getAsString(data, "assemble_sound", "minecraft:block.beacon.activate"));
+            ResourceLocation disassembleSoundId = ResourceLocation.parse(
+                    GsonHelper.getAsString(data, "disassemble_sound", "minecraft:block.beacon.deactivate"));
+            ResourceLocation openSoundId = ResourceLocation.parse(
+                    GsonHelper.getAsString(data, "open_sound", "minecraft:block.barrel.open"));
+            ResourceLocation closeSoundId = ResourceLocation.parse(
+                    GsonHelper.getAsString(data, "close_sound", "minecraft:block.barrel.close"));
+
+            return (props, builder) -> {
+                List<Property<?>> _properties = builder.getProperties();
+                Map<Property<?>, Comparable<?>> propertyDefaultValues = builder.getPropertyDefaultValues();
+                SoundEvent assembleSound = BuiltInRegistries.SOUND_EVENT.get(assembleSoundId);
+                SoundEvent disassembleSound = BuiltInRegistries.SOUND_EVENT.get(disassembleSoundId);
+                SoundEvent openSound = BuiltInRegistries.SOUND_EVENT.get(openSoundId);
+                SoundEvent closeSound = BuiltInRegistries.SOUND_EVENT.get(closeSoundId);
+                return new StorageConnectorBlock(props, propertyDefaultValues, radius, connectable, screenType,
+                        assembleSound, disassembleSound, openSound, closeSound) {
+                    @Override
+                    protected void createBlockStateDefinition(StateDefinition.Builder<Block, BlockState> builder1) {
+                        super.createBlockStateDefinition(builder1);
+                        for (Property<?> property : _properties) {
+                            try {
+                                builder1.add(property);
+                            } catch (IllegalArgumentException e) {
+                                // pass
+                            }
+                        }
+                    }
+                };
+            };
+        }, DefaultTypeProperties.builder().defaultLayer("solid").defaultSeeThrough(false).defaultReplaceable(false));
     }
 
     private static Map<FaceFilter, ItemFilter> parseFaceFilterMap(JsonObject data, String key) {
@@ -154,5 +199,10 @@ public class MinecraftPlugin {
     public static DeferredHolder<BlockEntityType<?>, BlockEntityType<FlexBarrelBlockEntity>> BARREL_TILE;
     public static final Supplier<BlockEntityType<FlexBarrelBlockEntity>> BARREL_SUPPLIER = () -> BlockEntityType.Builder
             .of(FlexBarrelBlockEntity::new)
+            .build(null);
+
+    public static DeferredHolder<BlockEntityType<?>, BlockEntityType<ControllerBlockEntity>> STORAGE_CONNECTOR_TILE;
+    public static final Supplier<BlockEntityType<ControllerBlockEntity>> STORAGE_CONNECTOR_SUPPLIER = () -> BlockEntityType.Builder
+            .of(ControllerBlockEntity::new)
             .build(null);
 }

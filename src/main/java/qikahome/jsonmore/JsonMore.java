@@ -62,7 +62,12 @@ import qikahome.jsonmore.lib.ingredient.ToolDamagingIngredient;
 import qikahome.jsonmore.lib.ingredient.TrueIngredient;
 import qikahome.jsonmore.minecraft.FlexBarrelBlock;
 import qikahome.jsonmore.minecraft.MinecraftPlugin;
+import qikahome.jsonmore.minecraft.StorageConnectorBlock;
+import qikahome.jsonmore.minecraft.StorageConnectorBlock.ControllerBlockEntity;
 import qikahome.jsonmore.musbox.AnvilMusBoxPlugin;
+import qikahome.autosizedgui.screen.AutoSizedContainerScreen;
+import qikahome.jsonmore.autosizedgui.AutoSizedGUIPlugin;
+import qikahome.jsonmore.autosizedgui.AutoSizedMenu;
 import qikahome.jsonmore.minecraft.gamerule.GameRuleCondition;
 
 // 这里的值应该与 META-INF/neoforge.mods.toml 文件中的条目匹配
@@ -96,16 +101,26 @@ public class JsonMore {
         for (var blk : BuiltInRegistries.BLOCK) {
             if (blk instanceof FlexBarrelBlock barrel) {
                 event.registerBlock(
-                        Capabilities.ItemHandler.BLOCK, // capability to register for
+                        Capabilities.ItemHandler.BLOCK,
                         (level, pos, state, be, side) -> {
-                            if(state.getBlock() instanceof FlexBarrelBlock flex)
-                            {
-                                return new InvWrapper(MultiContainer.of(flex.getContainers(level,pos,state)));
+                            if (state.getBlock() instanceof FlexBarrelBlock flex) {
+                                return new InvWrapper(MultiContainer.of(flex.getContainers(level, pos, state)));
                             }
                             LOGGER.warn("Wrong Block Type for ItemCapability!");
                             return null;
                         },
                         barrel);
+            }
+            if (blk instanceof StorageConnectorBlock scb) {
+                event.registerBlock(
+                        Capabilities.ItemHandler.BLOCK,
+                        (level, pos, state, be, side) -> {
+                            if (be instanceof ControllerBlockEntity cbe) {
+                                return new InvWrapper(cbe);
+                            }
+                            return null;
+                        },
+                        scb);
             }
         }
     }
@@ -141,9 +156,15 @@ public class JsonMore {
 
         MinecraftPlugin.BARREL_TILE = BLOCK_ENTITY_TYPES.register("barrel",
                 MinecraftPlugin.BARREL_SUPPLIER);
+        MinecraftPlugin.STORAGE_CONNECTOR_TILE = BLOCK_ENTITY_TYPES.register("storage_connector",
+                MinecraftPlugin.STORAGE_CONNECTOR_SUPPLIER);
         if (ModList.get().isLoaded("cyclopscore")) {
             CyclopsCorePlugin.SCROLLING_CONTAINER_MENU = MENU_TYPES.register("scrolling_container",
                     CyclopsCorePlugin.supplier);
+        }
+        if (ModList.get().isLoaded("autosizedgui")) {
+            AutoSizedGUIPlugin.AUTO_SIZED_MENU = MENU_TYPES.register("autosized_menu",
+                    AutoSizedGUIPlugin.supplier);
         }
     }
 
@@ -169,6 +190,11 @@ public class JsonMore {
                 event.register(CyclopsCorePlugin.SCROLLING_CONTAINER_MENU.get(),
                         ScrollingContainerScreen::new);
             }
+            if (ModList.get().isLoaded("autosizedgui")) {
+                event.<AutoSizedMenu, AutoSizedContainerScreen<AutoSizedMenu>>register(
+                        AutoSizedGUIPlugin.AUTO_SIZED_MENU.get(),
+                        AutoSizedContainerScreen<AutoSizedMenu>::new);
+            }
         }
     }
 
@@ -184,6 +210,9 @@ public class JsonMore {
         }
         if (ModList.get().isLoaded("create")) {
             CreatePlugin.load();
+        }
+        if (ModList.get().isLoaded("autosizedgui")) {
+            AutoSizedGUIPlugin.load();
         }
         // if (modList.isLoaded("minecraft")) {
         MinecraftPlugin.load();

@@ -1,0 +1,13 @@
+{
+  "replace": false,
+  "values": [
+    "testpack:test_container_plain",
+    "testpack:test_container_upgraded",
+    "testpack:container_expand_x",
+    "testpack:container_expand_y",
+    "testpack:container_expand_z",
+    "testpack:container_expand_o",
+    "testpack:container_expand_keep",
+    "testpack:container_expand_multi"
+  ]
+}

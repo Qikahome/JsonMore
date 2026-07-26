@@ -52,8 +52,26 @@ neoForge {
 
 sourceSets.main.resources { srcDir 'src/generated/resources' }
 
+// 加载 secret.properties（上级目录，供多个子项目共享）
+def secretFile = file('../secret.properties')
+if (secretFile.exists()) {
+    def secretProps = new Properties()
+    secretFile.withInputStream { secretProps.load(it) }
+    secretProps.each { key, value -> project.ext.set(key, value) }
+}
+
 repositories {
     maven { url = 'https://maven.aliyun.com/repository/public' }
+
+    // AutoSizedGUI - GitHub Packages
+    maven {
+        name = "GitHubPackages"
+        url = "https://maven.pkg.github.com/Qikahome/AutoSizedGUI"
+        credentials {
+            username = project.findProperty("gpr.user") ?: System.getenv("GITHUB_ACTOR")
+            password = project.findProperty("gpr.key") ?: System.getenv("GITHUB_TOKEN")
+        }
+    }
 
     maven {
         name 'Dogforce Games'
@@ -92,6 +110,10 @@ repositories {
 dependencies {
     // JSON Things - 必需依赖
     implementation "dev.gigaherz.jsonthings:JsonThings-1.21.1:${json_things_version}"
+
+    // AutoSizedGUI - 自动布局GUI（jarjar 嵌入）
+    implementation "qikahome:AutoSizedGUI-1.21.1:1.0.5"
+    jarJar("qikahome:AutoSizedGUI-1.21.1:1.0.5")
 
     // JEI - 可选依赖
     compileOnly "mezz.jei:jei-${minecraft_version}-neoforge-api:${jei_version}"

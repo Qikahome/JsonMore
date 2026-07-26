@@ -67,6 +67,7 @@ import net.minecraft.world.level.block.state.BlockBehaviour;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.StateDefinition;
 import net.minecraft.world.level.block.state.properties.BlockStateProperties;
+import net.minecraft.world.level.block.state.properties.BooleanProperty;
 import net.minecraft.world.level.block.state.properties.Property;
 import net.minecraft.world.level.material.Fluids;
 import net.minecraft.world.level.storage.loot.LootParams;
@@ -74,6 +75,7 @@ import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.shapes.CollisionContext;
 import net.minecraft.world.phys.shapes.VoxelShape;
 import qikahome.jsonmore.JsonMore;
+import qikahome.jsonmore.minecraft.StorageConnectorBlock.ControllerBlockEntity;
 import qikahome.jsonmore.lib.BlockedDirection;
 import qikahome.jsonmore.lib.ContainerPart;
 import static qikahome.jsonmore.lib.ContainerPart.PART;
@@ -314,6 +316,7 @@ public class FlexBarrelBlock extends BaseEntityBlock
     public final BlockedDirection blocked;
     public final Map<FaceFilter, ItemFilter> insertFilters;
     public final Map<FaceFilter, ItemFilter> extractFilters;
+    public static final BooleanProperty CONNECTED = BooleanProperty.create("connected");
     public final ContainerScreenType screenType;
     public final ContainerScreenType connectedScreenType;
     public final Set<ExpandableMode> expandableModes;
@@ -332,6 +335,27 @@ public class FlexBarrelBlock extends BaseEntityBlock
 
     public InteractionResult fallbackUse(BlockState state, Level level, BlockPos pos, Player player,
             BlockHitResult hit) {
+        // When captured by a storage connector, proxy to controller GUI
+        if (state.getValue(CONNECTED)) {
+            if (level.isClientSide)
+                return InteractionResult.SUCCESS;
+            BlockEntity be = level.getBlockEntity(pos);
+            if (be instanceof FlexBarrelBlockEntity fbe) {
+                var controller = fbe.getController();
+                if (controller != null && controller.isAssembled() && player instanceof ServerPlayer serverPlayer) {
+                    Container container = controller.getControllerContainer();
+                    BlockState controllerState = level.getBlockState(controller.getBlockPos());
+                    if (controllerState.getBlock() instanceof StorageConnectorBlock scb) {
+                        serverPlayer.openMenu(
+                                scb.screenType.createMenuProvider(Collections.singletonList(container),
+                                        container.getContainerSize()),
+                                buffer -> scb.screenType.writeAdditionalData(buffer,
+                                        Collections.singletonList(container), container.getContainerSize()));
+                    }
+                }
+            }
+            return InteractionResult.SUCCESS;
+        }
         if (level.isClientSide) {
             return InteractionResult.SUCCESS;
         } else {
@@ -378,6 +402,9 @@ public class FlexBarrelBlock extends BaseEntityBlock
 
     @Override
     public BlockState playerWillDestroy(Level level, BlockPos pos, BlockState state, Player player) {
+        if (state.getValue(CONNECTED) && !level.isClientSide) {
+            return super.playerWillDestroy(level, pos, state, player);
+        }
         BlockEntity blockEntity = level.getBlockEntity(pos);
         if (blockEntity instanceof FlexBarrelBlockEntity flexEntity) {
             if (shouldKeepInventory(player)) {
@@ -461,6 +488,18 @@ public class FlexBarrelBlock extends BaseEntityBlock
                         : super.getFluidState(state);
     }
 
+    public boolean canPlaceLiquid(BlockGetter level, BlockPos pos, BlockState state, net.minecraft.world.level.material.Fluid fluid) {
+        return state.hasProperty(BlockStateProperties.WATERLOGGED);
+    }
+
+    @Override
+    public boolean placeLiquid(LevelAccessor level, BlockPos pos, BlockState state, net.minecraft.world.level.material.FluidState fluidState) {
+        if (!state.hasProperty(BlockStateProperties.WATERLOGGED)) {
+            return false;
+        }
+        return SimpleWaterloggedBlock.super.placeLiquid(level, pos, state, fluidState);
+    }
+
     @Override
     public BlockEntityType<FlexBarrelBlockEntity> getBlockEntityType() {
         return MinecraftPlugin.BARREL_TILE.get();
@@ -473,6 +512,12 @@ public class FlexBarrelBlock extends BaseEntityBlock
 
     @Nullable
     public List<Container> getContainers(Level level, BlockPos pos, BlockState state) {
+        // When captured by a controller, return self (methods delegate to the controller)
+        if (state.hasProperty(CONNECTED) && state.getValue(CONNECTED)) {
+            BlockEntity be = level.getBlockEntity(pos);
+            return be instanceof Container ? Collections.singletonList((Container) be)
+                    : Collections.emptyList();
+        }
         ContainerPart part = state.getValue(PART);
         BlockEntity blockEntity = level.getBlockEntity(pos);
         if (!part.isConnected()) {
@@ -510,7 +555,7 @@ public class FlexBarrelBlock extends BaseEntityBlock
 
     @Override
     protected void createBlockStateDefinition(StateDefinition.Builder<Block, BlockState> builder1) {
-        builder1.add(BlockStateProperties.OPEN, BlockStateProperties.FACING, PART);
+        builder1.add(BlockStateProperties.OPEN, BlockStateProperties.FACING, PART, CONNECTED);
     }
 
     @Override
@@ -519,7 +564,8 @@ public class FlexBarrelBlock extends BaseEntityBlock
         BlockState state = this.defaultBlockState()
                 .setValue(BlockStateProperties.FACING, facing.getDirection(context))
                 .setValue(PART, ContainerPart.NONE)
-                .setValue(BlockStateProperties.OPEN, false);
+                .setValue(BlockStateProperties.OPEN, false)
+                .setValue(CONNECTED, false);
 
         // 处理含水
         if (waterloggedIn && state.hasProperty(BlockStateProperties.WATERLOGGED)) {
@@ -584,7 +630,19 @@ public class FlexBarrelBlock extends BaseEntityBlock
 
         if (!oldState.is(newState.getBlock())) {
             BlockEntity blockentity = level.getBlockEntity(pos);
-            if (blockentity instanceof Container) {
+            if (blockentity instanceof FlexBarrelBlockEntity fbe && oldState.getValue(CONNECTED)) {
+                if (!level.isClientSide) {
+                    var controller = fbe.getController();
+                    if (controller != null && controller.isAssembled()) {
+                        JsonMore.LOGGER.debug("FlexBarrelBlock.onRemove: found controller at {}, disassembling", pos);
+                        controller.disassemble(level);
+                        level.setBlock(pos, oldState.setValue(CONNECTED, false), 2);
+                        JsonMore.LOGGER.debug("FlexBarrelBlock.onRemove: disassembled, restored to {}", oldState);
+                        return;
+                    }
+                    JsonMore.LOGGER.debug("FlexBarrelBlock.onRemove: controller not found at {}, allowing removal", pos);
+                }
+            } else if (blockentity instanceof Container) {
                 Containers.dropContents(level, pos, (Container) blockentity);
                 level.updateNeighbourForOutputSignal(pos, this);
             }
@@ -652,6 +710,9 @@ public class FlexBarrelBlock extends BaseEntityBlock
             }
         };
         private final FlexBarrelBlock flexBlock;
+        private boolean captured = false;
+        @Nullable
+        private BlockPos controllerPos;
 
         public FlexBarrelBlockEntity(BlockPos pos, BlockState state) {
             super(MinecraftPlugin.BARREL_TILE.get(), pos, state);
@@ -662,37 +723,111 @@ public class FlexBarrelBlock extends BaseEntityBlock
                 throw new IllegalArgumentException("Not a FlexBarrelBlock");
         }
 
+        @Nullable
+        public StorageConnectorBlock.ControllerBlockEntity getController() {
+            if (controllerPos == null || level == null)
+                return null;
+            BlockPos absolute = worldPosition.offset(controllerPos);
+            BlockEntity be = level.getBlockEntity(absolute);
+            return be instanceof StorageConnectorBlock.ControllerBlockEntity cbe ? cbe : null;
+        }
+
+        public boolean isConnected() {
+            return captured;
+        }
+
+        public void setCaptured(boolean captured, @Nullable BlockPos controllerPos) {
+            this.captured = captured;
+            this.controllerPos = controllerPos;
+            setChanged();
+        }
+
         @Override
         protected void saveAdditional(CompoundTag tag, HolderLookup.Provider registries) {
-            super.saveAdditional(tag, registries);
-            if (!this.trySaveLootTable(tag)) {
-                ContainerHelper.saveAllItems(tag, this.items, registries);
+            tag.putBoolean("Captured", captured);
+            if (controllerPos != null) {
+                tag.putIntArray("CtrlPos", new int[]{controllerPos.getX(), controllerPos.getY(), controllerPos.getZ()});
+                super.saveAdditional(tag, registries);
+                tag.remove("LootTable");
+                tag.remove("LootTableSeed");
+                tag.remove("Items");
+            } else {
+                super.saveAdditional(tag, registries);
+                if (!this.trySaveLootTable(tag)) {
+                    ContainerHelper.saveAllItems(tag, this.items, registries);
+                }
             }
-
         }
 
         @Override
         protected void loadAdditional(CompoundTag tag, HolderLookup.Provider registries) {
-            super.loadAdditional(tag, registries);
-            this.items = NonNullList.withSize(this.getContainerSize(), ItemStack.EMPTY);
-            if (!this.tryLoadLootTable(tag)) {
-                ContainerHelper.loadAllItems(tag, this.items, registries);
+            captured = tag.getBoolean("Captured");
+            int[] ctrlArr = tag.getIntArray("CtrlPos");
+            controllerPos = ctrlArr.length == 3 ? new BlockPos(ctrlArr[0], ctrlArr[1], ctrlArr[2]) : null;
+            if (controllerPos != null) {
+                super.loadAdditional(tag, registries);
+            } else {
+                super.loadAdditional(tag, registries);
+                this.items = NonNullList.withSize(this.getContainerSize(), ItemStack.EMPTY);
+                if (!this.tryLoadLootTable(tag)) {
+                    ContainerHelper.loadAllItems(tag, this.items, registries);
+                }
+            }
+        }
+
+        @Override
+        public void onLoad() {
+            super.onLoad();
+            if (level != null && !level.isClientSide) {
+                BlockState state = level.getBlockState(worldPosition);
+                if (state.hasProperty(CONNECTED)) {
+                    captured = state.getValue(CONNECTED);
+                    if (!captured)
+                        controllerPos = null;
+                }
             }
         }
 
         @Override
         public int getContainerSize() {
+            if (isConnected()) {
+                ControllerBlockEntity controller = getController();
+                if (controller != null)
+                    return controller.getContainerSize();
+                return 0;
+            }
             return flexBlock.containerSize;
         }
 
         @Override
         public NonNullList<ItemStack> getItems() {
+            if (isConnected()) {
+                ControllerBlockEntity controller = getController();
+                if (controller != null)
+                    return controller.getItems();
+                return NonNullList.create();
+            }
             return this.items;
         }
 
         @Override
         public void setItems(NonNullList<ItemStack> items) {
+            if (isConnected()) {
+                ControllerBlockEntity controller = getController();
+                if (controller != null) {
+                    controller.setItems(items);
+                    return;
+                }
+                return;
+            }
             this.items = items;
+        }
+
+        @Override
+        public void clearContent() {
+            if (!isConnected()) {
+                super.clearContent();
+            }
         }
 
         @Override
@@ -707,6 +842,13 @@ public class FlexBarrelBlock extends BaseEntityBlock
 
         @Override
         public void startOpen(Player player) {
+            if (isConnected()) {
+                ControllerBlockEntity controller = getController();
+                if (controller != null) {
+                    controller.startOpen(player);
+                }
+                return;
+            }
             if (!this.remove && !player.isSpectator()) {
                 this.openersCounter.incrementOpeners(player, this.getLevel(), this.getBlockPos(),
                         this.getBlockState());
@@ -715,6 +857,13 @@ public class FlexBarrelBlock extends BaseEntityBlock
 
         @Override
         public void stopOpen(Player player) {
+            if (isConnected()) {
+                ControllerBlockEntity controller = getController();
+                if (controller != null) {
+                    controller.stopOpen(player);
+                }
+                return;
+            }
             if (!this.remove && !player.isSpectator()) {
                 this.openersCounter.decrementOpeners(player, this.getLevel(), this.getBlockPos(),
                         this.getBlockState());
@@ -759,6 +908,12 @@ public class FlexBarrelBlock extends BaseEntityBlock
 
         @Override
         public int[] getSlotsForFace(Direction direction) {
+            if (isConnected()) {
+                ControllerBlockEntity controller = getController();
+                if (controller != null)
+                    return controller.getSlotsForFace(direction);
+                return new int[0];
+            }
             int[] slots = new int[getContainerSize()];
             for (int i = 0; i < slots.length; i++) {
                 slots[i] = i;
@@ -773,6 +928,12 @@ public class FlexBarrelBlock extends BaseEntityBlock
 
         @Override
         public boolean canPlaceItemThroughFace(int index, ItemStack stack, @Nullable Direction direction) {
+            if (isConnected()) {
+                ControllerBlockEntity controller = getController();
+                if (controller != null)
+                    return controller.canPlaceItemThroughFace(index, stack, direction);
+                return false;
+            }
             if (flexBlock.insertFilters.isEmpty()) {
                 return true;
             }
@@ -791,6 +952,12 @@ public class FlexBarrelBlock extends BaseEntityBlock
 
         @Override
         public boolean canTakeItemThroughFace(int index, ItemStack stack, Direction direction) {
+            if (isConnected()) {
+                ControllerBlockEntity controller = getController();
+                if (controller != null)
+                    return controller.canTakeItemThroughFace(index, stack, direction);
+                return false;
+            }
             Direction facing = getBlockState().getValue(BlockStateProperties.FACING);
 
             if (flexBlock.extractFilters.isEmpty()) {
@@ -807,6 +974,7 @@ public class FlexBarrelBlock extends BaseEntityBlock
 
             return true;
         }
+
     }
 
     @Override

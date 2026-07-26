@@ -31,3 +31,6 @@ local.properties
 forge*changelog.txt
 # Ignore only root-level java files (e.g. reference copies)
 /*.java
+
+# secret credentials
+secret.properties
