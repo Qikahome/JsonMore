@@ -17,7 +17,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 @Mixin(FlexHorizontalDirectionalBlock.class)
 public abstract class MixinFlexHorizontalDirectionalBlock {
 
-    @Inject(method = "getStateForPlacement", at = @At("HEAD"), cancellable = true, remap = false)
+    @Inject(method = "getStateForPlacement", at = @At("HEAD"), cancellable = true)
     private void fixGetStateForPlacement(BlockPlaceContext context, CallbackInfoReturnable<BlockState> cir) {
         var self = (FlexHorizontalDirectionalBlock) (Object) this;
         cir.setReturnValue(self.defaultBlockState().setValue(

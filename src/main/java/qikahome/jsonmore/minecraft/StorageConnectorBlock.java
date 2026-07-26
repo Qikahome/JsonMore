@@ -270,7 +270,7 @@ public class StorageConnectorBlock extends BaseEntityBlock
                     level.playSound(null, pos, scb.soundDisassemble, SoundSource.BLOCKS, 1.0F, 1.0F);
                 }
                 cbe.disassemble(level);
-                level.setBlock(pos, oldState, 2); // Restore self
+                level.setBlock(pos, oldState.setValue(CONNECTED, false), 2); // Restore self without connected state
                 return;
             }
             super.onRemove(oldState, level, pos, newState, isMoving);
@@ -374,6 +374,9 @@ public class StorageConnectorBlock extends BaseEntityBlock
                     continue;
                 }
                 if (level.getBlockState(target).getValue(FlexBarrelBlock.CONNECTED)) {
+                    continue;
+                }
+                if (fbe.getController() != null) {
                     continue;
                 }
 
