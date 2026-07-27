@@ -12,7 +12,7 @@ import qikahome.autosizedgui.screen.element.ItemSlot;
 import qikahome.jsonmore.lib.IFlexContainer;
 import qikahome.jsonmore.lib.MultiContainer;
 
-import org.cyclops.cyclopscore.inventory.LargeInventory;
+import net.minecraft.world.SimpleContainer;
 
 import static qikahome.jsonmore.autosizedgui.AutoSizedGUIPlugin.AUTO_SIZED_MENU;
 
@@ -42,7 +42,7 @@ public class AutoSizedMenu extends AbstractContainerMenu implements IFlexContain
     }
 
     public AutoSizedMenu(int id, Inventory playerInventory, RegistryFriendlyByteBuf data) {
-        this(AUTO_SIZED_MENU.get(), id, playerInventory, new LargeInventory(data.readVarInt(), 64));
+        this(AUTO_SIZED_MENU.get(), id, playerInventory, new SimpleContainer(data.readVarInt()));
     }
 
     public static AutoSizedMenu create(int containerId, Inventory playerInventory, Container container) {
