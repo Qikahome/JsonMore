@@ -78,6 +78,23 @@ public class ContainerScreenType {
                 };
             }, true);
 
+    public static final ContainerScreenType NOT_SUPPORTED = register(
+            new ResourceLocation("jsonmore:not_supported"),
+            (containers, containerSize) -> new MenuProvider() {
+                @Override
+                @Nullable
+                public AbstractContainerMenu createMenu(int containerId, Inventory inventory, Player player) {
+                    player.sendSystemMessage(
+                            Component.translatable("message.jsonmore.container_not_supported", containerSize));
+                    return null;
+                }
+
+                @Override
+                public Component getDisplayName() {
+                    return Component.translatable("message.jsonmore.container_not_supported");
+                }
+            }, true);
+
     private final ResourceLocation id;
     private final IMenuFactory menuFactory;
     private final boolean available;

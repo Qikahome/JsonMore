@@ -1,8 +1,8 @@
 package qikahome.jsonmore.autosizedgui;
 
+import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.world.Container;
 import net.minecraft.world.SimpleContainer;
-import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.inventory.AbstractContainerMenu;
@@ -10,10 +10,9 @@ import net.minecraft.world.inventory.MenuType;
 import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.ItemStack;
 import qikahome.autosizedgui.screen.element.ItemSlot;
+import static qikahome.jsonmore.autosizedgui.AutoSizedGUIPlugin.AUTO_SIZED_MENU;
 import qikahome.jsonmore.lib.IFlexContainer;
 import qikahome.jsonmore.lib.MultiContainer;
-
-import static qikahome.jsonmore.autosizedgui.AutoSizedGUIPlugin.AUTO_SIZED_MENU;
 
 public class AutoSizedMenu extends AbstractContainerMenu implements IFlexContainer {
     private final Container container;
@@ -28,8 +27,12 @@ public class AutoSizedMenu extends AbstractContainerMenu implements IFlexContain
             this.addSlot(new ItemSlot(container, slot, slot));
         }
 
-        for (int col = 0; col < 36; ++col) {
-            this.addSlot(new ItemSlot(playerInventory, col, col));
+        for (int i = 9; i < 36; ++i) {
+            this.addSlot(new ItemSlot(playerInventory, i, i));
+        }
+
+        for (int i = 0; i < 9; ++i) {
+            this.addSlot(new ItemSlot(playerInventory, i, i));
         }
         this.container.startOpen(playerInventory.player);
     }

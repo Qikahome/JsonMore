@@ -7,5 +7,6 @@
   "recipe.jsonmore.item_application": "物品交互",
   "recipe.jsonmore.item_application.sneaking.true": "需要潜行",
   "recipe.jsonmore.item_application.sneaking.false": "不可潜行",
-  "recipe.jsonmore.disabled": "条件未满足"
+  "recipe.jsonmore.disabled": "条件未满足",
+  "message.jsonmore.container_not_supported": "不支持此大小（%s格）的容器"
 }
