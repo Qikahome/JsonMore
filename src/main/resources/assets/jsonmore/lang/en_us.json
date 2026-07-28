@@ -7,5 +7,6 @@
   "recipe.jsonmore.item_application": "Item Application",
   "recipe.jsonmore.item_application.sneaking.true": "Sneaking Required",
   "recipe.jsonmore.item_application.sneaking.false": "Not Sneaking",
-  "recipe.jsonmore.disabled": "Disabled by Condition"
+  "recipe.jsonmore.disabled": "Disabled by Condition",
+  "message.jsonmore.container_not_supported": "Container size %s is not supported"
 }

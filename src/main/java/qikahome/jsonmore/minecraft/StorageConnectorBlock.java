@@ -352,14 +352,13 @@ public class StorageConnectorBlock extends BaseEntityBlock
                 }
 
                 // Continue BFS through neighbors if within radius
-                int dist = Math.max(Math.abs(p.getX() - pos.getX()),
-                        Math.max(Math.abs(p.getY() - pos.getY()),
-                                Math.abs(p.getZ() - pos.getZ())));
-                if (dist < r) {
-                    for (Direction dir : Direction.values()) {
-                        BlockPos np = p.relative(dir);
-                        if (!visited.contains(np) && level.getBlockState(np).is(scb.connectableTag)) {
-                            visited.add(np);
+                for (Direction dir : Direction.values()) {
+                    BlockPos np = p.relative(dir);
+                    if (!visited.contains(np) && level.getBlockState(np).is(scb.connectableTag)) {
+                        int ndist = Math.max(Math.abs(np.getX() - pos.getX()),
+                                Math.max(Math.abs(np.getY() - pos.getY()),
+                                        Math.abs(np.getZ() - pos.getZ())));
+                        if (ndist <= r && visited.add(np)) {
                             queue.add(np);
                         }
                     }
