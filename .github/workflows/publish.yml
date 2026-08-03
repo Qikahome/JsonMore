@@ -36,6 +36,8 @@ jobs:
 
       - name: Build
         run: ./gradlew build
+        env:
+          GH_PACKAGES_TOKEN: ${{ secrets.GH_PACKAGES_TOKEN }}
 
       - name: Publish to CurseForge
         uses: Kir-Antipov/mc-publish@v3.3
