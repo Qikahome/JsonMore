@@ -1,0 +1,53 @@
+name: Publish (NeoForge 1.21.1)
+
+on:
+  workflow_dispatch:
+    inputs:
+      release_type:
+        description: 'Release type (alpha / beta / release)'
+        required: true
+        default: 'beta'
+  push:
+    tags:
+      - 'v1.21.1-*'
+
+env:
+  CURSEFORGE_PROJECT_ID: '1570673'
+
+permissions:
+  contents: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+          cache: gradle
+
+      - name: Make Gradle Executable
+        run: chmod +x gradlew
+
+      - name: Build
+        run: ./gradlew build
+
+      - name: Publish to CurseForge
+        uses: Kir-Antipov/mc-publish@v3.3
+        with:
+          curseforge-id: ${{ env.CURSEFORGE_PROJECT_ID }}
+          curseforge-token: ${{ secrets.CURSEFORGE_TOKEN }}
+          files-primary: build/libs/!(*-@(dev|sources|javadoc)).jar
+          version-type: ${{ inputs.release_type != '' && inputs.release_type || 'beta' }}
+          game-versions: |
+            1.21.1
+          loaders: |
+            neoforge
+          java: |
+            21
+          changelog-file: CHANGELOG.md
