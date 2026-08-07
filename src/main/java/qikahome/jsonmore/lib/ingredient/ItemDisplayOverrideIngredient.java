@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.stream.Stream;
 
 import javax.annotation.Nullable;
@@ -12,15 +13,16 @@ import com.mojang.serialization.Codec;
 import com.mojang.serialization.MapCodec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 
+import net.minecraft.network.RegistryFriendlyByteBuf;
+import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.crafting.Ingredient;
-import net.neoforged.neoforge.common.crafting.ICustomIngredient;
 import net.neoforged.neoforge.common.crafting.IngredientType;
 import net.neoforged.neoforge.registries.DeferredHolder;
 import qikahome.jsonmore.JsonMore;
 
-public class ItemDisplayOverrideIngredient implements ICustomIngredient {
+public class ItemDisplayOverrideIngredient extends SelfConsumingIngredient {
     public static final ResourceLocation ID = ResourceLocation.parse("jsonmore:item_display_override");
 
     private static final Map<String, MapCodec<? extends IOpHandler>> OPS = new HashMap<>();
@@ -132,45 +134,42 @@ public class ItemDisplayOverrideIngredient implements ICustomIngredient {
 
     // ---- Instance ----
 
-    private final Ingredient ingredient;
     private final List<OpEntry> ops;
+    @Nullable private List<ItemStack> cachedDisplayStacks;
 
     public static final MapCodec<ItemDisplayOverrideIngredient> CODEC = RecordCodecBuilder.mapCodec(
             v -> v.group(
                     Ingredient.CODEC.fieldOf("ingredient").forGetter(i -> i.ingredient),
                     OpEntry.LIST_CODEC.fieldOf("ops").forGetter(i -> i.ops))
                     .apply(v, ItemDisplayOverrideIngredient::new));
+    /** 网络传输只发送应用 ops 后的展示物品列表，不发送 op 配置 */
+    public static final StreamCodec<RegistryFriendlyByteBuf, ItemDisplayOverrideIngredient> NETWORK_STREAM_CODEC = StreamCodec
+            .of(ItemDisplayOverrideIngredient::toNetwork, ItemDisplayOverrideIngredient::fromNetwork);
     public static final DeferredHolder<IngredientType<?>, IngredientType<ItemDisplayOverrideIngredient>> TYPE = JsonMore.INGREDIENT_TYPES
-            .register(ID.getPath(), () -> new IngredientType<>(CODEC));
+            .register(ID.getPath(), () -> new IngredientType<>(CODEC, NETWORK_STREAM_CODEC));
 
     private ItemDisplayOverrideIngredient(Ingredient ingredient, List<OpEntry> ops) {
-        this.ingredient = ingredient;
+        super(ingredient);
         this.ops = ops;
     }
 
-    private Stream<ItemStack> cachedDisplayStacks = null;
+    private ItemDisplayOverrideIngredient(Ingredient ingredient, Stream<ItemStack> displayStacks) {
+        super(ingredient);
+        this.ops = List.of();
+        this.cachedDisplayStacks = displayStacks.toList();
+    }
 
     @Override
     public Stream<ItemStack> getItems() {
         if (cachedDisplayStacks == null) {
-            Stream<ItemStack> base = Stream.of(ingredient.getItems());
             List<ItemStack> result = new ArrayList<>();
-            base.forEach(s -> result.add(s.copy()));
+            for (ItemStack stack : ingredient.getItems())
+                result.add(stack.copy());
             for (OpEntry op : ops)
                 op.handler.apply(result, op.filter);
-            cachedDisplayStacks = result.stream();
+            cachedDisplayStacks = result;
         }
-        return cachedDisplayStacks;
-    }
-
-    @Override
-    public boolean test(@Nullable ItemStack stack) {
-        return ingredient.test(stack);
-    }
-
-    @Override
-    public boolean isSimple() {
-        return false;
+        return cachedDisplayStacks.stream();
     }
 
     @Override
@@ -178,14 +177,33 @@ public class ItemDisplayOverrideIngredient implements ICustomIngredient {
         return TYPE.get();
     }
 
+    // ---- Network ----
+
+    private static void toNetwork(RegistryFriendlyByteBuf buf, ItemDisplayOverrideIngredient ingredient) {
+        Ingredient.CONTENTS_STREAM_CODEC.encode(buf, ingredient.ingredient);
+        List<ItemStack> stacks = ingredient.getItems().toList();
+        buf.writeVarInt(stacks.size());
+        for (ItemStack stack : stacks)
+            ItemStack.STREAM_CODEC.encode(buf, stack);
+    }
+
+    private static ItemDisplayOverrideIngredient fromNetwork(RegistryFriendlyByteBuf buf) {
+        Ingredient ingredient = Ingredient.CONTENTS_STREAM_CODEC.decode(buf);
+        int size = buf.readVarInt();
+        List<ItemStack> stacks = new ArrayList<>(size);
+        for (int i = 0; i < size; i++)
+            stacks.add(ItemStack.STREAM_CODEC.decode(buf));
+        return new ItemDisplayOverrideIngredient(ingredient, stacks.stream());
+    }
+
     // ---- Op entry ----
 
     private record OpEntry(@Nullable Ingredient filter, IOpHandler handler) {
         public static final Codec<OpEntry> CODEC = RecordCodecBuilder.create(
                 v -> v.group(
-                        Ingredient.CODEC.fieldOf("filter").forGetter(OpEntry::filter),
+                        Ingredient.CODEC.optionalFieldOf("filter").forGetter(op -> Optional.ofNullable(op.filter)),
                         HANDLER_CODEC.fieldOf("handler").forGetter(OpEntry::handler))
-                        .apply(v, OpEntry::new));
+                        .apply(v, (filter, handler) -> new OpEntry(filter.orElse(null), handler)));
         public static final Codec<List<OpEntry>> LIST_CODEC = CODEC.listOf();
     }
 
