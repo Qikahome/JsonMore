@@ -1,5 +1,11 @@
 # Json More Changelog
 
+## 1.2.9
+- item_display_override 继承 SelfConsumingIngredient，消耗/输出修改逻辑透传，支持包裹自消耗原料
+- 网络传输优化：直接发送应用 ops 后的展示物品列表（自定义 streamCodec）
+- op 的 filter 字段改为可选
+- 更新配方原料类型文档
+
 ## 1.1.3
 - 添加 NBTCopyIngredient 原料类型，支持 NBT 复制和合并
 - 支持路径过滤（display.Lore、display.Lore[0] 等格式）
