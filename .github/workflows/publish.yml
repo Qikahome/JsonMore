@@ -53,3 +53,5 @@ jobs:
           java: |
             21
           changelog-file: CHANGELOG.md
+          github-tag: ${{ github.ref_name }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
