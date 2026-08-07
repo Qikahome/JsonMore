@@ -1,5 +1,7 @@
 package qikahome.jsonmore.mantle.ingredient;
 
+import static qikahome.jsonmore.JsonMore.LOGGER;
+
 import java.util.ArrayList;
 import java.util.List;
 
@@ -32,17 +34,27 @@ public class FluidItemIngredient extends SelfConsumingIngredient {
     public ItemStack consume(ItemStack stack) {
         if (stack.isEmpty())
             return stack;
-        var remainder=stack.copy();
-        remainder.getCapability(ForgeCapabilities.FLUID_HANDLER_ITEM).ifPresent(handler->
-            {
-                for(var fl:fluid.getFluids())
-                    if(handler.drain(fl,FluidAction.SIMULATE).equals(fl))
-                    {
-                        handler.drain(fl,FluidAction.EXECUTE);
-                        return;
-                    }
-            }
-        );
+        var remainder = stack.copy();
+        // 先尝试消耗多个流体中所有流体
+        var handler = remainder.getCapability(ForgeCapabilities.FLUID_HANDLER_ITEM).orElse(null);
+        if (handler != null)
+            for (var fl : fluid.getFluids())
+                if (fluid.test(handler.drain(fl, FluidAction.SIMULATE))) {
+                    handler.drain(fl, FluidAction.EXECUTE);
+                    stack.setCount(1);
+                    return remainder;
+                }
+        // 如果不成功，尝试消耗1个
+        remainder.setCount(1);
+        var singleHandler = remainder.getCapability(ForgeCapabilities.FLUID_HANDLER_ITEM).orElse(null);
+        if (singleHandler != null)
+            for (var fl : fluid.getFluids())
+                if (fluid.test(singleHandler.drain(fl, FluidAction.SIMULATE))) {
+                    singleHandler.drain(fl, FluidAction.EXECUTE);
+                    return remainder;
+                }
+        // 还是不行？不应该啊
+        LOGGER.error("FluidItemIngredient.consume: 未能消耗任何匹配流体, stack={}", stack);
         return remainder;
     }
 
@@ -71,7 +83,16 @@ public class FluidItemIngredient extends SelfConsumingIngredient {
             var handler = capa.resolve().orElse(null);
             if (handler != null) {
                 for (var fl : fluid.getFluids())
-                    if (handler.drain(fl, FluidAction.SIMULATE).equals(fl))
+                    if (fluid.test(handler.drain(fl, FluidAction.SIMULATE)))
+                        return true;
+            }
+            var copy = stack.copy();
+            copy.setCount(1);
+            capa = copy.getCapability(ForgeCapabilities.FLUID_HANDLER_ITEM);
+            handler = capa.resolve().orElse(null);
+            if (handler != null) {
+                for (var fl : fluid.getFluids())
+                    if (fluid.test(handler.drain(fl, FluidAction.SIMULATE)))
                         return true;
             }
         }
@@ -89,7 +110,7 @@ public class FluidItemIngredient extends SelfConsumingIngredient {
         JsonObject json = new JsonObject();
         json.addProperty("type", ID.toString());
         json.add("ingredient", ingredient.toJson());
-        json.add("fluid",fluid.serialize());
+        json.add("fluid", fluid.serialize());
         return json;
     }
 
