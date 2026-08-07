@@ -130,6 +130,9 @@ public class JsonMore {
         if (ModList.get().isLoaded("tconstruct")) {
             TConstructPlugin.onCommonSetup(event);
         }
+        if(ModList.get().isLoaded("mantle")) {
+            MantlePlugin.onCommonSetup(event);
+        }
     }
 
     // 您可以使用SubscribeEvent，让事件总线发现要调用的方法

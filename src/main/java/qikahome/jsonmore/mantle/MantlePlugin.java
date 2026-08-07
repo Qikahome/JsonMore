@@ -17,10 +17,17 @@ import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.font.FontManager;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.GsonHelper;
+import net.minecraft.world.item.Item;
+import net.minecraft.world.level.block.DispenserBlock;
+import net.minecraftforge.fml.event.lifecycle.FMLCommonSetupEvent;
+import net.minecraftforge.registries.ForgeRegistries;
+import qikahome.jsonmore.mantle.ingredient.FluidItemIngredient;
+import qikahome.jsonmore.tconstruct.FlexFluidTankItem;
 import slimeknights.mantle.client.book.BookLoader;
 import slimeknights.mantle.client.book.data.BookData;
 import slimeknights.mantle.client.book.repository.FileRepository;
 import slimeknights.mantle.client.book.transformer.BookTransformer;
+import slimeknights.tconstruct.shared.block.PlaceBlockDispenserBehavior;
 
 public class MantlePlugin {
     private static final Map<ResourceLocation, BiConsumer<JsonObject, BookData>> BOOK_DATA_TRANSFORMERS = new HashMap<>();
@@ -75,6 +82,12 @@ public class MantlePlugin {
         }
     }
 
+
+    public static void onCommonSetup(final FMLCommonSetupEvent event) {
+        event.enqueueWork(() -> {
+            FluidItemIngredient.register();
+        });
+    }
 
     /**
      * Registers a book data transformer.

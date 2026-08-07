@@ -1,0 +1,28 @@
+{
+    "type": "jsonmore:shapeless_consuming",
+    "ingredients": [
+        {
+            "item": "minecraft:oak_planks"
+        },
+        {
+            "type": "jsonmore:fluid",
+            "ingredient": {
+                "type": "jsonmore:true"
+            },
+            "fluid": [
+                {
+                    "fluid": "minecraft:water",
+                    "amount": 250
+                },
+                {
+                    "fluid": "testpack:test",
+                    "amount": 250
+                }
+            ]
+        }
+    ],
+    "result": {
+        "item": "minecraft:birch_planks",
+        "count": 1
+    }
+}
