@@ -19,7 +19,9 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.GsonHelper;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.level.block.DispenserBlock;
+import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.fml.event.lifecycle.FMLCommonSetupEvent;
+import net.minecraftforge.fml.loading.FMLEnvironment;
 import net.minecraftforge.registries.ForgeRegistries;
 import qikahome.jsonmore.mantle.ingredient.FluidItemIngredient;
 import qikahome.jsonmore.tconstruct.FlexFluidTankItem;
@@ -56,9 +58,15 @@ public class MantlePlugin {
 
         FlexItemType.register("jsonmore:book", data -> {
             ResourceLocation bookId = new ResourceLocation(GsonHelper.getAsString(data, "book_id"));
-            BookData bookData = BookLoader.registerBook(bookId, false, false);
-            JsonArray jsonArray = GsonHelper.getAsJsonArray(data, "book_data");
-            BOOKS.put(bookData, jsonArray);
+            final BookData bookData;
+            if (FMLEnvironment.dist == Dist.CLIENT) {
+                // BookLoader 为客户端专用类，专用服务器上调用会触发 dist 检查崩溃
+                bookData = BookLoader.registerBook(bookId, false, false);
+                JsonArray jsonArray = GsonHelper.getAsJsonArray(data, "book_data");
+                BOOKS.put(bookData, jsonArray);
+            } else {
+                bookData = null;
+            }
             return (props, builder) -> {
                 return new FlexBookItem(props, builder, bookData);
             };
