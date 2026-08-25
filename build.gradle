@@ -112,8 +112,8 @@ dependencies {
     implementation "dev.gigaherz.jsonthings:JsonThings-1.21.1:${json_things_version}"
 
     // AutoSizedGUI - 自动布局GUI（jarjar 嵌入）
-    implementation "qikahome:AutoSizedGUI-1.21.1:1.0.8"
-    jarJar("qikahome:AutoSizedGUI-1.21.1:1.0.8")
+    implementation "qikahome:AutoSizedGUI-1.21.1:1.0.9"
+    jarJar("qikahome:AutoSizedGUI-1.21.1:1.0.9")
 
     // JEI - 可选依赖
     compileOnly "mezz.jei:jei-${minecraft_version}-neoforge-api:${jei_version}"
