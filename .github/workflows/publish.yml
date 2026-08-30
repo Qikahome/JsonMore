@@ -47,6 +47,7 @@ jobs:
           files-primary: build/libs/!(*-@(dev|sources|javadoc)).jar
           version-type: ${{ inputs.release_type != '' && inputs.release_type || 'beta' }}
           game-versions: |
+            26.1
             26.1.1
             26.1.2
             26.2
