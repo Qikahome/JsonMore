@@ -1,4 +1,4 @@
-name: Publish (NeoForge 1.21.1)
+name: Publish (NeoForge 26.1.2)
 
 on:
   workflow_dispatch:
@@ -9,7 +9,7 @@ on:
         default: 'beta'
   push:
     tags:
-      - 'v1.21.1-*'
+      - 'v26.1.2-*'
 
 env:
   CURSEFORGE_PROJECT_ID: '1570673'
@@ -28,7 +28,7 @@ jobs:
         uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: 21
+          java-version: 25
           cache: gradle
 
       - name: Make Gradle Executable
@@ -47,11 +47,13 @@ jobs:
           files-primary: build/libs/!(*-@(dev|sources|javadoc)).jar
           version-type: ${{ inputs.release_type != '' && inputs.release_type || 'beta' }}
           game-versions: |
-            1.21.1
+            26.1.1
+            26.1.2
+            26.2
           loaders: |
             neoforge
           java: |
-            21
+            25
           changelog-file: CHANGELOG.md
           github-tag: ${{ github.ref_name }}
           github-token: ${{ secrets.GITHUB_TOKEN }}

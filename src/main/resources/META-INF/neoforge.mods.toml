@@ -38,7 +38,7 @@ description='''${mod_description}'''
 # JEI（Just Enough Items）依赖 - 可选依赖
 [[dependencies.${mod_id}]]
     modId="jei"
-    mandatory=false
+    type="optional"
     versionRange="${jei_range}"
     ordering="NONE"
     side="BOTH"
@@ -46,7 +46,7 @@ description='''${mod_description}'''
 # CyclopsCore 依赖 - 可选依赖
 [[dependencies.${mod_id}]]
     modId="cyclopscore"
-    mandatory=false
+    type="optional"
     versionRange="${cyclopscore_range}"
     ordering="NONE"
     side="BOTH"
@@ -54,7 +54,7 @@ description='''${mod_description}'''
 # Anvil MusBox 依赖 - 可选依赖
 [[dependencies.${mod_id}]]
     modId="anvil_musbox"
-    mandatory=false
+    type="optional"
     versionRange="${anvil_musbox_range}"
     ordering="AFTER"
     side="BOTH"
