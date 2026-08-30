@@ -699,21 +699,25 @@ public class FlexBarrelBlock extends BaseEntityBlock
     public static class FlexBarrelBlockEntity extends RandomizableContainerBlockEntity implements WorldlyContainer {
         private NonNullList<ItemStack> items;
         private final ContainerOpenersCounter openersCounter = new ContainerOpenersCounter() {
+            @Override
             protected void onOpen(Level level, BlockPos pos, BlockState state) {
                 if (isMajor(level, pos, state))
                     FlexBarrelBlockEntity.this.playSound(state, flexBlock.open);
                 FlexBarrelBlockEntity.this.updateBlockState(state, true);
             }
 
+            @Override
             protected void onClose(Level level, BlockPos pos, BlockState state) {
                 if (isMajor(level, pos, state))
                     FlexBarrelBlockEntity.this.playSound(state, flexBlock.close);
                 FlexBarrelBlockEntity.this.updateBlockState(state, false);
             }
 
+            @Override
             protected void openerCountChanged(Level level, BlockPos pos, BlockState state, int oldCount, int newCount) {
             }
 
+            @Override
             public boolean isOwnContainer(Player player) {
                 if (player.containerMenu instanceof ChestMenu chestMenu) {
                     Container container = chestMenu.getContainer();

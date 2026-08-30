@@ -5,7 +5,7 @@
             "neoforge:ingredient_type": "jsonmore:condition",
             "ingredient": "minecraft:netherrack",
             "condition": {
-                "type": "forge:not",
+                "type": "neoforge:not",
                 "value": {
                     "type": "jsonmore:gamerule",
                     "rule": "testpack:test_boolean_rule"

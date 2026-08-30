@@ -8,6 +8,7 @@ import java.util.Map;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.CompoundContainer;
 import net.minecraft.world.Container;
+import net.minecraft.world.entity.ContainerUser;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.entity.BaseContainerBlockEntity;
@@ -120,12 +121,14 @@ public class MultiContainer implements Container, IFlexContainer {
         return this.subContainers.stream().allMatch(container -> container.stillValid(player));
     }
 
-    public void startOpen(Player player) {
-        this.subContainers.forEach(container -> container.startOpen(player));
+    @Override
+    public void startOpen(ContainerUser user) {
+        this.subContainers.forEach(container -> container.startOpen(user));
     }
 
-    public void stopOpen(Player player) {
-        this.subContainers.forEach(container -> container.stopOpen(player));
+    @Override
+    public void stopOpen(ContainerUser user) {
+        this.subContainers.forEach(container -> container.stopOpen(user));
     }
 
     public boolean canPlaceItem(int index, ItemStack stack) {
