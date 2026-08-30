@@ -9,7 +9,7 @@ import net.neoforged.neoforge.registries.DeferredHolder;
 import qikahome.jsonmore.lib.ContainerScreenType;
 import qikahome.jsonmore.lib.MultiContainer;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.MenuProvider;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
@@ -32,7 +32,7 @@ public class CyclopsCorePlugin {
 
     private static void registerScrollingContainer() {
         ContainerScreenType.register(
-                ResourceLocation.parse("cyclopscore:scrolling"),
+                Identifier.parse("cyclopscore:scrolling"),
                 (containers, containerSize) -> {
                     var container = MultiContainer.of(containers);
                     return new MenuProvider() {

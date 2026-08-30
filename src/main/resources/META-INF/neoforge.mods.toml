@@ -15,49 +15,57 @@ description='''${mod_description}'''
 
 [[dependencies.${mod_id}]]
     modId="neoforge"
-    type="required"
+    mandatory=true
+    versionRange="${neo_version_range}"
+    ordering="NONE"
     side="BOTH"
 
 [[dependencies.${mod_id}]]
     modId="minecraft"
-    type="required"
+    mandatory=true
+    versionRange="${minecraft_version_range}"
     ordering="NONE"
     side="BOTH"
 
 # JSON Things 依赖 - 强制依赖
 [[dependencies.${mod_id}]]
     modId="jsonthings"
-    type="required"
+    mandatory=true
+    versionRange="${json_things_range}"
     ordering="BEFORE"
     side="BOTH"
 
 # JEI（Just Enough Items）依赖 - 可选依赖
 [[dependencies.${mod_id}]]
     modId="jei"
-    type="optional"
+    mandatory=false
+    versionRange="${jei_range}"
     ordering="NONE"
     side="BOTH"
 
 # CyclopsCore 依赖 - 可选依赖
 [[dependencies.${mod_id}]]
     modId="cyclopscore"
-    type="optional"
+    mandatory=false
+    versionRange="${cyclopscore_range}"
     ordering="NONE"
     side="BOTH"
 
 # Anvil MusBox 依赖 - 可选依赖
 [[dependencies.${mod_id}]]
     modId="anvil_musbox"
-    type="optional"
+    mandatory=false
+    versionRange="${anvil_musbox_range}"
     ordering="AFTER"
     side="BOTH"
 
+# TODO(26.1.2): 暮色森林（Twilight Forest）暂无 26.1.2 版本，待跟进后恢复
 # 暮色森林（Twilight Forest）依赖 - 可选依赖
-[[dependencies.${mod_id}]]
-    modId="twilightforest"
-    type="optional"
-    ordering="AFTER"
-    side="BOTH"
+# [[dependencies.${mod_id}]]
+#     modId="twilightforest"
+#     type="optional"
+#     ordering="AFTER"
+#     side="BOTH"
 
 # AccessTransformer 配置
 [[accessTransformers]]

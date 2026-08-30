@@ -5,16 +5,12 @@
         " p "
     ],
     "key": {
-        "d": {
-            "item": "minecraft:diamond"
-        },
+        "d": "minecraft:diamond",
         "p": {
-            "type": "jsonmore:nbt_copy",
+            "neoforge:ingredient_type": "jsonmore:nbt_copy",
             "ingredient": {
-                "type": "jsonmore:remainder_override",
-                "ingredient": {
-                    "tag": "minecraft:pickaxes"
-                },
+                "neoforge:ingredient_type": "jsonmore:remainder_override",
+                "ingredient": "#minecraft:pickaxes",
                 "remainder_override": {
                     "id": "minecraft:stick",
                     "count": 2

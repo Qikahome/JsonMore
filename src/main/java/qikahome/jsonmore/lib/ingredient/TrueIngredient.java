@@ -5,34 +5,46 @@ import java.util.stream.Stream;
 import javax.annotation.Nullable;
 
 import com.mojang.serialization.MapCodec;
+import net.minecraft.core.Holder;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
+import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.ItemStackTemplate;
 import net.minecraft.world.item.Items;
+import net.minecraft.world.item.crafting.display.SlotDisplay;
 import net.neoforged.neoforge.common.crafting.ICustomIngredient;
 import net.neoforged.neoforge.common.crafting.IngredientType;
 import net.neoforged.neoforge.registries.DeferredHolder;
 import qikahome.jsonmore.JsonMore;
 
 public class TrueIngredient implements ICustomIngredient {
-    public static final ResourceLocation ID = ResourceLocation.parse("jsonmore:true");
+    public static final Identifier ID = Identifier.parse("jsonmore:true");
     public static final TrueIngredient INSTANCE = new TrueIngredient();
     public static final MapCodec<TrueIngredient> CODEC = MapCodec.unit(INSTANCE);
     public static final DeferredHolder<IngredientType<?>, IngredientType<TrueIngredient>> TYPE = JsonMore.INGREDIENT_TYPES
             .register(ID.getPath(), () -> new IngredientType<>(CODEC));
 
-    private static final Stream<ItemStack> ANYTHING_STACK;
+    private static java.util.List<ItemStack> anythingStacks;
 
-    static {
-        ItemStack stack = new ItemStack(Items.STICK);
-        stack.set(DataComponents.CUSTOM_NAME, Component.translatable("ingredient.jsonmore.true"));
-        ANYTHING_STACK = Stream.of(stack);
+    @Override
+    public Stream<Holder<Item>> items() {
+        return Stream.of(Holder.direct(Items.STICK));
     }
 
     @Override
-    public Stream<ItemStack> getItems() {
-        return ANYTHING_STACK;
+    public SlotDisplay display() {
+        if (anythingStacks == null) {
+            ItemStack stack = new ItemStack(Items.STICK);
+            stack.set(DataComponents.CUSTOM_NAME, Component.translatable("ingredient.jsonmore.true"));
+            anythingStacks = java.util.List.of(stack);
+        }
+        return new SlotDisplay.Composite(anythingStacks.stream()
+                .map(ItemStackTemplate::fromNonEmptyStack)
+                .map(SlotDisplay.ItemStackSlotDisplay::new)
+                .map(t -> (SlotDisplay) t)
+                .toList());
     }
 
     @Override

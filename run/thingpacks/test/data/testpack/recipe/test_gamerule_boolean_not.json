@@ -1,23 +1,18 @@
 {
     "type": "minecraft:crafting_shapeless",
-    "conditions": [
-        {
-            "type": "forge:not",
-            "value": {
-                "type": "jsonmore:gamerule",
-                "rule": "testpack.test_boolean_rule"
-            }
-        }
-    ],
     "ingredients": [
         {
-            "item": "minecraft:netherrack"
+            "neoforge:ingredient_type": "jsonmore:condition",
+            "ingredient": "minecraft:netherrack",
+            "condition": {
+                "type": "forge:not",
+                "value": {
+                    "type": "jsonmore:gamerule",
+                    "rule": "testpack:test_boolean_rule"
+                }
+            }
         },
-        {
-            "item": "minecraft:netherrack"
-        }
+        "minecraft:netherrack"
     ],
-    "result": { "id": "minecraft:glowstone_dust",
-        "count": 4
-    }
+    "result": { "id": "minecraft:glowstone_dust", "count": 4 }
 }

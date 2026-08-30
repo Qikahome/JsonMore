@@ -2,22 +2,18 @@
     "type": "jsonmore:shapeless_consuming",
     "ingredients": [
         {
-            "type": "jsonmore:item_display_override",
-            "ingredient": {
-                "tag": "minecraft:planks"
-            },
+            "neoforge:ingredient_type": "jsonmore:item_display_override",
+            "ingredient": "#minecraft:planks",
             "ops": [
                 {
-                    "op": "remove",
-                    "value": {
-                        "item": "minecraft:oak_planks"
+                    "handler": {
+                        "op": "remove",
+                        "value": "minecraft:oak_planks"
                     }
                 }
             ]
         },
-        {
-            "item": "minecraft:stick"
-        }
+        "minecraft:stick"
     ],
     "result": { "id": "minecraft:stick",
         "count": 4

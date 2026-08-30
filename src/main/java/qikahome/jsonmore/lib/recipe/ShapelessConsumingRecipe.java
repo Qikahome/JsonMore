@@ -7,17 +7,17 @@ import java.util.Map;
 
 import com.mojang.serialization.MapCodec;
 
-import net.minecraft.core.HolderLookup;
 import net.minecraft.core.NonNullList;
-import net.minecraft.core.RegistryAccess;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.item.crafting.CraftingBookCategory;
+import net.minecraft.world.item.ItemStackTemplate;
 import net.minecraft.world.item.crafting.CraftingInput;
+import net.minecraft.world.item.crafting.CraftingRecipe;
 import net.minecraft.world.item.crafting.Ingredient;
+import net.minecraft.world.item.crafting.Recipe;
 import net.minecraft.world.item.crafting.RecipeSerializer;
 import net.minecraft.world.item.crafting.ShapelessRecipe;
 import net.neoforged.neoforge.server.ServerLifecycleHooks;
@@ -28,14 +28,14 @@ public class ShapelessConsumingRecipe extends ShapelessRecipe implements IConsum
     // 缓存上一次的匹配结果，transient 避免序列化
     private transient Map<Integer, Ingredient> lastMatch;
 
-    public ShapelessConsumingRecipe(String group, CraftingBookCategory category,
-            ItemStack result, NonNullList<Ingredient> ingredients) {
-        super(group, category, result, ingredients);
+    public ShapelessConsumingRecipe(Recipe.CommonInfo commonInfo, CraftingRecipe.CraftingBookInfo bookInfo,
+            ItemStackTemplate result, List<Ingredient> ingredients) {
+        super(commonInfo, bookInfo, result, ingredients);
     }
 
     public static ShapelessConsumingRecipe fromVanilla(ShapelessRecipe shapelessRecipe) {
-        return new ShapelessConsumingRecipe(shapelessRecipe.getGroup(), shapelessRecipe.category(),
-                shapelessRecipe.getResultItem(RegistryAccess.EMPTY), shapelessRecipe.getIngredients());
+        return new ShapelessConsumingRecipe(shapelessRecipe.commonInfo, shapelessRecipe.bookInfo,
+                shapelessRecipe.result(), shapelessRecipe.ingredients);
     }
 
     // ==================== 共用匹配逻辑（带缓存） ====================
@@ -46,7 +46,7 @@ public class ShapelessConsumingRecipe extends ShapelessRecipe implements IConsum
         }
 
         // 缓存无效，执行完整回溯匹配
-        List<Ingredient> ingredients = new ArrayList<>(getIngredients());
+        List<Ingredient> ingredients = new ArrayList<>(this.ingredients);
         List<Integer> nonEmptySlots = new ArrayList<>();
         for (int i = 0; i < container.size(); i++) {
             if (!container.getItem(i).isEmpty()) {
@@ -96,7 +96,7 @@ public class ShapelessConsumingRecipe extends ShapelessRecipe implements IConsum
         }
 
         // 确保缓存的槽位数与原料数量一致
-        return cached.size() == getIngredients().size();
+        return cached.size() == this.ingredients.size();
     }
 
     // 原回溯方法保持不变，但建议改为 private static（如需供 Shaped 使用，保持 public static）
@@ -146,8 +146,8 @@ public class ShapelessConsumingRecipe extends ShapelessRecipe implements IConsum
 
     // ==================== 合成输出处理 ====================
     @Override
-    public ItemStack assemble(CraftingInput container, HolderLookup.Provider lookup) {
-        ItemStack result = super.assemble(container, lookup);
+    public ItemStack assemble(CraftingInput container) {
+        ItemStack result = super.assemble(container);
         if (result.isEmpty()) {
             return result;
         }
@@ -163,31 +163,16 @@ public class ShapelessConsumingRecipe extends ShapelessRecipe implements IConsum
         return result;
     }
 
-    // ==================== 序列化（不变） ====================
+    // ==================== 序列化 ====================
+    private static final MapCodec<ShapelessRecipe> CODEC = ShapelessRecipe.MAP_CODEC
+            .xmap(ShapelessConsumingRecipe::fromVanilla, a -> a);
+    private static final StreamCodec<RegistryFriendlyByteBuf, ShapelessRecipe> STREAM_CODEC = StreamCodec.of(
+            (buf, recipe) -> ShapelessRecipe.STREAM_CODEC.encode(buf, recipe),
+            buf -> ShapelessConsumingRecipe.fromVanilla(ShapelessRecipe.STREAM_CODEC.decode(buf)));
+    public static final RecipeSerializer<ShapelessRecipe> SERIALIZER = new RecipeSerializer<>(CODEC, STREAM_CODEC);
+
     @Override
-    public RecipeSerializer<?> getSerializer() {
-        return Serializer.INSTANCE;
-    }
-
-    public static class Serializer implements RecipeSerializer<ShapelessConsumingRecipe> {
-        public static final Serializer INSTANCE = new Serializer();
-        private static final MapCodec<ShapelessConsumingRecipe> CODEC = net.minecraft.world.item.crafting.RecipeSerializer.SHAPELESS_RECIPE
-                .codec().xmap(ShapelessConsumingRecipe::fromVanilla, a -> a);
-        private static final StreamCodec<RegistryFriendlyByteBuf, ShapelessConsumingRecipe> STREAM_CODEC = StreamCodec
-                .of(
-                        (buf, recipe) -> net.minecraft.world.item.crafting.RecipeSerializer.SHAPELESS_RECIPE
-                                .streamCodec().encode(buf, recipe),
-                        (buf) -> fromVanilla(net.minecraft.world.item.crafting.RecipeSerializer.SHAPELESS_RECIPE
-                                .streamCodec().decode(buf)));
-
-        @Override
-        public MapCodec<ShapelessConsumingRecipe> codec() {
-            return CODEC;
-        }
-
-        @Override
-        public StreamCodec<RegistryFriendlyByteBuf, ShapelessConsumingRecipe> streamCodec() {
-            return STREAM_CODEC;
-        }
+    public RecipeSerializer<ShapelessRecipe> getSerializer() {
+        return SERIALIZER;
     }
 }

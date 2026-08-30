@@ -4,43 +4,36 @@ import org.slf4j.Logger;
 
 import com.mojang.logging.LogUtils;
 import com.mojang.serialization.MapCodec;
-import com.simibubi.create.api.contraption.storage.item.MountedItemStorageType;
+
 
 import dev.gigaherz.jsonthings.things.ThingRegistries;
 import dev.gigaherz.jsonthings.things.parsers.ThingResourceManager;
 import net.minecraft.core.Registry;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.registries.Registries;
-import net.minecraft.server.MinecraftServer;
 import net.minecraft.world.inventory.MenuType;
-import net.minecraft.world.item.BucketItem;
 import net.minecraft.world.item.crafting.RecipeSerializer;
-import net.minecraft.world.level.block.Block;
+import net.minecraft.world.item.crafting.ShapedRecipe;
+import net.minecraft.world.item.crafting.ShapelessRecipe;
 import net.minecraft.world.level.block.entity.BlockEntityType;
-import net.minecraft.world.level.block.state.BlockState;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.ModList;
-import net.neoforged.fml.ModLoadingContext;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.fml.common.Mod;
-import net.neoforged.fml.config.ModConfig;
-import net.neoforged.fml.event.lifecycle.FMLClientSetupEvent;
 import net.neoforged.fml.event.lifecycle.FMLCommonSetupEvent;
 import net.neoforged.neoforge.capabilities.Capabilities;
 import net.neoforged.neoforge.capabilities.RegisterCapabilitiesEvent;
 import net.neoforged.neoforge.common.NeoForge;
 import net.neoforged.neoforge.common.conditions.ICondition;
-import net.neoforged.neoforge.common.crafting.CraftingHelper;
+
 import net.neoforged.neoforge.common.crafting.IngredientType;
-import net.neoforged.neoforge.event.server.ServerStartingEvent;
-import net.neoforged.neoforge.fluids.capability.wrappers.FluidBucketWrapper;
-import net.neoforged.neoforge.items.IItemHandler;
-import net.neoforged.neoforge.items.wrapper.InvWrapper;
+import net.neoforged.neoforge.event.level.GameRuleChangedEvent;
 import net.neoforged.neoforge.registries.DeferredHolder;
 import net.neoforged.neoforge.registries.DeferredRegister;
 import net.neoforged.neoforge.registries.NeoForgeRegistries;
+import net.neoforged.neoforge.transfer.item.VanillaContainerWrapper;
 import qikahome.jsonmore.create.CreatePlugin;
 import qikahome.jsonmore.cyclopscore.CyclopsCorePlugin;
 import qikahome.jsonmore.cyclopscore.ScrollingContainerScreen;
@@ -68,6 +61,7 @@ import qikahome.jsonmore.musbox.AnvilMusBoxPlugin;
 import qikahome.autosizedgui.screen.AutoSizedContainerScreen;
 import qikahome.jsonmore.autosizedgui.AutoSizedGUIPlugin;
 import qikahome.jsonmore.autosizedgui.AutoSizedMenu;
+import qikahome.jsonmore.minecraft.gamerule.FlexGameRuleType;
 import qikahome.jsonmore.minecraft.gamerule.GameRuleCondition;
 
 // 这里的值应该与 META-INF/neoforge.mods.toml 文件中的条目匹配
@@ -79,16 +73,18 @@ public class JsonMore {
     public static final Logger LOGGER = LogUtils.getLogger();
 
     public JsonMore(IEventBus modEventBus) {
+        LOGGER.info("JsonMore mod loaded.");
         // 注册 mod 加载的 commonSetup 方法
         modEventBus.addListener(this::commonSetup);
-                modEventBus.addListener(this::registerCapabilities);
-        // 为服务器和其他我们感兴趣的游戏事件注册自己
-        NeoForge.EVENT_BUS.register(this);
-
+        modEventBus.addListener(this::registerCapabilities);
+        // GameRuleChangedEvent 在 FORGE 事件总线上触发（仅服务端）
+        NeoForge.EVENT_BUS.addListener(this::onGameRuleChanged);
+        
         BLOCK_ENTITY_TYPES.register(modEventBus);
         MENU_TYPES.register(modEventBus);
         RECIPE_SERIALIZERS.register(modEventBus);
         INGREDIENT_TYPES.register(modEventBus);
+        CONDITION_CODECS.register(modEventBus);
 
         var manager = ThingResourceManager.instance();
         manager.registerParser(new GameRuleParser(modEventBus));
@@ -101,10 +97,10 @@ public class JsonMore {
         for (var blk : BuiltInRegistries.BLOCK) {
             if (blk instanceof FlexBarrelBlock barrel) {
                 event.registerBlock(
-                        Capabilities.ItemHandler.BLOCK,
+                        Capabilities.Item.BLOCK,
                         (level, pos, state, be, side) -> {
                             if (state.getBlock() instanceof FlexBarrelBlock flex) {
-                                return new InvWrapper(MultiContainer.of(flex.getContainers(level, pos, state)));
+                                return VanillaContainerWrapper.of(MultiContainer.of(flex.getContainers(level, pos, state)));
                             }
                             LOGGER.warn("Wrong Block Type for ItemCapability!");
                             return null;
@@ -113,10 +109,10 @@ public class JsonMore {
             }
             if (blk instanceof StorageConnectorBlock scb) {
                 event.registerBlock(
-                        Capabilities.ItemHandler.BLOCK,
+                        Capabilities.Item.BLOCK,
                         (level, pos, state, be, side) -> {
                             if (be instanceof ControllerBlockEntity cbe) {
-                                return new InvWrapper(cbe);
+                                return VanillaContainerWrapper.of(cbe);
                             }
                             return null;
                         },
@@ -135,11 +131,11 @@ public class JsonMore {
             .create(NeoForgeRegistries.INGREDIENT_TYPES, MODID);
     public static final DeferredRegister<MapCodec<? extends ICondition>> CONDITION_CODECS = DeferredRegister
             .create(NeoForgeRegistries.Keys.CONDITION_CODECS, MODID);
-    public static final DeferredHolder<RecipeSerializer<?>, ShapelessConsumingRecipe.Serializer> SHAPELESS_CONSUMING_RECIPE = RECIPE_SERIALIZERS
-            .register("shapeless_consuming", () -> ShapelessConsumingRecipe.Serializer.INSTANCE);
-    public static final DeferredHolder<RecipeSerializer<?>, ShapedConsumingRecipe.Serializer> SHAPED_CONSUMING_RECIPE = RECIPE_SERIALIZERS
-            .register("shaped_consuming", () -> ShapedConsumingRecipe.Serializer.INSTANCE);
-    public static final DeferredHolder<RecipeSerializer<?>, ItemApplicationRecipe.Serializer> ITEM_APPLICATION_RECIPE = RECIPE_SERIALIZERS
+    public static final DeferredHolder<RecipeSerializer<?>, RecipeSerializer<ShapelessRecipe>> SHAPELESS_CONSUMING_RECIPE = RECIPE_SERIALIZERS
+            .register("shapeless_consuming", () -> ShapelessConsumingRecipe.SERIALIZER);
+    public static final DeferredHolder<RecipeSerializer<?>, RecipeSerializer<ShapedRecipe>> SHAPED_CONSUMING_RECIPE = RECIPE_SERIALIZERS
+            .register("shaped_consuming", () -> ShapedConsumingRecipe.SERIALIZER);
+    public static final DeferredHolder<RecipeSerializer<?>, RecipeSerializer<ItemApplicationRecipe>> ITEM_APPLICATION_RECIPE = RECIPE_SERIALIZERS
             .register("item_application", () -> ItemApplicationRecipe.Serializer.INSTANCE);
 
     static {
@@ -174,15 +170,17 @@ public class JsonMore {
         });
     }
 
-    // 您可以使用 SubscribeEvent，让事件总线发现要调用的方法
-    @SubscribeEvent
-    public void onServerStarting(ServerStartingEvent event) {
-        // 当服务器启动时做一些事情
-        // LOGGER.info("HELLO from server starting");
+
+    public void onGameRuleChanged(GameRuleChangedEvent event)
+    {
+        var rule=event.getGameRule();
+        var runner = FlexGameRuleType.events.get(rule);
+        if(runner!=null)
+            runner.accept(event.getServer(), rule);
     }
 
     // 您可以使用 EventBusSubscriber 自动注册类中所有带有 @SubscribeEvent 注解的静态方法
-    @EventBusSubscriber(modid = MODID, bus = EventBusSubscriber.Bus.MOD, value = Dist.CLIENT)
+    @EventBusSubscriber(modid = MODID, value = Dist.CLIENT)
     public static class ClientModEvents {
         @SubscribeEvent
         public static void onRegisterMenuScreens(net.neoforged.neoforge.client.event.RegisterMenuScreensEvent event) {
@@ -199,7 +197,7 @@ public class JsonMore {
     }
 
     public static void onFlexTypesLoad() {
-        Registry.register(ThingRegistries.PROPERTIES, "jsonmore:container_part", ContainerPart.PART);
+        Registry.register(ThingRegistries.PROPERTY, "jsonmore:container_part", ContainerPart.PART);
         // 联动
         ModList modList = ModList.get();
         if (modList.isLoaded("cyclopscore")) {

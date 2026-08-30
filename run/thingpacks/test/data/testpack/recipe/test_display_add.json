@@ -2,29 +2,27 @@
     "type": "jsonmore:shapeless_consuming",
     "ingredients": [
         {
-            "type": "jsonmore:item_display_override",
-            "ingredient": {
-                "item": "minecraft:diamond"
-            },
+            "neoforge:ingredient_type": "jsonmore:item_display_override",
+            "ingredient": "minecraft:diamond",
             "ops": [
                 {
-                    "op": "add",
-                    "value": {
-                        "id": "minecraft:netherite_scrap",
-                        "Count": 1
+                    "handler": {
+                        "op": "add",
+                        "value": {
+                            "id": "minecraft:netherite_scrap",
+                            "count": 1
+                        }
                     }
                 },
                 {
-                    "op": "add_all",
-                    "value": {
-                        "tag": "minecraft:coals"
+                    "handler": {
+                        "op": "add_all",
+                        "value": "#minecraft:coals"
                     }
                 }
             ]
         },
-        {
-            "item": "minecraft:stick"
-        }
+        "minecraft:stick"
     ],
     "result": { "id": "minecraft:diamond",
         "count": 1

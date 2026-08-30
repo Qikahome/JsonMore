@@ -2,17 +2,13 @@
     "type": "jsonmore:shapeless_consuming",
     "ingredients": [
         {
-            "type": "jsonmore:counted",
-            "ingredient": {
-                "item": "minecraft:diamond"
-            },
+            "neoforge:ingredient_type": "jsonmore:counted",
+            "ingredient": "minecraft:diamond",
             "count": 3
         },
         {
-            "type": "jsonmore:tool_damaging",
-            "ingredient": {
-                "tag": "minecraft:pickaxes"
-            },
+            "neoforge:ingredient_type": "jsonmore:tool_damaging",
+            "ingredient": "#minecraft:pickaxes",
             "damage": 1
         }
     ],

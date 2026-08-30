@@ -1,19 +1,17 @@
 {
-    "type": "minecraft:crafting_shapeless",
-    "ingredients": [
-        {
-            "type": "jsonmore:condition",
-            "condition": {
-                "type": "jsonmore:gamerule",
-                "rule": "testpack.test_boolean_rule"
-            },
-            "ingredient": {
-                "item": "minecraft:diamond"
-            },
-            "message": "recipe.jsonmore.disabled"
-        }
-    ],
-    "result": { "id": "minecraft:emerald",
-        "count": 2
+  "type": "minecraft:crafting_shapeless",
+  "ingredients": [
+    {
+      "neoforge:ingredient_type": "jsonmore:condition",
+      "condition": {
+        "type": "jsonmore:gamerule",
+        "rule": "testpack:test_boolean_rule"
+      },
+      "ingredient": "minecraft:diamond",
+      "message": "recipe.jsonmore.disabled"
     }
+  ],
+  "result": { "id": "minecraft:emerald",
+    "count": 2
+  }
 }

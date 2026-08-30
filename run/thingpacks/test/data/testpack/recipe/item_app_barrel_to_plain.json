@@ -1,17 +1,13 @@
 {
     "type": "jsonmore:item_application",
     "block": {
-        "type": "jsonmore:nbt_copy",
-        "ingredient": {
-            "item": "minecraft:barrel"
-        },
+        "neoforge:ingredient_type": "jsonmore:nbt_copy",
+        "ingredient": "minecraft:barrel",
         "mode": "REPLACE"
     },
     "tool": {
-        "type": "jsonmore:counted",
-        "ingredient": {
-            "item": "minecraft:paper"
-        },
+        "neoforge:ingredient_type": "jsonmore:counted",
+        "ingredient": "minecraft:paper",
         "count": 0
     },
     "result": { "id": "testpack:test_container_plain"

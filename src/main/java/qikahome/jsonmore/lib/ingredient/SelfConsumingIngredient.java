@@ -7,10 +7,14 @@ import javax.annotation.Nullable;
 import com.mojang.serialization.MapCodec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 
+import net.minecraft.core.Holder;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.ItemStackTemplate;
 import net.minecraft.world.item.crafting.Ingredient;
+import net.minecraft.world.item.crafting.display.SlotDisplay;
 import net.neoforged.neoforge.common.crafting.ICustomIngredient;
 
 public abstract class SelfConsumingIngredient implements ICustomIngredient {
@@ -62,7 +66,7 @@ public abstract class SelfConsumingIngredient implements ICustomIngredient {
     protected static ItemStack vanillaConsume(ItemStack stack) {
         if (stack.isEmpty())
             return stack;
-        return stack.getCraftingRemainingItem();
+        return stack.getCraftingRemainder() instanceof ItemStackTemplate notnull? notnull.create() : ItemStack.EMPTY;
     }
 
     /**
@@ -90,8 +94,13 @@ public abstract class SelfConsumingIngredient implements ICustomIngredient {
     }
 
     @Override
-    public Stream<ItemStack> getItems() {
-        return Stream.of(ingredient.getItems());
+    public Stream<Holder<Item>> items() {
+        return ingredient.items();
+    }
+
+    @Override
+    public SlotDisplay display() {
+        return ingredient.display();
     }
 
     @Override

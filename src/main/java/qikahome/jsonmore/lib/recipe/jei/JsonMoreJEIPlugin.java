@@ -1,9 +1,11 @@
 package qikahome.jsonmore.lib.recipe.jei;
 
+import java.util.Collection;
+
 import net.minecraft.client.Minecraft;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
+import net.minecraft.server.MinecraftServer;
 import net.minecraft.world.item.crafting.RecipeHolder;
-import net.minecraft.world.item.crafting.RecipeManager;
 
 import mezz.jei.api.IModPlugin;
 import mezz.jei.api.JeiPlugin;
@@ -12,14 +14,12 @@ import mezz.jei.api.registration.IRecipeRegistration;
 
 import qikahome.jsonmore.lib.recipe.ItemApplicationRecipe;
 
-import java.util.List;
-
 @JeiPlugin
 public class JsonMoreJEIPlugin implements IModPlugin {
-    private static final ResourceLocation ID = ResourceLocation.parse("jsonmore:jei_plugin");
+    private static final Identifier ID = Identifier.parse("jsonmore:jei_plugin");
 
     @Override
-    public ResourceLocation getPluginUid() {
+    public Identifier getPluginUid() {
         return ID;
     }
 
@@ -31,8 +31,13 @@ public class JsonMoreJEIPlugin implements IModPlugin {
 
     @Override
     public void registerRecipes(IRecipeRegistration registration) {
-        RecipeManager recipeManager = Minecraft.getInstance().level.getRecipeManager();
-        List<RecipeHolder<ItemApplicationRecipe>> recipes = recipeManager.getAllRecipesFor(ItemApplicationRecipe.TYPE);
-        registration.addRecipes(ItemApplicationRecipeCategory.TYPE, recipes.stream().map(RecipeHolder::value).toList());
+        MinecraftServer server = Minecraft.getInstance().getSingleplayerServer();
+        if (server == null) {
+            return;
+        }
+        Collection<RecipeHolder<ItemApplicationRecipe>> recipes = server.getRecipeManager()
+                .recipeMap().byType(ItemApplicationRecipe.TYPE);
+        registration.addRecipes(ItemApplicationRecipeCategory.TYPE,
+                recipes.stream().map(RecipeHolder::value).toList());
     }
 }

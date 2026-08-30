@@ -1,13 +1,15 @@
 package qikahome.jsonmore.minecraft;
 
 import com.google.gson.JsonObject;
-
+import com.mojang.serialization.JsonOps;
 import dev.gigaherz.jsonthings.things.builders.BaseBuilder;
+import dev.gigaherz.jsonthings.things.parsers.ThingParseException;
 import dev.gigaherz.jsonthings.things.parsers.ThingParser;
 import dev.gigaherz.jsonthings.util.parse.JParse;
 import net.minecraft.core.RegistryAccess;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.network.chat.ComponentSerialization;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.packs.PackLocationInfo;
 import net.minecraft.server.packs.PackResources;
 import net.minecraft.server.packs.PackSelectionConfig;
@@ -30,11 +32,11 @@ import java.nio.file.Path;
 import java.util.Optional;
 import java.util.function.Consumer;
 
-public class BuiltInDatapackParser extends ThingParser<BuiltInDatapackParser.Builder> {
+public class BuiltInDatapackParser extends ThingParser<RepositorySource,BuiltInDatapackParser.Builder> {
 
     public static class Builder extends BaseBuilder<RepositorySource, Builder> {
 
-        protected Builder(ThingParser<Builder> ownerParser, ResourceLocation registryName) {
+        protected Builder(ThingParser<RepositorySource,Builder> ownerParser, Identifier registryName) {
             super(ownerParser, registryName);
             this.displayName = Component
                     .translatable("pack." + registryName.toString().replace(":", ".").replace("/", "."));
@@ -73,7 +75,8 @@ public class BuiltInDatapackParser extends ThingParser<BuiltInDatapackParser.Bui
                     .getModInfo()
                     .getOwningFile()
                     .getFile()
-                    .findResource("datapacks", regName.getPath());
+                    .getFilePath()
+                    .resolve("datapacks", regName.getPath());
             return consumer -> {
                 try {
                     var loc = new PackLocationInfo(regName.toString().replace(":", "/"), displayName,
@@ -90,13 +93,18 @@ public class BuiltInDatapackParser extends ThingParser<BuiltInDatapackParser.Bui
                 }
             };
         }
+
+        @Override
+        public void validate()
+        {
+        }
     }
 
     public static final Logger LOGGER = LogManager.getLogger();
 
     public BuiltInDatapackParser(IEventBus bus) {
         super(GSON, "built_in_datapack");
-        bus.addListener(this::register);
+        bus.addListener(AddPackFindersEvent.class,this::register);
     }
 
     public void register(AddPackFindersEvent event) {
@@ -111,12 +119,12 @@ public class BuiltInDatapackParser extends ThingParser<BuiltInDatapackParser.Bui
     }
 
     @Override
-    public Builder processThing(ResourceLocation key, JsonObject data, Consumer<Builder> builderModification) {
+    public Builder processThing(Identifier key, JsonObject data, Consumer<Builder> builderModification) {
         final Builder builder = new Builder(this, key);
         JParse.begin(data)
                 .ifKey("default_enable", val -> val.bool().handle(builder::defaultEnable))
                 .ifKey("display_name",
-                        val -> builder.displayName(Component.Serializer.fromJson(val.get(), RegistryAccess.EMPTY)));
+                        val -> ComponentSerialization.CODEC.parse(JsonOps.INSTANCE,val.get()).ifSuccess(builder::displayName).ifError(error->{throw new ThingParseException("Fail tp parse display name:"+error.message());}));
         builderModification.accept(builder);
         return builder;
     }

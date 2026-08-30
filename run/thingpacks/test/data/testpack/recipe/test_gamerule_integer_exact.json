@@ -1,18 +1,15 @@
 {
     "type": "minecraft:crafting_shapeless",
-    "conditions": [
-        {
-            "type": "jsonmore:gamerule",
-            "rule": "testpack.test_integer_rule",
-            "value": 10
-        }
-    ],
     "ingredients": [
         {
-            "item": "minecraft:iron_ingot"
+            "neoforge:ingredient_type": "jsonmore:condition",
+            "ingredient": "minecraft:iron_ingot",
+            "condition": {
+                "type": "jsonmore:gamerule",
+                "rule": "testpack:test_integer_rule",
+                "value": 10
+            }
         }
     ],
-    "result": { "id": "minecraft:gold_ingot",
-        "count": 1
-    }
+    "result": { "id": "minecraft:gold_ingot", "count": 1 }
 }

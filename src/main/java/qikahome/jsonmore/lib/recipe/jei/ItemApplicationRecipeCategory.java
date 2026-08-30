@@ -1,7 +1,7 @@
 package qikahome.jsonmore.lib.recipe.jei;
 
 import net.minecraft.ChatFormatting;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.world.item.BlockItem;
@@ -14,13 +14,12 @@ import mezz.jei.api.gui.ingredient.IRecipeSlotsView;
 import mezz.jei.api.helpers.IGuiHelper;
 import mezz.jei.api.recipe.IFocusGroup;
 import mezz.jei.api.recipe.RecipeIngredientRole;
-import mezz.jei.api.recipe.RecipeType;
 import mezz.jei.api.recipe.category.IRecipeCategory;
-
+import mezz.jei.api.recipe.types.IRecipeType;
 import qikahome.jsonmore.lib.recipe.ItemApplicationRecipe;
 
 public class ItemApplicationRecipeCategory implements IRecipeCategory<ItemApplicationRecipe> {
-    public static final RecipeType<ItemApplicationRecipe> TYPE = RecipeType.create("jsonmore", "item_application", ItemApplicationRecipe.class);
+    public static final IRecipeType<ItemApplicationRecipe> TYPE = IRecipeType.create("jsonmore", "item_application", ItemApplicationRecipe.class);
 
     private final IDrawable background;
     private final IDrawable icon;
@@ -33,7 +32,7 @@ public class ItemApplicationRecipeCategory implements IRecipeCategory<ItemApplic
     }
 
     @Override
-    public RecipeType<ItemApplicationRecipe> getRecipeType() {
+    public IRecipeType<ItemApplicationRecipe> getRecipeType() {
         return TYPE;
     }
 
@@ -42,9 +41,19 @@ public class ItemApplicationRecipeCategory implements IRecipeCategory<ItemApplic
         return Component.translatable("recipe.jsonmore.item_application");
     }
 
+    // @Override
+    // public IDrawable getBackground() {
+    //     return background;
+    // }
+
     @Override
-    public IDrawable getBackground() {
-        return background;
+    public int getWidth() {
+        return 177;
+    }
+    
+    @Override
+    public int getHeight() {
+        return 60;
     }
 
     @Override
@@ -56,39 +65,42 @@ public class ItemApplicationRecipeCategory implements IRecipeCategory<ItemApplic
     public void setRecipe(IRecipeLayoutBuilder builder, ItemApplicationRecipe recipe, IFocusGroup focuses) {
         builder.addSlot(RecipeIngredientRole.INPUT, 27, 38)
                 .setBackground(slot, -1, -1)
-                .addIngredients(recipe.getBlock());
+                .add(recipe.getBlock());
 
         builder.addSlot(RecipeIngredientRole.INPUT, 51, 5)
                 .setBackground(slot, -1, -1)
-                .addIngredients(recipe.getTool());
+                .add(recipe.getTool());
 
         builder.addSlot(RecipeIngredientRole.OUTPUT, 132, 38)
                 .setBackground(slot, -1, -1)
-                .addItemStack(recipe.getRecipeResult());
+                .add(recipe.getRecipeResult());
     }
 
     @Override
-    public void draw(ItemApplicationRecipe recipe, IRecipeSlotsView recipeSlotsView, GuiGraphics graphics, double mouseX, double mouseY) {
+    public void draw(ItemApplicationRecipe recipe, IRecipeSlotsView recipeSlotsView, GuiGraphicsExtractor graphics, double mouseX, double mouseY) {
         GuiTextures.JEI_SHADOW.render(graphics, 62, 47);
         GuiTextures.JEI_DOWN_ARROW.render(graphics, 74, 10);
 
-        ItemStack[] blockItems = recipe.getBlock().getItems();
+        ItemStack[] blockItems = recipe.getBlock().items()
+                .map(net.minecraft.core.Holder::value)
+                .map(ItemStack::new)
+                .toArray(ItemStack[]::new);
         if (blockItems.length > 0) {
             ItemStack blockStack = blockItems[0];
             if (blockStack.getItem() instanceof BlockItem) {
                 var pose = graphics.pose();
-                pose.pushPose();
-                pose.translate(74, 28, 0);
-                pose.scale(1.7f, 1.7f, 1.7f);
-                graphics.renderItem(blockStack, 0, 0);
-                pose.popPose();
+                pose.pushMatrix();
+                pose.translate(74, 28);
+                pose.scale(1.7f, 1.7f);
+                graphics.item(blockStack, 0, 0);
+                pose.popMatrix();
             }
         }
 
         Boolean sneaking = recipe.getSneaking();
         if (sneaking != null) {
             MutableComponent text = Component.translatable("recipe.jsonmore.item_application.sneaking." + (sneaking ? "true" : "false"));
-            graphics.drawString(net.minecraft.client.Minecraft.getInstance().font, text.withStyle(ChatFormatting.BOLD), 100, 8, 0xFFFFFF, false);
+            graphics.text(net.minecraft.client.Minecraft.getInstance().font, text.withStyle(ChatFormatting.BOLD), 100, 8, 0xFFFFFF, false);
         }
     }
 }

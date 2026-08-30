@@ -13,17 +13,21 @@ import com.mojang.serialization.Codec;
 import com.mojang.serialization.MapCodec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 
+import net.minecraft.core.Holder;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.codec.StreamCodec;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
+import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.ItemStackTemplate;
 import net.minecraft.world.item.crafting.Ingredient;
+import net.minecraft.world.item.crafting.display.SlotDisplay;
 import net.neoforged.neoforge.common.crafting.IngredientType;
 import net.neoforged.neoforge.registries.DeferredHolder;
 import qikahome.jsonmore.JsonMore;
 
 public class ItemDisplayOverrideIngredient extends SelfConsumingIngredient {
-    public static final ResourceLocation ID = ResourceLocation.parse("jsonmore:item_display_override");
+    public static final Identifier ID = Identifier.parse("jsonmore:item_display_override");
 
     private static final Map<String, MapCodec<? extends IOpHandler>> OPS = new HashMap<>();
 
@@ -32,6 +36,10 @@ public class ItemDisplayOverrideIngredient extends SelfConsumingIngredient {
     public interface IOpHandler {
         String name();
 
+        /**
+         * 对展示物品列表执行操作。{@code filter} 是 op 级的作用范围过滤：
+         * 列表中只有匹配 filter 的物品才会被处理，不匹配的跳过；{@code null} 表示处理全部。
+         */
         void apply(List<ItemStack> items, @Nullable Ingredient filter);
     }
 
@@ -74,15 +82,15 @@ public class ItemDisplayOverrideIngredient extends SelfConsumingIngredient {
 
         @Override
         public void apply(List<ItemStack> items, @Nullable Ingredient filter) {
-            for (ItemStack stack : source.getItems())
+            for (ItemStack stack : source.display().resolveForStacks(qikahome.jsonmore.Utils.displayContext()))
                 items.add(stack.copy());
         }
     }
 
-    private record AddHandler(ItemStack stack) implements IOpHandler {
+    private record AddHandler(ItemStackTemplate stack) implements IOpHandler {
         public static final MapCodec<AddHandler> CODEC = RecordCodecBuilder.mapCodec(
                 instance -> instance.group(
-                        ItemStack.CODEC.fieldOf("value").forGetter(AddHandler::stack))
+                        ItemStackTemplate.CODEC.fieldOf("value").forGetter(AddHandler::stack))
                         .apply(instance, AddHandler::new));
 
         @Override
@@ -92,7 +100,7 @@ public class ItemDisplayOverrideIngredient extends SelfConsumingIngredient {
 
         @Override
         public void apply(List<ItemStack> items, @Nullable Ingredient filter) {
-            items.add(stack.copy());
+            items.add(stack.create());
         }
     }
 
@@ -159,17 +167,30 @@ public class ItemDisplayOverrideIngredient extends SelfConsumingIngredient {
         this.cachedDisplayStacks = displayStacks.toList();
     }
 
-    @Override
-    public Stream<ItemStack> getItems() {
+    private List<ItemStack> computeDisplayStacks() {
         if (cachedDisplayStacks == null) {
             List<ItemStack> result = new ArrayList<>();
-            for (ItemStack stack : ingredient.getItems())
+            for (ItemStack stack : ingredient.display().resolveForStacks(qikahome.jsonmore.Utils.displayContext()))
                 result.add(stack.copy());
             for (OpEntry op : ops)
                 op.handler.apply(result, op.filter);
             cachedDisplayStacks = result;
         }
-        return cachedDisplayStacks.stream();
+        return cachedDisplayStacks;
+    }
+
+    @Override
+    public Stream<Holder<Item>> items() {
+        return ingredient.items();
+    }
+
+    @Override
+    public SlotDisplay display() {
+        return new SlotDisplay.Composite(computeDisplayStacks().stream()
+                .map(ItemStackTemplate::fromNonEmptyStack)
+                .map(SlotDisplay.ItemStackSlotDisplay::new)
+                .map(t -> (SlotDisplay) t)
+                .toList());
     }
 
     @Override
@@ -181,7 +202,7 @@ public class ItemDisplayOverrideIngredient extends SelfConsumingIngredient {
 
     private static void toNetwork(RegistryFriendlyByteBuf buf, ItemDisplayOverrideIngredient ingredient) {
         Ingredient.CONTENTS_STREAM_CODEC.encode(buf, ingredient.ingredient);
-        List<ItemStack> stacks = ingredient.getItems().toList();
+        List<ItemStack> stacks = ingredient.computeDisplayStacks();
         buf.writeVarInt(stacks.size());
         for (ItemStack stack : stacks)
             ItemStack.STREAM_CODEC.encode(buf, stack);

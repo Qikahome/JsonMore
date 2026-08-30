@@ -1,7 +1,8 @@
 package qikahome.jsonmore.lib.recipe.jei;
 
-import net.minecraft.client.gui.GuiGraphics;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
+import net.minecraft.client.renderer.RenderPipelines;
+import net.minecraft.resources.Identifier;
 
 /**
  * GUI texture references based on Create's JEI widgets texture sheet.
@@ -24,7 +25,7 @@ public enum GuiTextures {
     JEI_HEAT_BAR(0, 201, 169, 19),
     JEI_NO_HEAT_BAR(0, 221, 169, 19);
 
-    private static final ResourceLocation TEXTURE = ResourceLocation.fromNamespaceAndPath("jsonmore", "textures/gui/jei/widgets.png");
+    private static final Identifier TEXTURE = Identifier.fromNamespaceAndPath("jsonmore", "textures/gui/jei/widgets.png");
 
     private final int startX;
     private final int startY;
@@ -38,8 +39,8 @@ public enum GuiTextures {
         this.height = height;
     }
 
-    public void render(GuiGraphics graphics, int x, int y) {
-        graphics.blit(TEXTURE, x, y, startX, startY, width, height);
+    public void render(GuiGraphicsExtractor graphics, int x, int y) {
+        graphics.blit(RenderPipelines.GUI_TEXTURED, TEXTURE, x, y, startX, startY, width, height, 256, 256);
     }
 
     public int getWidth() {

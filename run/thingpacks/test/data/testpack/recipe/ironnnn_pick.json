@@ -7,15 +7,11 @@
     ],
     "key": {
         "d": {
-            "type": "jsonmore:counted",
-            "ingredient": {
-                "item": "minecraft:diamond_block"
-            },
-            "count": 1
+            "neoforge:ingredient_type": "jsonmore:remainder_override",
+            "ingredient": "minecraft:diamond_block",
+            "remainder_override": { "id": "minecraft:diamond", "count": 8 }
         },
-        "p": {
-            "item": "minecraft:stick"
-        }
+        "p": "minecraft:stick"
     },
     "result": { "id": "minecraft:diamond_pickaxe",
         "count": 1

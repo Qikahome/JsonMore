@@ -6,10 +6,8 @@
     ],
     "key": {
         "T": {
-            "type": "jsonmore:tool_damaging",
-            "ingredient": {
-                "tag": "minecraft:pickaxes"
-            },
+            "neoforge:ingredient_type": "jsonmore:tool_damaging",
+            "ingredient": "#minecraft:pickaxes",
             "damage": 1
         }
     },

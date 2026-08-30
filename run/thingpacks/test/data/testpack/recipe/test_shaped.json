@@ -6,28 +6,18 @@
     ],
     "key": {
         "T": {
-            "type": "jsonmore:tool_damaging",
-            "ingredient": {
-                "tag": "minecraft:pickaxes"
-            },
+            "neoforge:ingredient_type": "jsonmore:tool_damaging",
+            "ingredient": "#minecraft:pickaxes",
             "damage": 5
         },
         "#": {
-            "type": "jsonmore:counted",
-            "ingredient": {
-                "item": "minecraft:iron_ingot"
-            },
+            "neoforge:ingredient_type": "jsonmore:counted",
+            "ingredient": "minecraft:iron_ingot",
             "count": 3
         },
         "W": {
-            "type": "jsonmore:remainder_override",
-            "ingredient": {
-                "type": "jsonmore:counted",
-                "ingredient": {
-                    "item": "minecraft:water_bucket"
-                },
-                "count": 1
-            },
+            "neoforge:ingredient_type": "jsonmore:remainder_override",
+            "ingredient": "minecraft:water_bucket",
             "remainder_override": {
                 "id": "minecraft:water_bucket",
                 "count": 1

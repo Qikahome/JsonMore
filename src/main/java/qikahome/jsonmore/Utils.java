@@ -13,7 +13,38 @@ import java.util.regex.Pattern;
 
 import javax.annotation.Nullable;
 
+import net.minecraft.util.context.ContextMap;
+import net.minecraft.world.item.crafting.display.SlotDisplayContext;
+import net.neoforged.neoforge.server.ServerLifecycleHooks;
+
 public class Utils {
+    /**
+     * 构造用于解析 SlotDisplay 的 ContextMap（包含 REGISTRIES）。
+     * 1.21.2 中 TagSlotDisplay 需要 registry 上下文才能解析 tag，
+     * 传空 ContextMap 会导致 tag 类 ingredient 在配方预览中显示为空。
+     * 服务器/客户端 level 都不可用（如启动早期 JEI 构建预览）时，
+     * 退回用静态的 BuiltInRegistries 兜底，保证原版 tag 也能解析。
+     */
+    public static ContextMap displayContext() {
+        var server = ServerLifecycleHooks.getCurrentServer();
+        if (server != null) {
+            return new ContextMap.Builder()
+                    .withParameter(SlotDisplayContext.REGISTRIES, server.registryAccess())
+                    .create(SlotDisplayContext.CONTEXT);
+        }
+        var minecraft = net.minecraft.client.Minecraft.getInstance();
+        if (minecraft.level != null) {
+            return new ContextMap.Builder()
+                    .withParameter(SlotDisplayContext.REGISTRIES, minecraft.level.registryAccess())
+                    .create(SlotDisplayContext.CONTEXT);
+        }
+        return new ContextMap.Builder()
+                .withParameter(SlotDisplayContext.REGISTRIES,
+                        net.minecraft.core.RegistryAccess.fromRegistryOfRegistries(
+                                net.minecraft.core.registries.BuiltInRegistries.REGISTRY))
+                .create(SlotDisplayContext.CONTEXT);
+    }
+
     /**
      * 执行Supplier类型的Lambda，捕获异常并返回默认值
      * 

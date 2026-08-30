@@ -2,42 +2,26 @@
     "type": "jsonmore:shapeless_consuming",
     "ingredients": [
         {
-            "type": "jsonmore:item_display_override",
-            "ingredient": {
-                "tag": "minecraft:pickaxes"
-            },
+            "neoforge:ingredient_type": "jsonmore:item_display_override",
+            "ingredient": "#minecraft:pickaxes",
             "ops": [
                 {
-                    "op": "remove",
-                    "value": {
-                        "item": "minecraft:diamond_pickaxe"
+                    "handler": {
+                        "op": "remove",
+                        "value": "minecraft:diamond_pickaxe"
                     }
                 },
                 {
-                    "op": "modify_nbt",
-                    "value": {
-                        "display": {
-                            "Lore": ["{\"text\":\"搂7宸插己鍖朶",\"italic\":false}"]
-                        }
-                    },
-                    "mode": "merge",
-                    "filter": {
-                        "item": "minecraft:iron_pickaxe"
-                    }
-                },
-                {
-                    "op": "modify_count",
-                    "operation": "multiply",
-                    "value": 3,
-                    "filter": {
-                        "item": "minecraft:golden_pickaxe"
+                    "filter": "minecraft:golden_pickaxe",
+                    "handler": {
+                        "op": "modify_count",
+                        "operation": "multiply",
+                        "value": 3
                     }
                 }
             ]
         },
-        {
-            "item": "minecraft:stick"
-        }
+        "minecraft:stick"
     ],
     "result": { "id": "minecraft:diamond_pickaxe",
         "count": 1

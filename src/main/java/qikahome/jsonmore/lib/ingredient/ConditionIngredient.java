@@ -7,18 +7,22 @@ import com.mojang.serialization.Codec;
 import com.mojang.serialization.MapCodec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 
+import net.minecraft.core.Holder;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
+import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.ItemStackTemplate;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.item.crafting.Ingredient;
+import net.minecraft.world.item.crafting.display.SlotDisplay;
 import net.neoforged.neoforge.common.conditions.ICondition;
 import net.neoforged.neoforge.common.crafting.IngredientType;
 import net.neoforged.neoforge.registries.DeferredHolder;
 import qikahome.jsonmore.JsonMore;
 
 public class ConditionIngredient extends SelfConsumingIngredient {
-    public static final ResourceLocation ID = ResourceLocation.parse("jsonmore:condition");
+    public static final Identifier ID = Identifier.parse("jsonmore:condition");
     private static final String DEFAULT_MESSAGE = "recipe.jsonmore.disabled";
 
     public static final MapCodec<ConditionIngredient> CODEC = RecordCodecBuilder.mapCodec(
@@ -52,13 +56,21 @@ public class ConditionIngredient extends SelfConsumingIngredient {
     }
 
     @Override
-    public Stream<ItemStack> getItems() {
+    public Stream<Holder<Item>> items() {
+        if (!passes())
+            return Stream.of(Holder.direct(Items.BARRIER));
+        return super.items();
+    }
+
+    @Override
+    public SlotDisplay display() {
         if (!passes()) {
             ItemStack barrier = new ItemStack(Items.BARRIER);
             barrier.set(net.minecraft.core.component.DataComponents.CUSTOM_NAME, Component.translatable(message));
-            return Stream.of(barrier);
+            return new SlotDisplay.Composite(
+                    java.util.List.of(new SlotDisplay.ItemStackSlotDisplay(ItemStackTemplate.fromNonEmptyStack(barrier))));
         }
-        return super.getItems();
+        return super.display();
     }
 
     @Override

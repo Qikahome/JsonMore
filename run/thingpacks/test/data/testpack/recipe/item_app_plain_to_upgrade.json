@@ -1,15 +1,11 @@
 {
     "type": "jsonmore:item_application",
     "block": {
-        "type": "jsonmore:nbt_copy",
-        "ingredient": {
-            "item": "testpack:test_container_plain"
-        },
+        "neoforge:ingredient_type": "jsonmore:nbt_copy",
+        "ingredient": "testpack:test_container_plain",
         "mode": "REPLACE"
     },
-    "tool": {
-        "item": "minecraft:paper"
-    },
+    "tool": "minecraft:paper",
     "result": { "id": "testpack:test_container_upgraded"
     },
     "drop_container": false,

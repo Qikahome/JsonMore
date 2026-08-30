@@ -7,10 +7,8 @@
     ],
     "key": {
         "D": {
-            "type": "jsonmore:counted",
-            "ingredient": {
-                "item": "minecraft:deepslate"
-            },
+            "neoforge:ingredient_type": "jsonmore:counted",
+            "ingredient": "minecraft:deepslate",
             "count": 64
         }
     },

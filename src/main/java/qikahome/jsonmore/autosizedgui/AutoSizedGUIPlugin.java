@@ -5,7 +5,7 @@ import java.util.function.Supplier;
 import javax.annotation.Nullable;
 
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.MenuProvider;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
@@ -30,7 +30,7 @@ public class AutoSizedGUIPlugin {
 
     private static void registerAutoSizedContainer() {
         ContainerScreenType.register(
-                ResourceLocation.parse("autosizedgui:auto"),
+                Identifier.parse("autosizedgui:auto"),
                 (containers, containerSize) -> {
                     var container = MultiContainer.of(containers);
                     return new MenuProvider() {

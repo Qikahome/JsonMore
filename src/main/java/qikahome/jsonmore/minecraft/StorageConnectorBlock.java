@@ -19,13 +19,11 @@ import dev.gigaherz.jsonthings.things.events.FlexEventType;
 import dev.gigaherz.jsonthings.things.shapes.DynamicShape;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
-import net.minecraft.core.HolderLookup;
 import net.minecraft.core.NonNullList;
 import net.minecraft.core.registries.Registries;
-import net.minecraft.nbt.CompoundTag;
-import net.minecraft.nbt.ListTag;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.network.chat.ComponentSerialization;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundEvent;
 import net.minecraft.sounds.SoundSource;
@@ -35,8 +33,8 @@ import net.minecraft.world.ContainerHelper;
 import net.minecraft.world.Containers;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
-import net.minecraft.world.ItemInteractionResult;
 import net.minecraft.world.WorldlyContainer;
+import net.minecraft.world.entity.ContainerUser;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.inventory.AbstractContainerMenu;
@@ -54,15 +52,18 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.StateDefinition;
 import net.minecraft.world.level.block.state.properties.BooleanProperty;
 import net.minecraft.world.level.block.state.properties.Property;
+import net.minecraft.world.level.storage.ValueInput;
+import net.minecraft.world.level.storage.ValueOutput;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.shapes.CollisionContext;
 import net.minecraft.world.phys.shapes.VoxelShape;
 import static qikahome.jsonmore.JsonMore.LOGGER;
 import qikahome.jsonmore.lib.ContainerScreenType;
 import qikahome.jsonmore.lib.IFlexEntityBlock;
+import qikahome.jsonmore.lib.IProtectedBlock;
 
 public class StorageConnectorBlock extends BaseEntityBlock
-        implements IFlexEntityBlock<StorageConnectorBlock.ControllerBlockEntity> {
+        implements IFlexEntityBlock<StorageConnectorBlock.ControllerBlockEntity>, IProtectedBlock {
 
     public static final BooleanProperty CONNECTED = BooleanProperty.create("connected");
 
@@ -76,7 +77,7 @@ public class StorageConnectorBlock extends BaseEntityBlock
 
     public StorageConnectorBlock(BlockBehaviour.Properties properties,
             Map<Property<?>, Comparable<?>> propertyDefaultValues,
-            int radius, ResourceLocation connectable, ContainerScreenType screenType,
+            int radius, Identifier connectable, ContainerScreenType screenType,
             SoundEvent soundAssemble, SoundEvent soundDisassemble,
             SoundEvent soundOpen, SoundEvent soundClose) {
         super(properties);
@@ -168,10 +169,10 @@ public class StorageConnectorBlock extends BaseEntityBlock
 
     @Deprecated
     @Override
-    public VoxelShape getOcclusionShape(BlockState state, BlockGetter worldIn, BlockPos pos) {
+    public VoxelShape getOcclusionShape(BlockState state) {
         if (this.renderShape != null)
             return renderShape.getShape(state);
-        return super.getOcclusionShape(state, worldIn, pos);
+        return super.getOcclusionShape(state);
     }
 
     @Override
@@ -183,7 +184,7 @@ public class StorageConnectorBlock extends BaseEntityBlock
     }
 
     @Override
-    protected ItemInteractionResult useItemOn(ItemStack stack, BlockState state, Level level, BlockPos pos,
+    protected InteractionResult useItemOn(ItemStack stack, BlockState state, Level level, BlockPos pos,
             Player player, InteractionHand hand, BlockHitResult hitResult) {
         return runEvent(FlexEventType.USE_BLOCK_WITH_ITEM, FlexEventContext.of(level, pos, state)
                 .with(FlexEventContext.USER, player)
@@ -214,7 +215,7 @@ public class StorageConnectorBlock extends BaseEntityBlock
     }
 
     @Override
-    public int getAnalogOutputSignal(BlockState state, Level level, BlockPos pos) {
+    public int getAnalogOutputSignal(BlockState state, Level level, BlockPos pos, Direction direction) {
         BlockEntity be = level.getBlockEntity(pos);
         if (be instanceof ControllerBlockEntity cbe) {
             return AbstractContainerMenu.getRedstoneSignalFromContainer(cbe.getControllerContainer());
@@ -229,7 +230,7 @@ public class StorageConnectorBlock extends BaseEntityBlock
 
         // Shift-right-click with empty hand: refresh (assemble)
         if (player.isShiftKeyDown()) {
-            if (!level.isClientSide) {
+            if (!level.isClientSide()) {
                 BlockEntity be = level.getBlockEntity(pos);
                 if (be instanceof ControllerBlockEntity cbe) {
                     cbe.assemble(level, pos, state);
@@ -238,7 +239,7 @@ public class StorageConnectorBlock extends BaseEntityBlock
             return InteractionResult.SUCCESS;
         }
 
-        if (level.isClientSide) {
+        if (level.isClientSide()) {
             return InteractionResult.SUCCESS;
         }
 
@@ -269,20 +270,19 @@ public class StorageConnectorBlock extends BaseEntityBlock
     }
 
     @Override
-    public void onRemove(BlockState oldState, Level level, BlockPos pos, BlockState newState, boolean isMoving) {
+    public boolean maySetBlock(BlockState oldState, Level level, BlockPos pos, BlockState newState,
+            @Block.UpdateFlags int updateFlags, int updateLimit) {
         if (!oldState.is(newState.getBlock())) {
             BlockEntity be = level.getBlockEntity(pos);
             if (be instanceof ControllerBlockEntity cbe && cbe.isAssembled()) {
-                // Play sound using oldState before disassemble (current state is air)
-                if (oldState.getBlock() instanceof StorageConnectorBlock scb) {
-                    level.playSound(null, pos, scb.soundDisassemble, SoundSource.BLOCKS, 1.0F, 1.0F);
+                if (!level.isClientSide()) {
+                    // Disassemble (restores CONNECTED=false and plays sound), then cancel the removal
+                    cbe.disassemble(level);
+                    return false;
                 }
-                cbe.disassemble(level);
-                level.setBlock(pos, oldState.setValue(CONNECTED, false), 2); // Restore self
-                return;
             }
-            super.onRemove(oldState, level, pos, newState, isMoving);
         }
+        return true;
     }
 
     @Override
@@ -326,7 +326,7 @@ public class StorageConnectorBlock extends BaseEntityBlock
         // ========================================================================
 
         public void assemble(Level level, BlockPos pos, BlockState state) {
-            if (level.isClientSide) return;
+            if (level.isClientSide()) return;
             if (!(state.getBlock() instanceof StorageConnectorBlock scb)) return;
 
             int r = scb.radius;
@@ -458,7 +458,7 @@ public class StorageConnectorBlock extends BaseEntityBlock
         // ========================================================================
 
         public void disassemble(Level level) {
-            if (level.isClientSide || disassembling) return;
+            if (level.isClientSide() || disassembling) return;
             disassembling = true;
             try {
                 // 1. Save connector list before clearing
@@ -602,36 +602,28 @@ public class StorageConnectorBlock extends BaseEntityBlock
         // ========================================================================
 
         @Override
-        protected void saveAdditional(CompoundTag tag, HolderLookup.Provider registries) {
-            ContainerHelper.saveAllItems(tag, items, registries);
-            tag.putInt("TotalSlots", totalSlots);
-            ListTag connectorList = new ListTag();
+        protected void saveAdditional(ValueOutput output) {
+            ContainerHelper.saveAllItems(output, items);
+            output.putInt("TotalSlots", totalSlots);
+            var connectorList = output.childrenList("Connectors");
             for (ConnectorEntry e : connectors) {
-                CompoundTag ct = new CompoundTag();
-                ct.putLong("RelPos", e.relativePos.asLong());
-                ct.putInt("Size", e.containerSize);
-                if (e.displayName != null) {
-                    ct.putString("DisplayName", Component.Serializer.toJson(e.displayName, registries));
-                }
-                connectorList.add(ct);
+                ValueOutput child = connectorList.addChild();
+                child.putLong("RelPos", e.relativePos.asLong());
+                child.putInt("Size", e.containerSize);
+                child.storeNullable("DisplayName", ComponentSerialization.CODEC, e.displayName);
             }
-            tag.put("Connectors", connectorList);
         }
 
         @Override
-        public void loadAdditional(CompoundTag tag, HolderLookup.Provider registries) {
-            totalSlots = tag.getInt("TotalSlots");
+        public void loadAdditional(ValueInput input) {
+            totalSlots = input.getIntOr("TotalSlots", 0);
             items = NonNullList.withSize(totalSlots, ItemStack.EMPTY);
-            ContainerHelper.loadAllItems(tag, items, registries);
+            ContainerHelper.loadAllItems(input, items);
             connectors.clear();
-            ListTag connectorList = tag.getList("Connectors", 10);
-            for (int i = 0; i < connectorList.size(); i++) {
-                CompoundTag ct = connectorList.getCompound(i);
-                BlockPos rel = BlockPos.of(ct.getLong("RelPos"));
-                int size = ct.getInt("Size");
-                Component displayName = ct.contains("DisplayName")
-                        ? Component.Serializer.fromJson(ct.getString("DisplayName"), registries)
-                        : null;
+            for (ValueInput child : input.childrenListOrEmpty("Connectors")) {
+                BlockPos rel = BlockPos.of(child.getLongOr("RelPos", 0L));
+                int size = child.getIntOr("Size", 0);
+                Component displayName = child.read("DisplayName", ComponentSerialization.CODEC).orElse(null);
                 connectors.add(new ConnectorEntry(rel, size, displayName));
             }
         }
@@ -683,19 +675,21 @@ public class StorageConnectorBlock extends BaseEntityBlock
         }
 
         @Override
-        public void startOpen(Player player) {
-            if (!remove && !player.isSpectator()) {
+        public void startOpen(ContainerUser user) {
+            if (!remove && !user.getLivingEntity().isSpectator()) {
                 if (level != null && getBlockState().getBlock() instanceof StorageConnectorBlock scb) {
-                    level.playSound(null, worldPosition, scb.soundOpen, SoundSource.BLOCKS, 0.5F, level.random.nextFloat() * 0.1F + 0.9F);
+                    level.playSound(null, worldPosition, scb.soundOpen, SoundSource.BLOCKS, 0.5F,
+                            level.getRandom().nextFloat() * 0.1F + 0.9F);
                 }
             }
         }
 
         @Override
-        public void stopOpen(Player player) {
-            if (!remove && !player.isSpectator()) {
+        public void stopOpen(ContainerUser user) {
+            if (!remove && !user.getLivingEntity().isSpectator()) {
                 if (level != null && getBlockState().getBlock() instanceof StorageConnectorBlock scb) {
-                    level.playSound(null, worldPosition, scb.soundClose, SoundSource.BLOCKS, 0.5F, level.random.nextFloat() * 0.1F + 0.9F);
+                    level.playSound(null, worldPosition, scb.soundClose, SoundSource.BLOCKS, 0.5F,
+                            level.getRandom().nextFloat() * 0.1F + 0.9F);
                 }
             }
         }

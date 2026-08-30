@@ -64,6 +64,6 @@ public enum BlockedDirection {
             Direction facing, ContainerPart partType);
 
     protected static boolean isSolidBlock(net.minecraft.world.level.LevelReader level, net.minecraft.core.BlockPos pos) {
-        return level.getBlockState(pos).isSolidRender(level, pos);
+        return level.getBlockState(pos).isSolidRender();
     }
 }

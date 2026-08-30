@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 import com.mojang.serialization.MapCodec;
@@ -16,9 +17,12 @@ import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.ItemStackTemplate;
 import net.minecraft.world.item.crafting.CraftingBookCategory;
 import net.minecraft.world.item.crafting.CraftingInput;
+import net.minecraft.world.item.crafting.CraftingRecipe;
 import net.minecraft.world.item.crafting.Ingredient;
+import net.minecraft.world.item.crafting.Recipe;
 import net.minecraft.world.item.crafting.RecipeSerializer;
 import net.minecraft.world.item.crafting.ShapedRecipe;
 import net.minecraft.world.item.crafting.ShapedRecipePattern;
@@ -32,20 +36,13 @@ public class ShapedConsumingRecipe extends ShapedRecipe implements IConsumingRec
 
     private transient Map<Integer, Ingredient> lastMatch;
 
-    public ShapedConsumingRecipe(String group, CraftingBookCategory category, ShapedRecipePattern pattern,
-            ItemStack result, boolean showNotification) {
-        super(group, category, pattern, result, showNotification);
-    }
-
-    public ShapedConsumingRecipe(String group, CraftingBookCategory category, ShapedRecipePattern pattern,
-            ItemStack result) {
-        this(group, category, pattern, result, true);
+    public ShapedConsumingRecipe(Recipe.CommonInfo commonInfo, CraftingRecipe.CraftingBookInfo bookInfo, ShapedRecipePattern pattern, ItemStackTemplate result) {
+        super(commonInfo, bookInfo, pattern, result);
     }
 
     public static ShapedConsumingRecipe fromVanilla(ShapedRecipe recipe) {
-        return new ShapedConsumingRecipe(recipe.getGroup(), recipe.category(),
-                recipe.pattern,
-                recipe.getResultItem(RegistryAccess.EMPTY), recipe.showNotification());
+        return new ShapedConsumingRecipe(recipe.commonInfo, recipe.bookInfo, recipe.pattern,
+                recipe.result);
     }
 
     private Map<Integer, Ingredient> matchIngredients(CraftingInput container) {
@@ -56,6 +53,8 @@ public class ShapedConsumingRecipe extends ShapedRecipe implements IConsumingRec
         int containerWidth = container.width();
         int containerHeight = container.height();
         List<Ingredient> ingredients = getIngredients().stream()
+                .filter(opt->opt.isPresent())
+                .map(Optional::get)
                 .filter(ing -> !ing.isEmpty())
                 .collect(Collectors.toList());
 
@@ -96,13 +95,13 @@ public class ShapedConsumingRecipe extends ShapedRecipe implements IConsumingRec
                             int ingredientIndex = mirrored
                                     ? (recipeWidth - col - 1) + row * recipeWidth
                                     : col + row * recipeWidth;
-                            Ingredient originalIng = getIngredients().get(ingredientIndex);
+                            Optional<Ingredient> originalIng = getIngredients().get(ingredientIndex);
                             if (originalIng.isEmpty())
                                 continue;
 
                             int matchedIdx = -1;
                             for (int idx = 0; idx < remainingIngredients.size(); idx++) {
-                                if (remainingIngredients.get(idx) == originalIng) {
+                                if (remainingIngredients.get(idx) == originalIng.get()) {
                                     matchedIdx = idx;
                                     break;
                                 }
@@ -118,12 +117,12 @@ public class ShapedConsumingRecipe extends ShapedRecipe implements IConsumingRec
                                 break;
                             }
                             ItemStack stack = container.getItem(containerSlot);
-                            if (stack.isEmpty() || !originalIng.test(stack)) {
+                            if (stack.isEmpty() || !originalIng.get().test(stack)) {
                                 matchedSlots = null;
                                 break;
                             }
 
-                            matchedSlots.put(containerSlot, originalIng);
+                            matchedSlots.put(containerSlot, originalIng.get());
                             remainingIngredients.remove(matchedIdx);
                         }
                         if (matchedSlots == null) break;
@@ -140,7 +139,7 @@ public class ShapedConsumingRecipe extends ShapedRecipe implements IConsumingRec
     }
 
     private boolean matchesShape(CraftingInput container, int startX, int startY, boolean mirrored) {
-        NonNullList<Ingredient> ingredients = getIngredients();
+        List<Optional<Ingredient>> ingredients = getIngredients();
         int recipeWidth = pattern.width();
         int recipeHeight = pattern.height();
         int containerWidth = container.width();
@@ -149,15 +148,13 @@ public class ShapedConsumingRecipe extends ShapedRecipe implements IConsumingRec
             for (int j = 0; j < container.height(); j++) {
                 int k = i - startX;
                 int l = j - startY;
-                Ingredient ingredient = Ingredient.EMPTY;
+                Optional<Ingredient> ingredient = Optional.empty();
                 if (k >= 0 && l >= 0 && k < recipeWidth && l < recipeHeight) {
-                    if (mirrored) {
-                        ingredient = ingredients.get(recipeWidth - k - 1 + l * recipeWidth);
-                    } else {
-                        ingredient = ingredients.get(k + l * recipeWidth);
-                    }
+                    ingredient = ingredients.get(mirrored
+                            ? recipeWidth - k - 1 + l * recipeWidth
+                            : k + l * recipeWidth);
                 }
-                if (!ingredient.test(container.getItem(i + j * containerWidth))) {
+                if (ingredient.isPresent() && !ingredient.get().test(container.getItem(i + j * containerWidth))) {
                     return false;
                 }
             }
@@ -209,8 +206,8 @@ public class ShapedConsumingRecipe extends ShapedRecipe implements IConsumingRec
     }
 
     @Override
-    public ItemStack assemble(CraftingInput container, HolderLookup.Provider lookup) {
-        ItemStack result = super.assemble(container, lookup);
+    public ItemStack assemble(CraftingInput container) {
+        ItemStack result = super.assemble(container);
         if (result.isEmpty()) {
             return result;
         }
@@ -226,29 +223,14 @@ public class ShapedConsumingRecipe extends ShapedRecipe implements IConsumingRec
         return result;
     }
 
+    private static final MapCodec<ShapedRecipe> CODEC = ShapedRecipe.MAP_CODEC.xmap(ShapedConsumingRecipe::fromVanilla, a -> a);
+    private static final StreamCodec<RegistryFriendlyByteBuf, ShapedRecipe> STREAM_CODEC = StreamCodec.of(
+            (buf, recipe) -> ShapedRecipe.STREAM_CODEC.encode(buf, recipe),
+            buf -> ShapedConsumingRecipe.fromVanilla(ShapedRecipe.STREAM_CODEC.decode(buf)));
+    public static final RecipeSerializer<ShapedRecipe> SERIALIZER = new RecipeSerializer<>(CODEC, STREAM_CODEC);
+
     @Override
-    public RecipeSerializer<?> getSerializer() {
-        return Serializer.INSTANCE;
-    }
-
-    public static class Serializer implements RecipeSerializer<ShapedConsumingRecipe> {
-        public static final Serializer INSTANCE = new Serializer();
-
-        private static final MapCodec<ShapedConsumingRecipe> CODEC = RecipeSerializer.SHAPED_RECIPE
-                .codec().xmap(ShapedConsumingRecipe::fromVanilla, a -> a);
-
-        private static final StreamCodec<RegistryFriendlyByteBuf, ShapedConsumingRecipe> STREAM_CODEC = StreamCodec.of(
-                (buf, recipe) -> RecipeSerializer.SHAPED_RECIPE.streamCodec().encode(buf, recipe),
-                buf -> ShapedConsumingRecipe.fromVanilla(RecipeSerializer.SHAPED_RECIPE.streamCodec().decode(buf)));
-
-        @Override
-        public MapCodec<ShapedConsumingRecipe> codec() {
-            return CODEC;
-        }
-
-        @Override
-        public StreamCodec<RegistryFriendlyByteBuf, ShapedConsumingRecipe> streamCodec() {
-            return STREAM_CODEC;
-        }
+    public RecipeSerializer<ShapedRecipe> getSerializer() {
+        return SERIALIZER;
     }
 }

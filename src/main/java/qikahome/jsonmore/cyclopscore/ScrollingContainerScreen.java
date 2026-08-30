@@ -24,9 +24,9 @@ SOFTWARE.
 package qikahome.jsonmore.cyclopscore;
 
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.entity.player.Inventory;
 import qikahome.jsonmore.JsonMore;
 
@@ -70,8 +70,8 @@ public class ScrollingContainerScreen extends ContainerScreenScrolling<Scrolling
     }
 
     @Override
-    protected ResourceLocation constructGuiTexture() {
-        return ResourceLocation.fromNamespaceAndPath(JsonMore.MODID, "textures/gui/scrolling_container.png");
+    protected Identifier constructGuiTexture() {
+        return Identifier.fromNamespaceAndPath(JsonMore.MODID, "textures/gui/scrolling_container.png");
     }
 
     @Override
@@ -84,12 +84,12 @@ public class ScrollingContainerScreen extends ContainerScreenScrolling<Scrolling
         return TEXTUREHEIGHT;
     }
 
-    protected void drawForgegroundString(GuiGraphics guiGraphics) {
-        guiGraphics.drawString(this.font, getTitle().getString(), 8 + offsetX, 6 + offsetY, 4210752, false);
+    protected void drawForgegroundString(GuiGraphicsExtractor guiGraphics) {
+        guiGraphics.text(this.font, getTitle().getString(), 8 + offsetX, 6 + offsetY, 4210752, false);
     }
 
     @Override
-    protected void renderLabels(GuiGraphics guiGraphics, int mouseX, int mouseY) {
+    protected void extractLabels(GuiGraphicsExtractor guiGraphics, int mouseX, int mouseY) {
         drawForgegroundString(guiGraphics);
         //super.drawGuiContainerForegroundLayer(matrixStack, mouseX, mouseY);
     }

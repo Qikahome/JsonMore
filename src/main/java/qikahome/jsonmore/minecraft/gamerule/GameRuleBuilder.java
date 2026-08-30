@@ -11,21 +11,23 @@ import dev.gigaherz.jsonthings.things.events.FlexEventHandler;
 import dev.gigaherz.jsonthings.things.events.FlexEventType;
 import dev.gigaherz.jsonthings.things.events.IEventRunner;
 import dev.gigaherz.jsonthings.things.parsers.ThingParser;
-import net.minecraft.resources.ResourceLocation;
-import net.minecraft.world.level.GameRules;
+import net.minecraft.resources.Identifier;
+import net.minecraft.world.level.gamerules.GameRule;
+import net.minecraft.world.level.gamerules.GameRuleCategory;
+import net.minecraft.world.level.gamerules.GameRules;
 
-public class GameRuleBuilder extends BaseBuilder<GameRules.Type<?>, GameRuleBuilder> implements IEventRunner {
+public class GameRuleBuilder extends BaseBuilder<GameRule<?>, GameRuleBuilder> implements IEventRunner {
 
-    protected GameRuleBuilder(ThingParser<GameRuleBuilder> ownerParser, ResourceLocation registryName) {
+    protected GameRuleBuilder(ThingParser<GameRule<?>, GameRuleBuilder> ownerParser, Identifier registryName) {
         super(ownerParser, registryName);
     }
 
-    private GameRules.Category category = GameRules.Category.MISC;
-    private FlexGameRuleType<?> type;
+    private GameRuleCategory category = GameRuleCategory.MISC;
+    private FlexGameRuleType type;
 
-    private IGameRuleBuilderFactory<?> factory;
+    private IGameRuleBuilderFactory factory;
 
-    public void setFactory(IGameRuleBuilderFactory<?> factory) {
+    public void setFactory(IGameRuleBuilderFactory factory) {
         this.factory = factory;
     }
 
@@ -34,45 +36,42 @@ public class GameRuleBuilder extends BaseBuilder<GameRules.Type<?>, GameRuleBuil
         return "Game Rule";
     }
 
-    public void setType(ResourceLocation typeName) {
-        var type = FlexGameRuleType.INSTANCE.get(typeName);
-        if (type == null)
-            throw new IllegalStateException("No known game rule type with name " + typeName);
-        this.type = type;
+    public void setType(Identifier typeName) {
+        this.type = FlexGameRuleType.INSTANCE.getOptional(typeName).orElseThrow(()->new IllegalStateException("No known game rule type with name " + typeName));
     }
 
-    public void setType(FlexGameRuleType<?> type) {
+    public void setType(FlexGameRuleType type) {
         if (FlexGameRuleType.INSTANCE.getKey(type) == null)
             throw new IllegalStateException("Game rule type not registered!");
         this.type = type;
     }
 
-    public FlexGameRuleType<?> getType() {
+    public FlexGameRuleType getType() {
         return type;
     }
 
-    public void setCategory(GameRules.Category category) {
+    public void setCategory(GameRuleCategory category) {
         this.category = category;
     }
 
-    public GameRules.Category getCategory() {
+    public GameRuleCategory getCategory() {
         return category;
     }
 
     @Override
-    protected GameRules.Type<?> buildInternal() {
+    protected GameRule<?> buildInternal() {
         constructEventHandlers(getParent());
         return factory.create(this);
     }
 
     @FunctionalInterface
-    public static interface IGameRuleBuilderFactory<T extends GameRules.Type<?>> {
-        T create(GameRuleBuilder builder);
+    public static interface IGameRuleBuilderFactory {
+        GameRule<?> create(GameRuleBuilder builder);
     }
 
     @FunctionalInterface
-    public interface IGameRuleBuilderSerializer<T extends GameRules.Type<?>> {
-        IGameRuleBuilderFactory<T> createFactory(JsonObject data);
+    public interface IGameRuleBuilderSerializer {
+        IGameRuleBuilderFactory createFactory(JsonObject data);
     }
 
     private final Map<FlexEventType, FlexEventHandler> eventHandlers = new HashMap<>();
@@ -86,5 +85,10 @@ public class GameRuleBuilder extends BaseBuilder<GameRules.Type<?>, GameRuleBuil
     @Nullable
     public <T> FlexEventHandler<T> getEventHandler(FlexEventType<T> event) {
         return eventHandlers.get(event);
+    }
+
+    @Override
+    public void validate()
+    {
     }
 }

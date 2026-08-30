@@ -15,7 +15,7 @@ import dev.gigaherz.jsonthings.things.parsers.ThingParseException;
 import dev.gigaherz.jsonthings.things.serializers.FlexBlockType;
 import dev.gigaherz.jsonthings.things.serializers.FlexBlockType.DefaultTypeProperties;
 import net.minecraft.core.registries.BuiltInRegistries;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.sounds.SoundEvent;
 import net.minecraft.util.GsonHelper;
 import net.minecraft.world.level.block.Block;
@@ -40,9 +40,9 @@ public class MinecraftPlugin {
     public static void load() {
         FlexBlockType.register("jsonmore:container", data -> {
             int slots = GsonHelper.getAsInt(data, "slots", 27);
-            ResourceLocation openSound = ResourceLocation.parse(
+            Identifier openSound = Identifier.parse(
                     GsonHelper.getAsString(data, "open_sound", "none:none"));
-            ResourceLocation closeSound = ResourceLocation.parse(
+            Identifier closeSound = Identifier.parse(
                     GsonHelper.getAsString(data, "close_sound", "none:none"));
             boolean waterlogged = GsonHelper.getAsBoolean(data, "can_waterlogged", false);
             String facing = GsonHelper.getAsString(data, "directions", "facing_horizontal");
@@ -97,13 +97,13 @@ public class MinecraftPlugin {
                 }
             }
             insertFilters.put(FaceFilter.ANY, placeFilter);
-            ResourceLocation connectableContainers = ResourceLocation.parse(
+            Identifier connectableContainers = Identifier.parse(
                     GsonHelper.getAsString(data, "connectable", "none:none"));
             return (props, builder) -> {
                 List<Property<?>> _properties = builder.getProperties();
                 Map<Property<?>, Comparable<?>> propertyDefaultValues = builder.getPropertyDefaultValues();
-                SoundEvent openSoundEvent = BuiltInRegistries.SOUND_EVENT.get(openSound);
-                SoundEvent closeSoundEvent = BuiltInRegistries.SOUND_EVENT.get(closeSound);
+                SoundEvent openSoundEvent = BuiltInRegistries.SOUND_EVENT.getOptional(openSound).orElse(null);
+                SoundEvent closeSoundEvent = BuiltInRegistries.SOUND_EVENT.getOptional(closeSound).orElse(null);
                 PlacingDirections facingDirection;
                 try {
                     facingDirection = PlacingDirections.valueOf(facing.toUpperCase());
@@ -131,7 +131,7 @@ public class MinecraftPlugin {
                     }
                 };
             };
-        }, DefaultTypeProperties.builder().defaultLayer("solid").defaultSeeThrough(false).defaultReplaceable(false)
+        }, DefaultTypeProperties.builder().defaultSeeThrough(false).defaultReplaceable(false)
                 .stockProperties(BlockStateProperties.OPEN, BlockStateProperties.FACING, ContainerPart.PART,
                         BlockStateProperties.WATERLOGGED));
 
@@ -143,25 +143,25 @@ public class MinecraftPlugin {
             }
             String connectableStr = GsonHelper.getAsString(data, "connectable");
             if (connectableStr.startsWith("#")) connectableStr = connectableStr.substring(1);
-            ResourceLocation connectable = ResourceLocation.parse(connectableStr);
+            Identifier connectable = Identifier.parse(connectableStr);
             ContainerScreenType screenType = ContainerScreenType.parse(data.get("screen"), "autosizedgui:auto");
 
-            ResourceLocation assembleSoundId = ResourceLocation.parse(
+            Identifier assembleSoundId = Identifier.parse(
                     GsonHelper.getAsString(data, "assemble_sound", "minecraft:block.beacon.activate"));
-            ResourceLocation disassembleSoundId = ResourceLocation.parse(
+            Identifier disassembleSoundId = Identifier.parse(
                     GsonHelper.getAsString(data, "disassemble_sound", "minecraft:block.beacon.deactivate"));
-            ResourceLocation openSoundId = ResourceLocation.parse(
+            Identifier openSoundId = Identifier.parse(
                     GsonHelper.getAsString(data, "open_sound", "minecraft:block.barrel.open"));
-            ResourceLocation closeSoundId = ResourceLocation.parse(
+            Identifier closeSoundId = Identifier.parse(
                     GsonHelper.getAsString(data, "close_sound", "minecraft:block.barrel.close"));
 
             return (props, builder) -> {
                 List<Property<?>> _properties = builder.getProperties();
                 Map<Property<?>, Comparable<?>> propertyDefaultValues = builder.getPropertyDefaultValues();
-                SoundEvent assembleSound = BuiltInRegistries.SOUND_EVENT.get(assembleSoundId);
-                SoundEvent disassembleSound = BuiltInRegistries.SOUND_EVENT.get(disassembleSoundId);
-                SoundEvent openSound = BuiltInRegistries.SOUND_EVENT.get(openSoundId);
-                SoundEvent closeSound = BuiltInRegistries.SOUND_EVENT.get(closeSoundId);
+                SoundEvent assembleSound = BuiltInRegistries.SOUND_EVENT.getOptional(assembleSoundId).orElse(null);
+                SoundEvent disassembleSound = BuiltInRegistries.SOUND_EVENT.getOptional(disassembleSoundId).orElse(null);
+                SoundEvent openSound = BuiltInRegistries.SOUND_EVENT.getOptional(openSoundId).orElse(null);
+                SoundEvent closeSound = BuiltInRegistries.SOUND_EVENT.getOptional(closeSoundId).orElse(null);
                 return new StorageConnectorBlock(props, propertyDefaultValues, radius, connectable, screenType,
                         assembleSound, disassembleSound, openSound, closeSound) {
                     @Override
@@ -177,7 +177,7 @@ public class MinecraftPlugin {
                     }
                 };
             };
-        }, DefaultTypeProperties.builder().defaultLayer("solid").defaultSeeThrough(false).defaultReplaceable(false));
+        }, DefaultTypeProperties.builder().defaultSeeThrough(false).defaultReplaceable(false));
     }
 
     private static Map<FaceFilter, ItemFilter> parseFaceFilterMap(JsonObject data, String key) {
@@ -197,12 +197,8 @@ public class MinecraftPlugin {
     }
 
     public static DeferredHolder<BlockEntityType<?>, BlockEntityType<FlexBarrelBlockEntity>> BARREL_TILE;
-    public static final Supplier<BlockEntityType<FlexBarrelBlockEntity>> BARREL_SUPPLIER = () -> BlockEntityType.Builder
-            .of(FlexBarrelBlockEntity::new)
-            .build(null);
+    public static final Supplier<BlockEntityType<FlexBarrelBlockEntity>> BARREL_SUPPLIER = () -> new BlockEntityType<>(FlexBarrelBlockEntity::new,Set.of());
 
     public static DeferredHolder<BlockEntityType<?>, BlockEntityType<ControllerBlockEntity>> STORAGE_CONNECTOR_TILE;
-    public static final Supplier<BlockEntityType<ControllerBlockEntity>> STORAGE_CONNECTOR_SUPPLIER = () -> BlockEntityType.Builder
-            .of(ControllerBlockEntity::new)
-            .build(null);
+    public static final Supplier<BlockEntityType<ControllerBlockEntity>> STORAGE_CONNECTOR_SUPPLIER = () -> new BlockEntityType<>(ControllerBlockEntity::new,Set.of());
 }

@@ -2,10 +2,8 @@
   "type": "minecraft:crafting_shapeless",
   "ingredients": [
     {
-      "type": "jsonmore:not",
-      "ingredient": {
-        "tag": "planks"
-      }
+      "neoforge:ingredient_type": "jsonmore:not",
+      "ingredient": "#planks"
     }
   ],
   "result": { "id": "testpack:container_large"

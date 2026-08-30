@@ -14,20 +14,25 @@ import net.minecraft.core.HolderLookup;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.codec.StreamCodec;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
+import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.tags.TagKey;
+import net.minecraft.util.ProblemReporter;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.item.component.CustomData;
+import net.minecraft.world.item.ItemStackTemplate;
+import net.minecraft.world.item.component.TypedEntityData;
 import net.minecraft.world.item.crafting.Ingredient;
+import net.minecraft.world.item.crafting.PlacementInfo;
 import net.minecraft.world.item.crafting.Recipe;
+import net.minecraft.world.item.crafting.RecipeBookCategory;
 import net.minecraft.world.item.crafting.RecipeInput;
 import net.minecraft.world.item.crafting.RecipeSerializer;
 import net.minecraft.world.item.crafting.RecipeType;
@@ -38,8 +43,9 @@ import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.StateDefinition;
 import net.minecraft.world.level.block.state.properties.BlockStateProperties;
-import net.minecraft.world.level.block.state.properties.DirectionProperty;
+import net.minecraft.world.level.block.state.properties.EnumProperty;
 import net.minecraft.world.level.block.state.properties.Property;
+import net.minecraft.world.level.storage.TagValueInput;
 import net.minecraft.core.registries.Registries;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
@@ -48,21 +54,21 @@ import qikahome.jsonmore.lib.ingredient.SelfConsumingIngredient;
 
 @EventBusSubscriber(modid = "jsonmore")
 public class ItemApplicationRecipe implements Recipe<RecipeInput> {
-    public static final ResourceLocation TYPE_ID = ResourceLocation.parse("jsonmore:item_application");
+    public static final Identifier TYPE_ID = Identifier.parse("jsonmore:item_application");
     public static final RecipeType<ItemApplicationRecipe> TYPE = RecipeType.simple(TYPE_ID);
     public static final TagKey<Item> TOOL_TAG = TagKey.create(Registries.ITEM,
-            ResourceLocation.parse("jsonmore:item_application_tool"));
+            Identifier.parse("jsonmore:item_application_tool"));
 
     private final Ingredient block;
     private final Ingredient tool;
-    private final ItemStack result;
+    private final ItemStackTemplate result;
     private final boolean dropContainer;
     private final boolean keepBlockState;
     private final boolean updateBlock;
     @Nullable
     private final Boolean sneaking;
 
-    public ItemApplicationRecipe(Ingredient block, Ingredient tool, ItemStack result,
+    public ItemApplicationRecipe(Ingredient block, Ingredient tool, ItemStackTemplate result,
             boolean dropContainer, boolean keepBlockState, boolean updateBlock, @Nullable Boolean sneaking) {
         this.block = block;
         this.tool = tool;
@@ -106,7 +112,7 @@ public class ItemApplicationRecipe implements Recipe<RecipeInput> {
         return tool;
     }
 
-    public ItemStack getRecipeResult() {
+    public ItemStackTemplate getRecipeResult() {
         return result;
     }
 
@@ -116,28 +122,50 @@ public class ItemApplicationRecipe implements Recipe<RecipeInput> {
     }
 
     @Override
-    public ItemStack assemble(RecipeInput inv, HolderLookup.Provider registries) {
-        return result.copy();
+    public ItemStack assemble(RecipeInput inv) {
+        return result.create();
     }
 
-    @Override
-    public boolean canCraftInDimensions(int width, int height) {
-        return true;
-    }
+    // @Override
+    // public ItemStack getResultItem(HolderLookup.Provider registries) {
+    //     return result;
+    // }
 
     @Override
-    public ItemStack getResultItem(HolderLookup.Provider registries) {
-        return result;
-    }
-
-    @Override
-    public RecipeSerializer<?> getSerializer() {
+    public RecipeSerializer<ItemApplicationRecipe> getSerializer() {
         return Serializer.INSTANCE;
     }
 
     @Override
-    public RecipeType<?> getType() {
+    public RecipeType<ItemApplicationRecipe> getType() {
         return TYPE;
+    }
+
+    private static final RecipeBookCategory RECIPE_BOOK_CATEGORY = new RecipeBookCategory();
+
+    @Override
+    public boolean showNotification() {
+        return true;
+    }
+
+    @Override
+    public boolean isSpecial() {
+        return true;
+    }
+
+    @Override
+    public String group() {
+        return "";
+    }
+
+    @Override
+    public PlacementInfo placementInfo() {
+        return PlacementInfo.NOT_PLACEABLE;
+    }
+
+    @Override
+    public RecipeBookCategory recipeBookCategory() {
+        return RECIPE_BOOK_CATEGORY;
     }
 
     @SubscribeEvent
@@ -159,7 +187,11 @@ public class ItemApplicationRecipe implements Recipe<RecipeInput> {
 
         Player player = event.getEntity();
 
-        for (var holder : level.getRecipeManager().getAllRecipesFor(TYPE)) {
+        MinecraftServer server = level.getServer();
+        if (server == null)
+            return;
+
+        for (var holder : server.getRecipeManager().recipeMap().byType(TYPE)) {
             var recipe = holder.value();
             Boolean sneaking = recipe.getSneaking();
             if (sneaking != null && player.isShiftKeyDown() != sneaking)
@@ -184,7 +216,7 @@ public class ItemApplicationRecipe implements Recipe<RecipeInput> {
     }
 
     public void apply(ServerLevel level, BlockPos pos, Player player, InteractionHand hand) {
-        ItemStack primaryResult = result.copy();
+        ItemStack primaryResult = result.create();
         ItemStack heldItem = player.getItemInHand(hand);
         BlockState oldState = level.getBlockState(pos);
         var registries = level.registryAccess();
@@ -193,7 +225,7 @@ public class ItemApplicationRecipe implements Recipe<RecipeInput> {
         BlockEntity blockEntity = level.getBlockEntity(pos);
         if (blockEntity != null) {
             blockStack.set(DataComponents.BLOCK_ENTITY_DATA,
-                    CustomData.of(blockEntity.saveWithFullMetadata(registries)));
+                    TypedEntityData.of(blockEntity.getType(), blockEntity.saveWithFullMetadata(registries)));
         }
 
         SelfConsumingIngredient.outputModify(tool, heldItem, primaryResult);
@@ -217,7 +249,8 @@ public class ItemApplicationRecipe implements Recipe<RecipeInput> {
                 if (oldData != null) {
                     BlockEntity newBlockEntity = level.getBlockEntity(pos);
                     if (newBlockEntity != null) {
-                        newBlockEntity.loadWithComponents(oldData, registries);
+                        newBlockEntity.loadWithComponents(
+                                TagValueInput.create(ProblemReporter.DISCARDING, registries, oldData));
                     }
                 }
             } else {
@@ -274,8 +307,8 @@ public class ItemApplicationRecipe implements Recipe<RecipeInput> {
                 }
             }
         }
-        DirectionProperty srcDir = findDirectionProperty(sourceDef);
-        DirectionProperty tgtDir = findDirectionProperty(target.getBlock().getStateDefinition());
+        EnumProperty<Direction> srcDir = findDirectionProperty(sourceDef);
+        EnumProperty<Direction> tgtDir = findDirectionProperty(target.getBlock().getStateDefinition());
         if (srcDir != null && tgtDir != null && srcDir != tgtDir) {
             Direction dir = source.getValue(srcDir);
             if (tgtDir.getPossibleValues().contains(dir)) {
@@ -289,23 +322,28 @@ public class ItemApplicationRecipe implements Recipe<RecipeInput> {
     }
 
     @Nullable
-    private static DirectionProperty findDirectionProperty(StateDefinition<Block, BlockState> def) {
+    private static EnumProperty<Direction> findDirectionProperty(StateDefinition<Block, BlockState> def) {
         for (Property<?> property : def.getProperties()) {
-            if (property instanceof DirectionProperty dirProp) {
-                return dirProp;
+            if (property instanceof EnumProperty<?> dirProp) {
+                var values = dirProp.getPossibleValues();
+                if (!values.isEmpty() && values.iterator().next() instanceof Direction) {
+                    @SuppressWarnings("unchecked")
+                    EnumProperty<Direction> casted = (EnumProperty<Direction>) dirProp;
+                    return casted;
+                }
             }
         }
         return null;
     }
 
-    public static class Serializer implements RecipeSerializer<ItemApplicationRecipe> {
-        public static final Serializer INSTANCE = new Serializer();
+    public static class Serializer{
+
 
         private static final MapCodec<ItemApplicationRecipe> CODEC = RecordCodecBuilder.mapCodec(
                 inst -> inst.group(
                         Ingredient.CODEC.fieldOf("block").forGetter(r -> r.block),
                         Ingredient.CODEC.fieldOf("tool").forGetter(r -> r.tool),
-                        ItemStack.CODEC.fieldOf("result").forGetter(r -> r.result),
+                        ItemStackTemplate.CODEC.fieldOf("result").forGetter(r -> r.result),
                         Codec.BOOL.optionalFieldOf("drop_container", true).forGetter(r -> r.dropContainer),
                         Codec.BOOL.optionalFieldOf("keep_block_state", false).forGetter(r -> r.keepBlockState),
                         Codec.BOOL.optionalFieldOf("update_block", true).forGetter(r -> r.updateBlock),
@@ -318,20 +356,10 @@ public class ItemApplicationRecipe implements Recipe<RecipeInput> {
                 Serializer::toNetwork,
                 Serializer::fromNetwork);
 
-        @Override
-        public MapCodec<ItemApplicationRecipe> codec() {
-            return CODEC;
-        }
-
-        @Override
-        public StreamCodec<RegistryFriendlyByteBuf, ItemApplicationRecipe> streamCodec() {
-            return STREAM_CODEC;
-        }
-
         private static void toNetwork(RegistryFriendlyByteBuf buf, ItemApplicationRecipe recipe) {
             Ingredient.CONTENTS_STREAM_CODEC.encode(buf, recipe.block);
             Ingredient.CONTENTS_STREAM_CODEC.encode(buf, recipe.tool);
-            ItemStack.STREAM_CODEC.encode(buf, recipe.result);
+            ItemStackTemplate.STREAM_CODEC.encode(buf, recipe.result);
             buf.writeBoolean(recipe.dropContainer);
             buf.writeBoolean(recipe.keepBlockState);
             buf.writeBoolean(recipe.updateBlock);
@@ -344,7 +372,7 @@ public class ItemApplicationRecipe implements Recipe<RecipeInput> {
         private static ItemApplicationRecipe fromNetwork(RegistryFriendlyByteBuf buf) {
             Ingredient block = Ingredient.CONTENTS_STREAM_CODEC.decode(buf);
             Ingredient tool = Ingredient.CONTENTS_STREAM_CODEC.decode(buf);
-            ItemStack result = ItemStack.STREAM_CODEC.decode(buf);
+            ItemStackTemplate result = ItemStackTemplate.STREAM_CODEC.decode(buf);
             boolean dropContainer = buf.readBoolean();
             boolean keepBlockState = buf.readBoolean();
             boolean updateBlock = buf.readBoolean();
@@ -352,5 +380,7 @@ public class ItemApplicationRecipe implements Recipe<RecipeInput> {
             Boolean sneaking = hasSneaking ? buf.readBoolean() : null;
             return new ItemApplicationRecipe(block, tool, result, dropContainer, keepBlockState, updateBlock, sneaking);
         }
+
+        public static final RecipeSerializer<ItemApplicationRecipe> INSTANCE = new RecipeSerializer<>(CODEC, STREAM_CODEC);
     }
 }

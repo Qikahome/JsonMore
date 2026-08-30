@@ -15,7 +15,7 @@ import com.google.gson.JsonObject;
 
 import dev.gigaherz.jsonthings.things.parsers.ThingParseException;
 import net.minecraft.network.FriendlyByteBuf;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.util.GsonHelper;
 import net.minecraft.world.Container;
 import net.minecraft.world.MenuProvider;
@@ -30,10 +30,10 @@ import net.minecraft.network.chat.Component;
 import static qikahome.jsonmore.Utils.*;
 
 public class ContainerScreenType {
-    private static final Map<ResourceLocation, ContainerScreenType> TYPES = new HashMap<>();
+    private static final Map<Identifier, ContainerScreenType> TYPES = new HashMap<>();
 
     public static final ContainerScreenType VANILLA_CHEST = register(
-            ResourceLocation.parse("minecraft:chest"),
+            Identifier.parse("minecraft:chest"),
             (containers, containerSize) -> {
                 MultiContainer container = MultiContainer.of(containers);
                 int rows = containerSize / 9;
@@ -61,7 +61,7 @@ public class ContainerScreenType {
             },
             true);
 
-    public static final ContainerScreenType CHEST = register(ResourceLocation.parse("jsonmore:chest"),
+    public static final ContainerScreenType CHEST = register(Identifier.parse("jsonmore:chest"),
             (containers, containerSize) -> {
                 MultiContainer container = MultiContainer.of(containers);
                 return new MenuProvider() {
@@ -79,7 +79,7 @@ public class ContainerScreenType {
             }, true);
 
     public static final ContainerScreenType NOT_SUPPORTED = register(
-            ResourceLocation.parse("jsonmore:not_supported"),
+            Identifier.parse("jsonmore:not_supported"),
             (containers, containerSize) -> new MenuProvider() {
                 @Override
                 @Nullable
@@ -95,12 +95,12 @@ public class ContainerScreenType {
                 }
             }, true);
 
-    private final ResourceLocation id;
+    private final Identifier id;
     private final IMenuFactory menuFactory;
     private final boolean available;
     private final TriConsumer<FriendlyByteBuf, List<Container>, Integer> additionalDataWriter;
 
-    public ContainerScreenType(ResourceLocation id, IMenuFactory menuFactory, boolean available,
+    public ContainerScreenType(Identifier id, IMenuFactory menuFactory, boolean available,
             TriConsumer<FriendlyByteBuf, List<Container>, Integer> additionalDataWriter) {
         this.id = id;
         this.menuFactory = menuFactory;
@@ -109,15 +109,15 @@ public class ContainerScreenType {
     }
 
     private ContainerScreenType() {
-        this(ResourceLocation.parse("builtin:dynamic"), null, true, null);
+        this(Identifier.parse("builtin:dynamic"), null, true, null);
     }
 
-    public ContainerScreenType(ResourceLocation id, IMenuFactory menuFactory, boolean available) {
+    public ContainerScreenType(Identifier id, IMenuFactory menuFactory, boolean available) {
         this(id, menuFactory, available, (a, b, c) -> {
         });
     }
 
-    public ResourceLocation getId() {
+    public Identifier getId() {
         return id;
     }
 
@@ -133,20 +133,20 @@ public class ContainerScreenType {
         additionalDataWriter.accept(buf, containers, size);
     }
 
-    public static ContainerScreenType register(ResourceLocation id, IMenuFactory menuFactory, boolean available) {
+    public static ContainerScreenType register(Identifier id, IMenuFactory menuFactory, boolean available) {
         ContainerScreenType type = new ContainerScreenType(id, menuFactory, available);
         TYPES.put(id, type);
         return type;
     }
 
-    public static ContainerScreenType register(ResourceLocation id, IMenuFactory menuFactory, boolean available,
+    public static ContainerScreenType register(Identifier id, IMenuFactory menuFactory, boolean available,
             TriConsumer<FriendlyByteBuf, List<Container>, Integer> additionalDataWriter) {
         ContainerScreenType type = new ContainerScreenType(id, menuFactory, available, additionalDataWriter);
         TYPES.put(id, type);
         return type;
     }
 
-    public static ContainerScreenType getOrDefault(@Nullable ResourceLocation id) {
+    public static ContainerScreenType getOrDefault(@Nullable Identifier id) {
         if (id == null) {
             return CHEST;
         }
@@ -158,7 +158,7 @@ public class ContainerScreenType {
     }
 
     @Nullable
-    public static ContainerScreenType get(ResourceLocation id) {
+    public static ContainerScreenType get(Identifier id) {
         if (id == null) {
             return CHEST;
         }
@@ -166,7 +166,7 @@ public class ContainerScreenType {
     }
 
     @Nullable
-    public static ContainerScreenType getVanillaOrDefault(@Nullable ResourceLocation id) {
+    public static ContainerScreenType getVanillaOrDefault(@Nullable Identifier id) {
         ContainerScreenType type = get(id);
         if (type == null || !type.isAvailable()) {
             return VANILLA_CHEST;
@@ -176,11 +176,11 @@ public class ContainerScreenType {
 
     @Nullable
     public static ContainerScreenType parse(@Nullable JsonElement json, String defaultId) {
-        return parse(json, ResourceLocation.parse(defaultId));
+        return parse(json, Identifier.parse(defaultId));
     }
 
     @Nullable
-    public static ContainerScreenType parse(@Nullable JsonElement json, ResourceLocation defaultId) {
+    public static ContainerScreenType parse(@Nullable JsonElement json, Identifier defaultId) {
         ContainerScreenType type = parse(json);
         if (type == null) {
             return getOrDefault(defaultId);
@@ -194,7 +194,7 @@ public class ContainerScreenType {
             return null;
         }
         if (GsonHelper.isStringValue(json)) {
-            ResourceLocation id = ResourceLocation.parse(json.getAsString());
+            Identifier id = Identifier.parse(json.getAsString());
             if (TYPES.containsKey(id))
                 return getOrDefault(id);
             throw new ThingParseException("Screen type " + id + " is not available (mod may not be installed)");
@@ -206,7 +206,7 @@ public class ContainerScreenType {
                 for (String key : keys) {
                     IntRange range = IntRange.parse(key);
                     String val = jsonObject.get(key).getAsString();
-                    ResourceLocation id = ResourceLocation.parse(val);
+                    Identifier id = Identifier.parse(val);
                     if (!TYPES.containsKey(id))
                         throw new ThingParseException(
                                 "Screen type " + id + " is not available (mod may not be installed)");
@@ -244,7 +244,7 @@ public class ContainerScreenType {
         throw new ThingParseException("Unsupport Container Screen Type Format");
     }
 
-    public static Map<ResourceLocation, ContainerScreenType> getAll() {
+    public static Map<Identifier, ContainerScreenType> getAll() {
         return new HashMap<>(TYPES);
     }
 

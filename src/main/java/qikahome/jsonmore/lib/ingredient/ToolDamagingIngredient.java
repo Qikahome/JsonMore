@@ -1,6 +1,6 @@
 package qikahome.jsonmore.lib.ingredient;
 
-import java.util.stream.Stream;
+import java.util.List;
 
 import javax.annotation.Nullable;
 
@@ -8,18 +8,20 @@ import com.mojang.serialization.Codec;
 import com.mojang.serialization.MapCodec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.ItemStackTemplate;
 import net.minecraft.world.item.crafting.Ingredient;
+import net.minecraft.world.item.crafting.display.SlotDisplay;
 import net.neoforged.neoforge.common.crafting.IngredientType;
 import net.neoforged.neoforge.registries.DeferredHolder;
 import qikahome.jsonmore.JsonMore;
 import qikahome.jsonmore.Utils;
 
 public class ToolDamagingIngredient extends SelfConsumingIngredient {
-    public static final ResourceLocation ID = ResourceLocation.parse("jsonmore:tool_damaging");
+    public static final Identifier ID = Identifier.parse("jsonmore:tool_damaging");
     public static final MapCodec<ToolDamagingIngredient> CODEC = RecordCodecBuilder
             .mapCodec(v -> v.group(getIngredientField(), Codec.INT.fieldOf("damage").forGetter(i -> i.damage)).apply(v,
                     ToolDamagingIngredient::new));
@@ -27,6 +29,7 @@ public class ToolDamagingIngredient extends SelfConsumingIngredient {
             .register(ID.getPath(), () -> new IngredientType<>(CODEC));
 
     private final int damage;
+    private SlotDisplay cachedDisplay;
 
     public ToolDamagingIngredient(Ingredient ingredient, int damage) {
         super(ingredient);
@@ -51,13 +54,23 @@ public class ToolDamagingIngredient extends SelfConsumingIngredient {
     }
 
     @Override
-    public Stream<ItemStack> getItems() {
-        return super.getItems().map(stack -> {
-            stack = stack.copy();
-            if (stack.getMaxDamage() >= damage)
-                stack.setDamageValue(damage);
-            return stack;
-        });
+    public SlotDisplay display() {
+        if (cachedDisplay == null) {
+            List<ItemStack> list = ingredient.display().resolveForStacks(qikahome.jsonmore.Utils.displayContext()).stream()
+                    .map(stack -> {
+                        stack = stack.copy();
+                        if (stack.getMaxDamage() >= damage)
+                            stack.setDamageValue(stack.getMaxDamage() - damage);
+                        return stack;
+                    })
+                    .toList();
+            cachedDisplay = new SlotDisplay.Composite(list.stream()
+                    .map(ItemStackTemplate::fromNonEmptyStack)
+                    .map(SlotDisplay.ItemStackSlotDisplay::new)
+                    .map(t -> (SlotDisplay) t)
+                    .toList());
+        }
+        return cachedDisplay;
     }
 
     @Override

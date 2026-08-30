@@ -9,7 +9,7 @@ import dev.gigaherz.jsonthings.things.parsers.ThingParseException;
 import dev.gigaherz.jsonthings.things.serializers.FlexBlockType;
 import dev.gigaherz.jsonthings.things.serializers.FlexBlockType.DefaultTypeProperties;
 import net.minecraft.core.registries.Registries;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.sounds.SoundEvent;
 import net.minecraft.tags.TagKey;
 import net.minecraft.util.GsonHelper;
@@ -26,13 +26,13 @@ public class AnvilMusBoxPlugin {
         FlexBlockType.register("jsonmore:noteblock", data -> {
             String instrumentBlockTag = GsonHelper.getAsString(data, "instrument_block_tag");
             String instrumentName = GsonHelper.getAsString(data, "instrument_name");
-            ResourceLocation sound = ResourceLocation.parse(GsonHelper.getAsString(data, "sound"));
+            Identifier sound = Identifier.parse(GsonHelper.getAsString(data, "sound"));
             float volume = GsonHelper.getAsFloat(data, "volume", 1.0F);
             return (props, builder) -> {
                 List<Property<?>> _properties = builder.getProperties();
                 Map<Property<?>, Comparable<?>> propertyDefaultValues = builder.getPropertyDefaultValues();
-                TagKey<Block> tag = TagKey.create(Registries.BLOCK, ResourceLocation.parse(instrumentBlockTag));
-                SoundEvent soundEvent = BuiltInRegistries.SOUND_EVENT.get(sound);
+                TagKey<Block> tag = TagKey.create(Registries.BLOCK, Identifier.parse(instrumentBlockTag));
+                SoundEvent soundEvent = BuiltInRegistries.SOUND_EVENT.get(sound).get().value();
                 if (soundEvent == null)
                     throw new ThingParseException("Sound event " + sound + " not found");
                 FlexNoteBlock noteBlock = new FlexNoteBlock(props, propertyDefaultValues, tag, instrumentName,
@@ -52,6 +52,6 @@ public class AnvilMusBoxPlugin {
                 AnvilMusBoxMod.INSTRUMENTS.add(noteBlock);
                 return noteBlock;
             };
-        }, DefaultTypeProperties.builder().defaultLayer("solid").defaultSeeThrough(false).defaultReplaceable(false));
+        }, DefaultTypeProperties.builder().defaultSeeThrough(false).defaultReplaceable(false));
     }
 }

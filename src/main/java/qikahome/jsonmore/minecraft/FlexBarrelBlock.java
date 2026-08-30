@@ -4,7 +4,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-
+import java.util.function.Consumer;
 import javax.annotation.Nullable;
 
 import com.google.common.collect.Maps;
@@ -16,14 +16,13 @@ import dev.gigaherz.jsonthings.things.events.FlexEventType;
 import dev.gigaherz.jsonthings.things.shapes.DynamicShape;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
-import net.minecraft.core.HolderLookup;
 import net.minecraft.core.NonNullList;
 import net.minecraft.core.Vec3i;
 import net.minecraft.core.component.DataComponents;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.registries.Registries;
-import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundEvent;
@@ -37,32 +36,40 @@ import net.minecraft.world.ContainerHelper;
 import net.minecraft.world.Containers;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
-import net.minecraft.world.ItemInteractionResult;
 import net.minecraft.world.WorldlyContainer;
+import net.minecraft.world.entity.ContainerUser;
 import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.entity.monster.piglin.PiglinAi;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.inventory.AbstractContainerMenu;
 import net.minecraft.world.inventory.ChestMenu;
 import net.minecraft.world.item.Item;
+import net.minecraft.world.item.ItemInstance;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.TooltipFlag;
 import net.minecraft.world.item.component.ItemContainerContents;
+import net.minecraft.world.item.component.TooltipDisplay;
 import net.minecraft.world.item.context.BlockPlaceContext;
+import net.minecraft.world.item.enchantment.ItemEnchantments;
 import net.minecraft.world.level.BlockGetter;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.LevelAccessor;
+import net.minecraft.world.level.LevelReader;
+import net.minecraft.world.level.ScheduledTickAccess;
 import net.minecraft.world.level.block.BaseEntityBlock;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Mirror;
 import net.minecraft.world.level.block.RenderShape;
 import net.minecraft.world.level.block.Rotation;
+import net.minecraft.world.level.block.ShulkerBoxBlock;
 import net.minecraft.world.level.block.SimpleWaterloggedBlock;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.entity.ContainerOpenersCounter;
 import net.minecraft.world.level.block.entity.RandomizableContainerBlockEntity;
+import net.minecraft.world.level.block.entity.ShulkerBoxBlockEntity;
 import net.minecraft.world.level.block.state.BlockBehaviour;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.StateDefinition;
@@ -70,10 +77,15 @@ import net.minecraft.world.level.block.state.properties.BlockStateProperties;
 import net.minecraft.world.level.block.state.properties.BooleanProperty;
 import net.minecraft.world.level.block.state.properties.Property;
 import net.minecraft.world.level.material.Fluids;
+import net.minecraft.world.level.storage.ValueInput;
+import net.minecraft.world.level.storage.ValueOutput;
 import net.minecraft.world.level.storage.loot.LootParams;
+import net.minecraft.world.level.storage.loot.parameters.LootContextParams;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.shapes.CollisionContext;
 import net.minecraft.world.phys.shapes.VoxelShape;
+import net.neoforged.neoforge.event.level.BlockEvent;
+import net.neoforged.neoforge.event.level.block.BreakBlockEvent;
 import qikahome.jsonmore.JsonMore;
 import qikahome.jsonmore.minecraft.StorageConnectorBlock.ControllerBlockEntity;
 import qikahome.jsonmore.lib.BlockedDirection;
@@ -84,6 +96,7 @@ import qikahome.jsonmore.lib.ExpandableMode;
 import qikahome.jsonmore.lib.FaceFilter;
 import qikahome.jsonmore.lib.IFlexContainer;
 import qikahome.jsonmore.lib.IFlexEntityBlock;
+import qikahome.jsonmore.lib.IProtectedBlock;
 import qikahome.jsonmore.lib.ItemFilter;
 import qikahome.jsonmore.lib.KeepInventoryMode;
 import qikahome.jsonmore.lib.MultiContainer;
@@ -92,7 +105,7 @@ import qikahome.jsonmore.lib.ingredient.KeepInventoryContainerIngredient;
 import qikahome.jsonmore.lib.ingredient.NotIngredient;
 
 public class FlexBarrelBlock extends BaseEntityBlock
-        implements IFlexEntityBlock<FlexBarrelBlock.FlexBarrelBlockEntity>, SimpleWaterloggedBlock {
+        implements IFlexEntityBlock<FlexBarrelBlock.FlexBarrelBlockEntity>, SimpleWaterloggedBlock, IProtectedBlock {
 
     public FlexBarrelBlock(BlockBehaviour.Properties properties, Map<Property<?>, Comparable<?>> propertyDefaultValues,
             int containerSize, SoundEvent soundOpen, SoundEvent soundClose, boolean waterloggedIn,
@@ -101,7 +114,7 @@ public class FlexBarrelBlock extends BaseEntityBlock
             Map<FaceFilter, ItemFilter> extractFilters,
             ContainerScreenType screenType, ContainerScreenType connectedScreenType,
             Set<ExpandableMode> expandableModes,
-            ResourceLocation connectableContainers) {
+            Identifier connectableContainers) {
         super(properties);
         initializeFlex(propertyDefaultValues);
         this.containerSize = containerSize;
@@ -201,10 +214,10 @@ public class FlexBarrelBlock extends BaseEntityBlock
 
     @Deprecated
     @Override
-    public VoxelShape getOcclusionShape(BlockState state, BlockGetter worldIn, BlockPos pos) {
+    public VoxelShape getOcclusionShape(BlockState state) {
         if (this.renderShape != null)
             return renderShape.getShape(state);
-        return super.getOcclusionShape(state, worldIn, pos);
+        return super.getOcclusionShape(state);
     }
 
     @Override
@@ -216,7 +229,7 @@ public class FlexBarrelBlock extends BaseEntityBlock
     }
 
     @Override
-    protected ItemInteractionResult useItemOn(ItemStack stack, BlockState state, Level level, BlockPos pos,
+    protected InteractionResult useItemOn(ItemStack stack, BlockState state, Level level, BlockPos pos,
             Player player, InteractionHand hand, BlockHitResult hitResult) {
         return runEvent(FlexEventType.USE_BLOCK_WITH_ITEM, FlexEventContext.of(level, pos, state)
                 .with(FlexEventContext.USER, player)
@@ -251,7 +264,7 @@ public class FlexBarrelBlock extends BaseEntityBlock
     }
 
     @Override
-    public int getAnalogOutputSignal(BlockState state, Level level, BlockPos pos) {
+    public int getAnalogOutputSignal(BlockState state, Level level, BlockPos pos, Direction direction) {
         List<Container> containers = getContainers(level, pos, state);
         if (containers.isEmpty()) {
             return 0;
@@ -278,32 +291,32 @@ public class FlexBarrelBlock extends BaseEntityBlock
     // endregion
 
     // region ShulkerBoxBlock
-    @Override
-    public void appendHoverText(ItemStack stack, Item.TooltipContext context, List<Component> tooltip,
-            TooltipFlag flag) {
-        super.appendHoverText(stack, context, tooltip, flag);
-        ItemContainerContents contents = stack.get(DataComponents.CONTAINER);
-        if (contents != null) {
-            var items = NonNullList.withSize(contents.getSlots(), ItemStack.EMPTY);
-            contents.copyInto(items);
-            var nonEmpty = items.stream().filter(s -> !s.isEmpty()).toList();
-            if (!nonEmpty.isEmpty()) {
-                tooltip.add(Component.empty());
-                int shown = 0;
-                for (ItemStack itemStack : nonEmpty) {
-                    if (shown >= 5)
-                        break;
-                    tooltip.add(Component.literal(" ").append(itemStack.getDisplayName())
-                            .append(Component.literal(" x"))
-                            .append(Component.literal(String.valueOf(itemStack.getCount()))));
-                    shown++;
-                }
-                if (nonEmpty.size() > 5) {
-                    tooltip.add(Component.translatable("container.shulkerBox.more", nonEmpty.size() - 5));
-                }
-            }
-        }
-    }
+    // @Override
+    // public void appendHoverText(ItemStack stack, Item.TooltipContext context, TooltipDisplay display, Consumer<Component> tooltip,
+    //         TooltipFlag flag) {
+    //     super.appendHoverText(stack, context, display, tooltip, flag);
+    //     ItemContainerContents contents = stack.get(DataComponents.CONTAINER);
+    //     if (contents != null) {
+    //         var items = NonNullList.withSize(contents.getSlots(), ItemStack.EMPTY);
+    //         contents.copyInto(items);
+    //         var nonEmpty = items.stream().filter(s -> !s.isEmpty()).toList();
+    //         if (!nonEmpty.isEmpty()) {
+    //             tooltip.accept(Component.empty());
+    //             int shown = 0;
+    //             for (ItemStack itemStack : nonEmpty) {
+    //                 if (shown >= 5)
+    //                     break;
+    //                 tooltip.accept(Component.literal(" ").append(itemStack.getDisplayName())
+    //                         .append(Component.literal(" x"))
+    //                         .append(Component.literal(String.valueOf(itemStack.getCount()))));
+    //                 shown++;
+    //             }
+    //             if (nonEmpty.size() > 5) {
+    //                 tooltip.accept(Component.translatable("container.shulkerBox.more", nonEmpty.size() - 5));
+    //             }
+    //         }
+    //     }
+    // }
     // endregion
 
     // region FlexBarrelBlock
@@ -338,7 +351,7 @@ public class FlexBarrelBlock extends BaseEntityBlock
             BlockHitResult hit) {
         // When captured by a storage connector, proxy to controller GUI
         if (state.getValue(CONNECTED)) {
-            if (level.isClientSide)
+            if (level.isClientSide())
                 return InteractionResult.SUCCESS;
             BlockEntity be = level.getBlockEntity(pos);
             if (be instanceof FlexBarrelBlockEntity fbe) {
@@ -357,7 +370,7 @@ public class FlexBarrelBlock extends BaseEntityBlock
             }
             return InteractionResult.SUCCESS;
         }
-        if (level.isClientSide) {
+        if (level.isClientSide()) {
             return InteractionResult.SUCCESS;
         } else {
             var part = state.getValue(PART);
@@ -392,8 +405,8 @@ public class FlexBarrelBlock extends BaseEntityBlock
                             buffer -> screen.writeAdditionalData(buffer, this.getContainers(level, pos, state),
                                     containerSize));
                 }
-                if (angerPiglins) {
-                    PiglinAi.angerNearbyPiglins(player, true);
+                if (angerPiglins && level instanceof ServerLevel sl) {
+                    PiglinAi.angerNearbyPiglins(sl,player, true);
                 }
             }
 
@@ -401,24 +414,25 @@ public class FlexBarrelBlock extends BaseEntityBlock
         }
     }
 
+    // BarrelBlockEntity
     @Override
     public BlockState playerWillDestroy(Level level, BlockPos pos, BlockState state, Player player) {
-        if (state.getValue(CONNECTED) && !level.isClientSide) {
+        if (state.getValue(CONNECTED) && !level.isClientSide()) {
             return super.playerWillDestroy(level, pos, state, player);
         }
         BlockEntity blockEntity = level.getBlockEntity(pos);
         if (blockEntity instanceof FlexBarrelBlockEntity flexEntity) {
-            if (shouldKeepInventory(player)) {
-                if (!level.isClientSide) {
-                    if (!player.isCreative() || !flexEntity.isEmpty()) {
-                        ItemStack itemStack = new ItemStack(this);
-                        blockEntity.saveToItem(itemStack, level.registryAccess());
-                        if (flexEntity.hasCustomName()) {
-                            itemStack.set(DataComponents.CUSTOM_NAME, flexEntity.getCustomName());
-                        }
-                        popResource(level, pos, itemStack);
-                    }
-                    flexEntity.clearContent();
+            if (shouldKeepInventory(player)) 
+                flexEntity.shouldKeepInventory=true;
+            if (flexEntity.shouldKeepInventory && !level.isClientSide() && player.preventsBlockDrops() && !flexEntity.isEmpty()) {
+            {
+
+                        ItemStack itemStack = new ItemStack(state.getBlock());
+                itemStack.applyComponents(blockEntity.collectComponents());
+                ItemEntity entity = new ItemEntity(level, pos.getX() + 0.5, pos.getY() + 0.5, pos.getZ() + 0.5, itemStack);
+                entity.setDefaultPickUpDelay();
+                level.addFreshEntity(entity);
+
                 }
             } else {
                 flexEntity.unpackLootTable(player);
@@ -430,19 +444,22 @@ public class FlexBarrelBlock extends BaseEntityBlock
     private boolean shouldKeepInventory(Player player) {
         return switch (keepInventory) {
             case ALWAYS -> true;
-            case SILK_TOUCH -> {
-                var silkTouch = player.level().registryAccess()
-                        .holderOrThrow(net.minecraft.world.item.enchantment.Enchantments.SILK_TOUCH);
-                yield player.getMainHandItem().getEnchantmentLevel(silkTouch) > 0;
-            }
+            case SILK_TOUCH -> player!=null && 
+                player.getMainHandItem().getEnchantmentLevel(player.level().registryAccess()
+                        .holderOrThrow(net.minecraft.world.item.enchantment.Enchantments.SILK_TOUCH)) > 0;
             case NEVER -> false;
         };
     }
 
     @Override
     public List<ItemStack> getDrops(BlockState state, LootParams.Builder builder) {
-        if (keepInventory == KeepInventoryMode.ALWAYS) {
-            return Collections.emptyList();
+        BlockEntity blockEntity = builder.getOptionalParameter(LootContextParams.BLOCK_ENTITY);
+        if (blockEntity instanceof FlexBarrelBlockEntity fbe && fbe.shouldKeepInventory) {
+            builder = builder.withDynamicDrop(ShulkerBoxBlock.CONTENTS, output -> {
+                for (int i = 0; i < fbe.getContainerSize(); i++) {
+                    output.accept(fbe.getItem(i));
+                }
+            });
         }
         return super.getDrops(state, builder);
     }
@@ -630,58 +647,52 @@ public class FlexBarrelBlock extends BaseEntityBlock
 
         return state;
     }
-
     @Override
-    public void onRemove(BlockState oldState, Level level, BlockPos pos, BlockState newState,
-            boolean isMoving) {
-
+    public boolean maySetBlock(BlockState oldState, Level level, BlockPos pos, BlockState newState, @Block.UpdateFlags int updateFlags, int updateLimit)
+    {
         if (!oldState.is(newState.getBlock())) {
             BlockEntity blockentity = level.getBlockEntity(pos);
             if (blockentity instanceof FlexBarrelBlockEntity fbe && oldState.getValue(CONNECTED)) {
-                if (!level.isClientSide) {
+                if (!level.isClientSide()) {
                     var controller = fbe.getController();
                     if (controller != null && controller.isAssembled()) {
                         JsonMore.LOGGER.debug("FlexBarrelBlock.onRemove: found controller at {}, disassembling", pos);
                         controller.disassemble(level);
                         level.setBlock(pos, oldState.setValue(CONNECTED, false), 2);
                         JsonMore.LOGGER.debug("FlexBarrelBlock.onRemove: disassembled, restored to {}", oldState);
-                        return;
+                        return false;
                     }
                     JsonMore.LOGGER.debug("FlexBarrelBlock.onRemove: controller not found at {}, allowing removal", pos);
                 }
-            } else if (blockentity instanceof Container) {
-                Containers.dropContents(level, pos, (Container) blockentity);
-                level.updateNeighbourForOutputSignal(pos, this);
             }
-
-            super.onRemove(oldState, level, pos, newState, isMoving);
         }
+        return true;
     }
 
     @Override
-    public BlockState updateShape(BlockState state, Direction direction, BlockState neighborState,
-            LevelAccessor level, BlockPos pos, BlockPos neighborPos) {
+    public BlockState updateShape(BlockState state, LevelReader level, ScheduledTickAccess ticks, BlockPos pos,
+            Direction direction, BlockPos neighborPos, BlockState neighborState, RandomSource random) {
         ContainerPart part = state.getValue(PART);
         if (this.waterloggedIn && state.getValue(BlockStateProperties.WATERLOGGED)) {
-            level.scheduleTick(pos, Fluids.WATER, Fluids.WATER.getTickDelay(level));
+            ticks.scheduleTick(pos, Fluids.WATER, Fluids.WATER.getTickDelay(level));
         }
         if (part == ContainerPart.NONE)
-            return super.updateShape(state, direction, neighborState, level, pos, neighborPos);
+            return super.updateShape(state, level, ticks, pos, direction, neighborPos, neighborState, random);
         if (direction == part.getWorldDirection(state.getValue(BlockStateProperties.FACING)).getOpposite())
             if (neighborState.getBlock() instanceof FlexBarrelBlock flex) {
                 var neiPart = neighborState.getValue(PART);
                 var neiFacing = neighborState.getValue(BlockStateProperties.FACING);
                 if (neiPart.getWorldDirection(neiFacing) != direction) {
                     if (level instanceof Level l) l.invalidateCapabilities(pos);
-                    return super.updateShape(state, direction, neighborState, level, pos, neighborPos)
+                    return super.updateShape(state, level, ticks, pos, direction, neighborPos, neighborState, random)
                             .setValue(PART, ContainerPart.NONE);
                 }
             } else {
                 if (level instanceof Level l) l.invalidateCapabilities(pos);
-                return super.updateShape(state, direction, neighborState, level, pos, neighborPos)
+                return super.updateShape(state, level, ticks, pos, direction, neighborPos, neighborState, random)
                         .setValue(PART, ContainerPart.NONE);
             }
-        return super.updateShape(state, direction, neighborState, level, pos, neighborPos);
+        return super.updateShape(state, level, ticks, pos, direction, neighborPos, neighborState, random);
     }
     // endregion
 
@@ -703,7 +714,7 @@ public class FlexBarrelBlock extends BaseEntityBlock
             protected void openerCountChanged(Level level, BlockPos pos, BlockState state, int oldCount, int newCount) {
             }
 
-            protected boolean isOwnContainer(Player player) {
+            public boolean isOwnContainer(Player player) {
                 if (player.containerMenu instanceof ChestMenu chestMenu) {
                     Container container = chestMenu.getContainer();
                     return container == FlexBarrelBlockEntity.this
@@ -721,11 +732,14 @@ public class FlexBarrelBlock extends BaseEntityBlock
         @Nullable
         private BlockPos controllerPos;
 
+        private transient boolean shouldKeepInventory;
+
         public FlexBarrelBlockEntity(BlockPos pos, BlockState state) {
             super(MinecraftPlugin.BARREL_TILE.get(), pos, state);
             if (state.getBlock() instanceof FlexBarrelBlock flexBlock) {
                 this.items = NonNullList.withSize(flexBlock.containerSize, ItemStack.EMPTY);
                 this.flexBlock = flexBlock;
+                this.shouldKeepInventory = flexBlock.keepInventory == KeepInventoryMode.ALWAYS;
             } else
                 throw new IllegalArgumentException("Not a FlexBarrelBlock");
         }
@@ -750,34 +764,34 @@ public class FlexBarrelBlock extends BaseEntityBlock
         }
 
         @Override
-        protected void saveAdditional(CompoundTag tag, HolderLookup.Provider registries) {
-            tag.putBoolean("Captured", captured);
+        protected void saveAdditional(ValueOutput output) {
+            output.putBoolean("Captured", captured);
             if (controllerPos != null) {
-                tag.putIntArray("CtrlPos", new int[]{controllerPos.getX(), controllerPos.getY(), controllerPos.getZ()});
-                super.saveAdditional(tag, registries);
-                tag.remove("LootTable");
-                tag.remove("LootTableSeed");
-                tag.remove("Items");
+                output.putIntArray("CtrlPos", new int[]{controllerPos.getX(), controllerPos.getY(), controllerPos.getZ()});
+                super.saveAdditional(output);
+                output.discard("LootTable");
+                output.discard("LootTableSeed");
+                output.discard("Items");
             } else {
-                super.saveAdditional(tag, registries);
-                if (!this.trySaveLootTable(tag)) {
-                    ContainerHelper.saveAllItems(tag, this.items, registries);
+                super.saveAdditional(output);
+                if (!this.trySaveLootTable(output)) {
+                    ContainerHelper.saveAllItems(output, this.items);
                 }
             }
         }
 
         @Override
-        protected void loadAdditional(CompoundTag tag, HolderLookup.Provider registries) {
-            captured = tag.getBoolean("Captured");
-            int[] ctrlArr = tag.getIntArray("CtrlPos");
+        protected void loadAdditional(ValueInput input) {
+            captured = input.getBooleanOr("Captured", false);
+            int[] ctrlArr = input.getIntArray("CtrlPos").orElse(new int[0]);
             controllerPos = ctrlArr.length == 3 ? new BlockPos(ctrlArr[0], ctrlArr[1], ctrlArr[2]) : null;
             if (controllerPos != null) {
-                super.loadAdditional(tag, registries);
+                super.loadAdditional(input);
             } else {
-                super.loadAdditional(tag, registries);
+                super.loadAdditional(input);
                 this.items = NonNullList.withSize(this.getContainerSize(), ItemStack.EMPTY);
-                if (!this.tryLoadLootTable(tag)) {
-                    ContainerHelper.loadAllItems(tag, this.items, registries);
+                if (!this.tryLoadLootTable(input)) {
+                    ContainerHelper.loadAllItems(input, this.items);
                 }
             }
         }
@@ -785,7 +799,7 @@ public class FlexBarrelBlock extends BaseEntityBlock
         @Override
         public void onLoad() {
             super.onLoad();
-            if (level != null && !level.isClientSide) {
+            if (level != null && !level.isClientSide()) {
                 BlockState state = level.getBlockState(worldPosition);
                 if (state.hasProperty(CONNECTED)) {
                     captured = state.getValue(CONNECTED);
@@ -848,31 +862,39 @@ public class FlexBarrelBlock extends BaseEntityBlock
         }
 
         @Override
-        public void startOpen(Player player) {
+public void preRemoveSideEffects(BlockPos pos, BlockState state) {
+    if(!shouldKeepInventory)
+        super.preRemoveSideEffects(pos, state);
+}
+
+        @Override
+        public void startOpen(ContainerUser user) {
             if (isConnected()) {
                 ControllerBlockEntity controller = getController();
                 if (controller != null) {
-                    controller.startOpen(player);
+                    controller.startOpen(user);
                 }
                 return;
             }
-            if (!this.remove && !player.isSpectator()) {
-                this.openersCounter.incrementOpeners(player, this.getLevel(), this.getBlockPos(),
-                        this.getBlockState());
+            var living = user.getLivingEntity();
+            if (!this.remove && !living.isSpectator()) {
+                this.openersCounter.incrementOpeners(living, this.getLevel(), this.getBlockPos(),
+                        this.getBlockState(),user.getContainerInteractionRange());
             }
         }
 
         @Override
-        public void stopOpen(Player player) {
+        public void stopOpen(ContainerUser user) {
             if (isConnected()) {
                 ControllerBlockEntity controller = getController();
                 if (controller != null) {
-                    controller.stopOpen(player);
+                    controller.stopOpen(user);
                 }
                 return;
             }
-            if (!this.remove && !player.isSpectator()) {
-                this.openersCounter.decrementOpeners(player, this.getLevel(), this.getBlockPos(),
+            var living = user.getLivingEntity();
+            if (!this.remove && !living.isSpectator()) {
+                this.openersCounter.decrementOpeners(living, this.getLevel(), this.getBlockPos(),
                         this.getBlockState());
             }
         }
@@ -889,7 +911,7 @@ public class FlexBarrelBlock extends BaseEntityBlock
         }
 
         void playSound(BlockState state, SoundEvent sound) {
-            Vec3i vec3i = state.getValue(BlockStateProperties.FACING).getNormal();
+            Vec3i vec3i = state.getValue(BlockStateProperties.FACING).getUnitVec3i();
             ContainerPart part = state.getValue(PART);
             double d0 = (double) this.worldPosition.getX() + 0.5D + (double) vec3i.getX() / 2.0D;
             double d1 = (double) this.worldPosition.getY() + 0.5D + (double) vec3i.getY() / 2.0D;
@@ -910,7 +932,7 @@ public class FlexBarrelBlock extends BaseEntityBlock
                     d1 -= 0.5d;
             }
             this.level.playSound((Player) null, d0, d1, d2, sound, SoundSource.BLOCKS, 0.5F,
-                    this.level.random.nextFloat() * 0.1F + 0.9F);
+                    this.level.getRandom().nextFloat() * 0.1F + 0.9F);
         }
 
         @Override

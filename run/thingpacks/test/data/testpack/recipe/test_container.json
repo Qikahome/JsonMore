@@ -1,7 +1,7 @@
 {
   "type": "minecraft:crafting_shapeless",
   "ingredients": [
-    {"item": "testpack:item2"}
+    "testpack:item2"
   ],
   "result": { "id": "minecraft:diamond"
   }

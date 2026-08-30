@@ -11,7 +11,7 @@ import com.mojang.serialization.codecs.RecordCodecBuilder;
 import net.minecraft.core.component.DataComponentType;
 import net.minecraft.core.component.DataComponentPatch;
 import net.minecraft.core.registries.BuiltInRegistries;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.crafting.Ingredient;
 import net.neoforged.neoforge.common.crafting.IngredientType;
@@ -20,7 +20,7 @@ import qikahome.jsonmore.JsonMore;
 import qikahome.jsonmore.Utils;
 
 public class NBTCopyIngredient extends SelfConsumingIngredient {
-    public static final ResourceLocation ID = ResourceLocation.parse("jsonmore:nbt_copy");
+    public static final Identifier ID = Identifier.parse("jsonmore:nbt_copy");
 
     public static final MapCodec<NBTCopyIngredient> CODEC = RecordCodecBuilder.mapCodec(
             v -> v.group(
@@ -42,8 +42,8 @@ public class NBTCopyIngredient extends SelfConsumingIngredient {
     @Nullable
     private final List<String> tags;
     private boolean hasWildcard = false;
-    final List<ResourceLocation> includes = new ArrayList<>();
-    final List<ResourceLocation> excludes = new ArrayList<>();
+    final List<Identifier> includes = new ArrayList<>();
+    final List<Identifier> excludes = new ArrayList<>();
 
     public NBTCopyIngredient(Ingredient ingredient, Mode mode) {
         this(ingredient, mode, null);
@@ -59,9 +59,9 @@ public class NBTCopyIngredient extends SelfConsumingIngredient {
                 if (tag.equals("*")) {
                     hasWildcard = true;
                 } else if (tag.startsWith("!")) {
-                    excludes.add(ResourceLocation.parse(tag.substring(1)));
+                    excludes.add(Identifier.parse(tag.substring(1)));
                 } else {
-                    includes.add(ResourceLocation.parse(tag));
+                    includes.add(Identifier.parse(tag));
                 }
             }
         }
@@ -106,7 +106,7 @@ public class NBTCopyIngredient extends SelfConsumingIngredient {
         var targetPatch = target.getComponentsPatch();
         for (var entry : source.entrySet()) {
             DataComponentType key = entry.getKey();
-            ResourceLocation keyName = BuiltInRegistries.DATA_COMPONENT_TYPE.getKey(key);
+            Identifier keyName = BuiltInRegistries.DATA_COMPONENT_TYPE.getKey(key);
             if (this.hasWildcard || this.includes.isEmpty() || this.includes.contains(keyName)) {
                 if (!this.excludes.contains(keyName)) {
                     if (sourceWins || targetPatch.entrySet().stream().noneMatch(e -> e.getKey() == key)) {

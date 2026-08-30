@@ -2,7 +2,7 @@ plugins {
     id 'java'
     id 'idea'
     id 'maven-publish'
-    id 'net.neoforged.moddev' version '1.0.11'
+    id 'net.neoforged.moddev' version '2.0.144'
 }
 
 version = mod_version
@@ -12,33 +12,32 @@ base {
     archivesName = "${mod_id}-${minecraft_version}"
 }
 
-java.toolchain.languageVersion = JavaLanguageVersion.of(21)
+java.toolchain.languageVersion = JavaLanguageVersion.of(25)
 
 println "Java: ${System.getProperty 'java.version'}, JVM: ${System.getProperty 'java.vm.version'} (${System.getProperty 'java.vendor'}), Arch: ${System.getProperty 'os.arch'}"
 
 neoForge {
     version = neo_version
-    validateAccessTransformers = true
 
     runs {
         configureEach {
             systemProperty 'forge.logging.markers', 'REGISTRIES'
-            systemProperty 'forge.logging.console.level', 'debug'
+            logLevel = org.slf4j.event.Level.DEBUG
         }
 
         client {
             client()
-            systemProperty 'forge.enabledGameTestNamespaces', mod_id
+            systemProperty 'neoforge.enabledGameTestNamespaces', mod_id
         }
 
         server {
             server()
-            systemProperty 'forge.enabledGameTestNamespaces', mod_id
+            systemProperty 'neoforge.enabledGameTestNamespaces', mod_id
             programArgument '--nogui'
         }
 
         data {
-            data()
+            clientData()
             programArguments.addAll '--mod', mod_id, '--all', '--output', file('src/generated/resources/').absolutePath, '--existing', file('src/main/resources/').absolutePath
         }
     }
@@ -109,42 +108,47 @@ repositories {
 
 dependencies {
     // JSON Things - 必需依赖
-    implementation "dev.gigaherz.jsonthings:JsonThings-1.21.1:${json_things_version}"
+    implementation "dev.gigaherz.jsonthings:JsonThings-26.1.2:${json_things_version}"
 
     // AutoSizedGUI - 自动布局GUI（jarjar 嵌入）
-    implementation "qikahome:AutoSizedGUI-1.21.1:1.0.9"
-    jarJar("qikahome:AutoSizedGUI-1.21.1:1.0.9")
+    implementation "qikahome:AutoSizedGUI-26.1.2:${autosizedgui_version}"
+    jarJar("qikahome:AutoSizedGUI-26.1.2:${autosizedgui_version}")
 
     // JEI - 可选依赖
     compileOnly "mezz.jei:jei-${minecraft_version}-neoforge-api:${jei_version}"
     runtimeOnly "mezz.jei:jei-${minecraft_version}-neoforge:${jei_version}"
 
+    // TODO(26.1.2): Jade 暂无 26.1.2 file id，待确认后恢复
     // Jade - 可选依赖
-    runtimeOnly "curse.maven:jade-324717:6198776"
+    // runtimeOnly "curse.maven:jade-324717:6198776"
 
+    // TODO(26.1.2): Create 官方尚未支持 26.1，待生态跟进后恢复
     // Create - 可选依赖
-    implementation("com.simibubi.create:create-${minecraft_version}:${create_version}:slim") { transitive = false }
-    implementation("net.createmod.ponder:ponder-neoforge:${ponder_version}+mc${minecraft_version}")
-    compileOnly("dev.engine-room.flywheel:flywheel-neoforge-api-${minecraft_version}:${flywheel_version}")
-    runtimeOnly("dev.engine-room.flywheel:flywheel-neoforge-${minecraft_version}:${flywheel_version}")
+    // implementation("com.simibubi.create:create-${minecraft_version}:${create_version}:slim") { transitive = false }
+    // implementation("net.createmod.ponder:ponder-neoforge:${ponder_version}+mc${minecraft_version}")
+    // compileOnly("dev.engine-room.flywheel:flywheel-neoforge-api-${minecraft_version}:${flywheel_version}")
+    // runtimeOnly("dev.engine-room.flywheel:flywheel-neoforge-${minecraft_version}:${flywheel_version}")
 
     // CyclopsCore - 可选依赖（用于滚动容器）
-    compileOnly "curse.maven:cyclops-core-232758:5612213"
-    runtimeOnly "curse.maven:cyclops-core-232758:5612213"
+    compileOnly "curse.maven:cyclops-core-232758:8334427"
+    runtimeOnly "curse.maven:cyclops-core-232758:8334427"
 
-    // Anvil MusBox - 可选依赖
-    compileOnly "blank:Anvil-MusBox-NeoForge-${minecraft_version}:${anvil_musbox_version}"
-    runtimeOnly "blank:Anvil-MusBox-NeoForge-${minecraft_version}:${anvil_musbox_version}"
+    // Anvil MusBox - 可选依赖（26.1 版 jar 直接可用）
+    compileOnly "blank:Anvil-MusBox-NeoForge-26.1:${anvil_musbox_version}"
+    runtimeOnly "blank:Anvil-MusBox-NeoForge-26.1:${anvil_musbox_version}"
 
+    // TODO(26.1.2): 暮色森林（Twilight Forest）暂无 26.1.2 版本，待跟进后恢复
     // 暮色森林（Twilight Forest）- 可选依赖
-    compileOnly "curse.maven:the-twilight-forest-227639:5699076"
-    runtimeOnly "curse.maven:the-twilight-forest-227639:5699076"
+    // compileOnly "curse.maven:the-twilight-forest-227639:5699076"
+    // runtimeOnly "curse.maven:the-twilight-forest-227639:5699076"
 
+    // TODO(26.1.2): Create 官方尚未支持 26.1，待生态跟进后恢复
     // Create 也需要运行时
-    runtimeOnly("com.simibubi.create:create-${minecraft_version}:${create_version}:slim") { transitive = false }
+    // runtimeOnly("com.simibubi.create:create-${minecraft_version}:${create_version}:slim") { transitive = false }
 
+    // TODO(26.1.2): Create 官方尚未支持 26.1，待生态跟进后恢复
     // Registrate - Create 的传递依赖
-    implementation("com.tterrag.registrate:Registrate:${registrate_version}")
+    // implementation("com.tterrag.registrate:Registrate:${registrate_version}")
 }
 
 tasks.named('processResources', ProcessResources).configure {
@@ -157,8 +161,7 @@ tasks.named('processResources', ProcessResources).configure {
             jei_range: jei_range,
             json_things_range: json_things_range,
             cyclopscore_range: cyclopscore_range,
-            anvil_musbox_range: anvil_musbox_range,
-            twilight_forest_range: twilight_forest_range
+            anvil_musbox_range: anvil_musbox_range
     ]
     inputs.properties replaceProperties
 
