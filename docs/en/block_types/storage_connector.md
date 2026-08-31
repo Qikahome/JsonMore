@@ -5,6 +5,8 @@ Path: `things/<namespace>/block/`
 **(Object)** Root object.
 - **type** ([Resource Location](https://minecraft.wiki/w/Resource_location)) Block type ID, must be `"jsonmore:storage_connector"`
 - **radius** (integer) Scan radius, cube range centered on the connector, default `4`
+- **max_connectors** (integer) Maximum number of containers that can be linked; when reached, further absorption is skipped and scanning stops, default `-1` (unlimited)
+- **max_capacity** (integer) Maximum total capacity (slot count); when reached, further absorption is skipped and scanning stops, default `-1` (unlimited)
 - **connectable** (string) Block tag ID for connectable blocks, without `#` prefix. Required.
 - **screen** ([Resource Location](https://minecraft.wiki/w/Resource_location) or object) GUI screen type, supports interval mapping format (see [Container doc](container.md#interval-mapping-format)), default `autosizedgui:auto`
 - **assemble_sound** ([Resource Location](https://minecraft.wiki/w/Resource_location)) Sound played when assembling, default `minecraft:block.beacon.activate`

@@ -66,6 +66,8 @@ public class StorageConnectorBlock extends BaseEntityBlock
     public static final BooleanProperty CONNECTED = BooleanProperty.create("connected");
 
     public final int radius;
+    public final int maxConnectors;
+    public final int maxCapacity;
     public final TagKey<Block> connectableTag;
     public final ContainerScreenType screenType;
     public final SoundEvent soundAssemble;
@@ -75,12 +77,15 @@ public class StorageConnectorBlock extends BaseEntityBlock
 
     public StorageConnectorBlock(BlockBehaviour.Properties properties,
             Map<Property<?>, Comparable<?>> propertyDefaultValues,
-            int radius, ResourceLocation connectable, ContainerScreenType screenType,
+            int radius, int maxConnectors, int maxCapacity,
+            ResourceLocation connectable, ContainerScreenType screenType,
             SoundEvent soundAssemble, SoundEvent soundDisassemble,
             SoundEvent soundOpen, SoundEvent soundClose) {
         super(properties);
         initializeFlex(propertyDefaultValues);
         this.radius = radius;
+        this.maxConnectors = maxConnectors;
+        this.maxCapacity = maxCapacity;
         this.connectableTag = TagKey.create(Registries.BLOCK, connectable);
         this.screenType = screenType;
         this.soundAssemble = soundAssemble;
@@ -322,6 +327,8 @@ public class StorageConnectorBlock extends BaseEntityBlock
             List<BlockPos> targets = new java.util.ArrayList<>();
             Set<BlockPos> visited = new HashSet<>();
             Queue<BlockPos> queue = new ArrayDeque<>();
+            int selectedConnectors = 0;
+            int selectedSlots = 0;
 
             // BFS from connector's adjacent blocks, following physical connections
             for (Direction dir : Direction.values()) {
@@ -334,10 +341,26 @@ public class StorageConnectorBlock extends BaseEntityBlock
             while (!queue.isEmpty()) {
                 BlockPos p = queue.poll();
                 BlockState bs = level.getBlockState(p);
+                BlockEntity be = level.getBlockEntity(p);
 
-                // Not yet captured → potential target
-                if (!bs.getValue(FlexBarrelBlock.CONNECTED)) {
+                // Not yet captured → potential target; enforce limits (-1 = unlimited).
+                // If the limit is reached, skip this block AND stop expanding from it,
+                // so it cannot bridge connections across the gap.
+                if (!bs.getValue(FlexBarrelBlock.CONNECTED)
+                        && be instanceof FlexBarrelBlock.FlexBarrelBlockEntity fbe) {
+                    int size = fbe.getContainerSize();
+                    if (scb.maxConnectors > 0 && selectedConnectors >= scb.maxConnectors) {
+                        LOGGER.debug("  Skipped {}: max connectors reached ({})", p, scb.maxConnectors);
+                        continue;
+                    }
+                    if (scb.maxCapacity > 0 && selectedSlots + size > scb.maxCapacity) {
+                        LOGGER.debug("  Skipped {}: max capacity reached ({} + {} > {})", p,
+                                selectedSlots, size, scb.maxCapacity);
+                        continue;
+                    }
                     targets.add(p);
+                    selectedConnectors++;
+                    selectedSlots += size;
                 }
 
                 // Continue BFS through neighbors if within radius

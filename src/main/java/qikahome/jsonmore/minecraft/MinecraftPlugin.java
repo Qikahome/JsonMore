@@ -209,6 +209,8 @@ public class MinecraftPlugin {
         // ========== Storage Connector ==========
         FlexBlockType.register("jsonmore:storage_connector", data -> {
             int radius = GsonHelper.getAsInt(data, "radius", 4);
+            int maxConnectors = GsonHelper.getAsInt(data, "max_connectors", -1);
+            int maxCapacity = GsonHelper.getAsInt(data, "max_capacity", -1);
             if (!data.has("connectable")) {
                 throw new ThingParseException("storage_connector requires 'connectable' field");
             }
@@ -233,8 +235,8 @@ public class MinecraftPlugin {
                 SoundEvent disassembleSound = ForgeRegistries.SOUND_EVENTS.getValue(disassembleSoundId);
                 SoundEvent openSound = ForgeRegistries.SOUND_EVENTS.getValue(openSoundId);
                 SoundEvent closeSound = ForgeRegistries.SOUND_EVENTS.getValue(closeSoundId);
-                return new StorageConnectorBlock(props, propertyDefaultValues, radius, connectable, screenType,
-                        assembleSound, disassembleSound, openSound, closeSound) {
+                return new StorageConnectorBlock(props, propertyDefaultValues, radius, maxConnectors, maxCapacity,
+                        connectable, screenType, assembleSound, disassembleSound, openSound, closeSound) {
                     @Override
                     protected void createBlockStateDefinition(StateDefinition.Builder<Block, BlockState> builder1) {
                         super.createBlockStateDefinition(builder1);
