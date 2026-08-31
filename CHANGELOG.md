@@ -1,5 +1,13 @@
 # Json More Changelog
 
+## 1.2.10
+
+### 新增 / Added
+- 新增 `jsonmore:standing_and_wall` 物品类型与 `jsonmore:standing_sign` / `jsonmore:wall_sign` 方块
+  - New `jsonmore:standing_and_wall` item type and `jsonmore:standing_sign` / `jsonmore:wall_sign` blocks
+- 存储连接器新增 `max_connectors` / `max_capacity` 限制（默认 -1 无限制），在 BFS 扫描阶段检查并阻断超限容器的进一步扩展
+  - Storage connector gains `max_connectors` / `max_capacity` limits (default -1 unlimited), enforced during BFS scanning, blocking expansion past the limit
+
 ## 1.2.9
 
 ### 新增 / Added
