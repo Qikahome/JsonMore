@@ -55,7 +55,7 @@ public class ToolDamagingIngredient extends SelfConsumingIngredient {
         return super.getItems().map(stack -> {
             stack = stack.copy();
             if (stack.getMaxDamage() >= damage)
-                stack.setDamageValue(damage);
+                stack.setDamageValue(stack.getMaxDamage() - damage);
             return stack;
         });
     }

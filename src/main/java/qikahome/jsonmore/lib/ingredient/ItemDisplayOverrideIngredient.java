@@ -32,6 +32,10 @@ public class ItemDisplayOverrideIngredient extends SelfConsumingIngredient {
     public interface IOpHandler {
         String name();
 
+        /**
+         * 对展示物品列表执行操作。{@code filter} 是 op 级的作用范围过滤：
+         * 列表中只有匹配 filter 的物品才会被处理，不匹配的跳过；{@code null} 表示处理全部。
+         */
         void apply(List<ItemStack> items, @Nullable Ingredient filter);
     }
 

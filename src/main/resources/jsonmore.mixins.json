@@ -8,7 +8,8 @@
     "MixinMechanicalCrafterBlockEntity",
     "MixinUncraftingMenu",
     "MixinTwilightForestJEICompat",
-    "MixinFlexBarrelBlockItem"
+    "MixinFlexBarrelBlockItem",
+    "MixinLevel"
   ],
   "client": [],
   "server": [],

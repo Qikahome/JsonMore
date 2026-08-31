@@ -22,6 +22,7 @@ import net.minecraft.core.Vec3i;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
@@ -84,6 +85,7 @@ import qikahome.jsonmore.lib.ExpandableMode;
 import qikahome.jsonmore.lib.FaceFilter;
 import qikahome.jsonmore.lib.IFlexContainer;
 import qikahome.jsonmore.lib.IFlexEntityBlock;
+import qikahome.jsonmore.lib.IProtectedBlock;
 import qikahome.jsonmore.lib.ItemFilter;
 import qikahome.jsonmore.lib.KeepInventoryMode;
 import qikahome.jsonmore.lib.MultiContainer;
@@ -92,7 +94,7 @@ import qikahome.jsonmore.lib.ingredient.KeepInventoryContainerIngredient;
 import qikahome.jsonmore.lib.ingredient.NotIngredient;
 
 public class FlexBarrelBlock extends BaseEntityBlock
-        implements IFlexEntityBlock<FlexBarrelBlock.FlexBarrelBlockEntity>, SimpleWaterloggedBlock {
+        implements IFlexEntityBlock<FlexBarrelBlock.FlexBarrelBlockEntity>, SimpleWaterloggedBlock, IProtectedBlock {
 
     public FlexBarrelBlock(BlockBehaviour.Properties properties, Map<Property<?>, Comparable<?>> propertyDefaultValues,
             int containerSize, SoundEvent soundOpen, SoundEvent soundClose, boolean waterloggedIn,
@@ -282,26 +284,22 @@ public class FlexBarrelBlock extends BaseEntityBlock
     public void appendHoverText(ItemStack stack, Item.TooltipContext context, List<Component> tooltip,
             TooltipFlag flag) {
         super.appendHoverText(stack, context, tooltip, flag);
-        ItemContainerContents contents = stack.get(DataComponents.CONTAINER);
-        if (contents != null) {
-            var items = NonNullList.withSize(contents.getSlots(), ItemStack.EMPTY);
-            contents.copyInto(items);
-            var nonEmpty = items.stream().filter(s -> !s.isEmpty()).toList();
-            if (!nonEmpty.isEmpty()) {
-                tooltip.add(Component.empty());
-                int shown = 0;
-                for (ItemStack itemStack : nonEmpty) {
-                    if (shown >= 5)
-                        break;
-                    tooltip.add(Component.literal(" ").append(itemStack.getDisplayName())
-                            .append(Component.literal(" x"))
-                            .append(Component.literal(String.valueOf(itemStack.getCount()))));
-                    shown++;
-                }
-                if (nonEmpty.size() > 5) {
-                    tooltip.add(Component.translatable("container.shulkerBox.more", nonEmpty.size() - 5));
-                }
+        if (stack.has(DataComponents.CONTAINER_LOOT)) {
+            tooltip.add(Component.translatable("container.shulkerBox.unknownContents"));
+        }
+        int i = 0;
+        int j = 0;
+        for (ItemStack itemstack : stack.getOrDefault(DataComponents.CONTAINER, ItemContainerContents.EMPTY)
+                .nonEmptyItems()) {
+            j++;
+            if (i <= 4) {
+                i++;
+                tooltip.add(Component.translatable("container.shulkerBox.itemCount",
+                        itemstack.getHoverName(), itemstack.getCount()));
             }
+        }
+        if (j - i > 0) {
+            tooltip.add(Component.translatable("container.shulkerBox.more", j - i).withStyle(ChatFormatting.ITALIC));
         }
     }
     // endregion
@@ -637,25 +635,36 @@ public class FlexBarrelBlock extends BaseEntityBlock
 
         if (!oldState.is(newState.getBlock())) {
             BlockEntity blockentity = level.getBlockEntity(pos);
-            if (blockentity instanceof FlexBarrelBlockEntity fbe && oldState.getValue(CONNECTED)) {
-                if (!level.isClientSide) {
-                    var controller = fbe.getController();
-                    if (controller != null && controller.isAssembled()) {
-                        JsonMore.LOGGER.debug("FlexBarrelBlock.onRemove: found controller at {}, disassembling", pos);
-                        controller.disassemble(level);
-                        level.setBlock(pos, oldState.setValue(CONNECTED, false), 2);
-                        JsonMore.LOGGER.debug("FlexBarrelBlock.onRemove: disassembled, restored to {}", oldState);
-                        return;
-                    }
-                    JsonMore.LOGGER.debug("FlexBarrelBlock.onRemove: controller not found at {}, allowing removal", pos);
-                }
-            } else if (blockentity instanceof Container) {
+            if (blockentity instanceof Container) {
                 Containers.dropContents(level, pos, (Container) blockentity);
                 level.updateNeighbourForOutputSignal(pos, this);
             }
 
             super.onRemove(oldState, level, pos, newState, isMoving);
         }
+    }
+
+    @Override
+    public boolean maySetBlock(BlockState oldState, Level level, BlockPos pos, BlockState newState,
+            int updateFlags, int updateLimit) {
+        if (!oldState.is(newState.getBlock())) {
+            BlockEntity blockentity = level.getBlockEntity(pos);
+            if (blockentity instanceof FlexBarrelBlockEntity fbe && oldState.getValue(CONNECTED)) {
+                if (!level.isClientSide) {
+                    var controller = fbe.getController();
+                    if (controller != null && controller.isAssembled()) {
+                        JsonMore.LOGGER.debug("FlexBarrelBlock.maySetBlock: found controller at {}, disassembling", pos);
+                        controller.disassemble(level);
+                        level.setBlock(pos, oldState.setValue(CONNECTED, false), 2); // Restore self
+                        JsonMore.LOGGER.debug("FlexBarrelBlock.maySetBlock: disassembled, restored to {}", oldState);
+                        return false;
+                    }
+                    JsonMore.LOGGER.debug("FlexBarrelBlock.maySetBlock: controller not found at {}, allowing removal", pos);
+                }
+                // Controller not found: allow removal
+            }
+        }
+        return true;
     }
 
     @Override
