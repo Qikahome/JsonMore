@@ -1,17 +1,9 @@
 package qikahome.jsonmore.minecraft;
 
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.function.Supplier;
-
-import javax.annotation.Nullable;
-
 import com.google.common.collect.ArrayListMultimap;
 import com.google.common.collect.HashMultimap;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Multimap;
-
 import dev.gigaherz.jsonthings.things.UseFinishMode;
 import dev.gigaherz.jsonthings.things.builders.ItemBuilder;
 import dev.gigaherz.jsonthings.things.events.FlexEventContext;
@@ -19,6 +11,7 @@ import dev.gigaherz.jsonthings.things.events.FlexEventHandler;
 import dev.gigaherz.jsonthings.things.events.FlexEventResult;
 import dev.gigaherz.jsonthings.things.events.IEventRunner;
 import dev.gigaherz.jsonthings.util.Utils;
+import net.minecraft.core.Direction;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.world.InteractionHand;
@@ -32,7 +25,7 @@ import net.minecraft.world.entity.ai.attributes.AttributeModifier;
 import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.item.SignItem;
+import net.minecraft.world.item.StandingAndWallBlockItem;
 import net.minecraft.world.item.TooltipFlag;
 import net.minecraft.world.item.UseAnim;
 import net.minecraft.world.item.context.UseOnContext;
@@ -43,13 +36,22 @@ import net.minecraft.world.level.block.Blocks;
 import net.minecraftforge.common.ToolAction;
 import net.minecraftforge.registries.RegistryObject;
 
-public class FlexSignItem extends SignItem implements IFlexStandingAndWallBlockItem, IEventRunner {
-    public FlexSignItem(RegistryObject<Block> sign, RegistryObject<Block> wallSign, boolean useBlockName,
-            Properties properties, ItemBuilder builder) {
-        super(properties, null, null);
+import javax.annotation.Nullable;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.function.Supplier;
+
+public class FlexStandingAndWallBlockItem extends StandingAndWallBlockItem
+        implements IEventRunner, IFlexStandingAndWallBlockItem {
+
+    public FlexStandingAndWallBlockItem(RegistryObject<Block> block, RegistryObject<Block> wallBlock,
+            boolean useBlockName, Properties properties,
+            ItemBuilder builder, Direction direction) {
+        super(null, null, properties, direction);
         this.useBlockName = useBlockName;
-        this.sign = sign;
-        this.wallSign = wallSign;
+        this.block = block;
+        this.wallBlock = wallBlock;
         this.useAction = builder.getUseAnim();
         this.useTime = builder.getUseTime();
         this.useFinishMode = builder.getUseFinishMode();
@@ -60,16 +62,9 @@ public class FlexSignItem extends SignItem implements IFlexStandingAndWallBlockI
         initializeFlex();
     }
 
-    // region SignItem
-    private final RegistryObject<Block> wallSign;
-    
-    @Override
-    public Block getWallBlock() {
-        return wallSign.orElse(Blocks.AIR);
-    }
     // region BlockItem
     private final boolean useBlockName;
-    private final RegistryObject<Block> sign;
+    private final RegistryObject<Block> block;
 
     // Recreation of ItemNameBlockItem's function
     @Override
@@ -79,7 +74,7 @@ public class FlexSignItem extends SignItem implements IFlexStandingAndWallBlockI
 
     @Override
     public Block getBlock() {
-        return sign.orElse(Blocks.AIR);
+        return block.orElse(Blocks.AIR);
     }
 
     public boolean canFitInsideContainerItems() {
@@ -227,5 +222,15 @@ public class FlexSignItem extends SignItem implements IFlexStandingAndWallBlockI
         return burnTime;
     }
 
+    // endregion
+
+    // region IFlexStandingAndWallBlockItem
+
+    private final RegistryObject<Block> wallBlock;
+
+    @Override
+    public Block getWallBlock() {
+        return wallBlock.orElseGet(() -> Blocks.AIR);
+    }
     // endregion
 }

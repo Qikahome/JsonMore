@@ -19,8 +19,9 @@ import net.minecraft.core.NonNullList;
 import net.minecraft.core.Vec3i;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.nbt.CompoundTag;
-import net.minecraft.nbt.ListTag;
+import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraftforge.network.NetworkHooks;
@@ -42,6 +43,7 @@ import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.inventory.AbstractContainerMenu;
 import net.minecraft.world.inventory.ChestMenu;
+import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.TooltipFlag;
 import net.minecraft.world.item.context.BlockPlaceContext;
@@ -76,6 +78,7 @@ import qikahome.jsonmore.lib.ExpandableMode;
 import qikahome.jsonmore.lib.FaceFilter;
 import qikahome.jsonmore.lib.IFlexContainer;
 import qikahome.jsonmore.lib.IFlexEntityBlock;
+import qikahome.jsonmore.lib.IProtectedBlock;
 import net.minecraft.resources.ResourceLocation;
 import qikahome.jsonmore.minecraft.StorageConnectorBlock.ControllerBlockEntity;
 import qikahome.jsonmore.lib.ContainerScreenType;
@@ -90,7 +93,7 @@ import qikahome.jsonmore.JsonMore;
 import static qikahome.jsonmore.lib.ContainerPart.PART;
 
 public class FlexBarrelBlock extends BaseEntityBlock
-        implements IFlexEntityBlock<FlexBarrelBlock.FlexBarrelBlockEntity>, SimpleWaterloggedBlock {
+        implements IFlexEntityBlock<FlexBarrelBlock.FlexBarrelBlockEntity>, SimpleWaterloggedBlock, IProtectedBlock {
 
     public FlexBarrelBlock(BlockBehaviour.Properties properties, Map<Property<?>, Comparable<?>> propertyDefaultValues,
             int containerSize, SoundEvent soundOpen, SoundEvent soundClose, boolean waterloggedIn,
@@ -273,27 +276,30 @@ public class FlexBarrelBlock extends BaseEntityBlock
     public void appendHoverText(ItemStack stack, @Nullable BlockGetter level, List<Component> tooltip,
             TooltipFlag flag) {
         super.appendHoverText(stack, level, tooltip, flag);
-        CompoundTag blockEntityTag = stack.getTagElement("BlockEntityTag");
-        if (blockEntityTag != null && blockEntityTag.contains("Items")) {
-            ListTag itemsList = blockEntityTag.getList("Items", 10);
-            if (!itemsList.isEmpty()) {
-                tooltip.add(Component.empty());
-                // tooltip.add(Component.translatable("container.shulkerBox.contains",
-                // itemsList.size(), containerSize));
-
-                int shown = 0;
-                for (int i = 0; i < itemsList.size() && shown < 5; i++) {
-                    CompoundTag itemTag = itemsList.getCompound(i);
-                    ItemStack itemStack = ItemStack.of(itemTag);
-                    if (!itemStack.isEmpty()) {
-                        tooltip.add(Component.literal(" ").append(itemStack.getDisplayName())
-                                .append(Component.literal(" x"))
-                                .append(Component.literal(String.valueOf(itemStack.getCount()))));
-                        shown++;
+        CompoundTag compoundtag = BlockItem.getBlockEntityData(stack);
+        if (compoundtag != null) {
+            if (compoundtag.contains("LootTable", 8)) {
+                tooltip.add(Component.translatable("container.shulkerBox.unknownContents"));
+            }
+            if (compoundtag.contains("Items", 9)) {
+                NonNullList<ItemStack> items = NonNullList.withSize(containerSize, ItemStack.EMPTY);
+                ContainerHelper.loadAllItems(compoundtag, items);
+                int i = 0;
+                int j = 0;
+                for (ItemStack itemstack : items) {
+                    if (!itemstack.isEmpty()) {
+                        ++j;
+                        if (i <= 4) {
+                            ++i;
+                            MutableComponent mutablecomponent = itemstack.getHoverName().copy();
+                            mutablecomponent.append(" x").append(String.valueOf(itemstack.getCount()));
+                            tooltip.add(mutablecomponent);
+                        }
                     }
                 }
-                if (itemsList.size() > 5) {
-                    tooltip.add(Component.translatable("container.shulkerBox.more", itemsList.size() - 5));
+                if (j - i > 0) {
+                    tooltip.add(Component.translatable("container.shulkerBox.more", j - i)
+                            .withStyle(ChatFormatting.ITALIC));
                 }
             }
         }
@@ -633,26 +639,36 @@ public class FlexBarrelBlock extends BaseEntityBlock
 
         if (!oldState.is(newState.getBlock())) {
             BlockEntity blockentity = level.getBlockEntity(pos);
-            if (blockentity instanceof FlexBarrelBlockEntity fbe && oldState.getValue(CONNECTED)) {
-                if (!level.isClientSide) {
-                    var controller = fbe.getController();
-                    if (controller != null && controller.isAssembled()) {
-                        JsonMore.LOGGER.debug("FlexBarrelBlock.onRemove: found controller at {}, disassembling", pos);
-                        controller.disassemble(level);
-                        level.setBlock(pos, oldState.setValue(CONNECTED, false), 2); // Restore self
-                        JsonMore.LOGGER.debug("FlexBarrelBlock.onRemove: disassembled, restored to {}", oldState);
-                        return;
-                    }
-                    JsonMore.LOGGER.debug("FlexBarrelBlock.onRemove: controller not found at {}, allowing removal", pos);
-                }
-                // Controller not found: allow removal
-            } else if (blockentity instanceof Container) {
+            if (blockentity instanceof Container) {
                 Containers.dropContents(level, pos, (Container) blockentity);
                 level.updateNeighbourForOutputSignal(pos, this);
             }
 
             super.onRemove(oldState, level, pos, newState, isMoving);
         }
+    }
+
+    @Override
+    public boolean maySetBlock(BlockState oldState, Level level, BlockPos pos, BlockState newState,
+            int updateFlags, int updateLimit) {
+        if (!oldState.is(newState.getBlock())) {
+            BlockEntity blockentity = level.getBlockEntity(pos);
+            if (blockentity instanceof FlexBarrelBlockEntity fbe && oldState.getValue(CONNECTED)) {
+                if (!level.isClientSide) {
+                    var controller = fbe.getController();
+                    if (controller != null && controller.isAssembled()) {
+                        JsonMore.LOGGER.debug("FlexBarrelBlock.maySetBlock: found controller at {}, disassembling", pos);
+                        controller.disassemble(level);
+                        level.setBlock(pos, oldState.setValue(CONNECTED, false), 2); // Restore self
+                        JsonMore.LOGGER.debug("FlexBarrelBlock.maySetBlock: disassembled, restored to {}", oldState);
+                        return false;
+                    }
+                    JsonMore.LOGGER.debug("FlexBarrelBlock.maySetBlock: controller not found at {}, allowing removal", pos);
+                }
+                // Controller not found: allow removal
+            }
+        }
+        return true;
     }
 
     @Override

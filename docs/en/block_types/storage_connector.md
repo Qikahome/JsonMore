@@ -31,7 +31,7 @@ The Storage Connector is a controller block that scans and links nearby containe
 
 - Linked containers are **not removed**, their appearance stays the same but block state shows `connected=true`
 - Once linked, containers cannot be opened or interacted with independently; all operations go through the connector GUI
-- Breaking a linked container triggers full disassembly of the connector group (if the controller can be found)
+- Breaking a linked container/connector is **blocked**: the block does not disappear; instead the whole connector group disassembles first (if the controller can be found), then the block remains
 - Pipes and automation can interact directly with the connector's capabilities
 
 ## Examples

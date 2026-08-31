@@ -15,6 +15,7 @@ import com.google.gson.JsonObject;
 import dev.gigaherz.jsonthings.things.parsers.ThingParseException;
 import dev.gigaherz.jsonthings.things.serializers.FlexBlockType;
 import dev.gigaherz.jsonthings.things.serializers.FlexItemType;
+import net.minecraft.core.Direction;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.sounds.SoundEvent;
 import net.minecraft.util.GsonHelper;
@@ -40,16 +41,22 @@ import net.minecraft.world.level.block.state.properties.WoodType;
 
 public class MinecraftPlugin {
     public static void load() {
-        FlexItemType.register("jsonmore:sign", data -> {
-            String signName = data.get("standing_sign").getAsString();
-            String wallSignName = data.get("wall_sign").getAsString();
+        FlexItemType.register("jsonmore:standing_and_wall", data -> {
+            String blockName = data.get("block").getAsString();
+            String wallBlockName = data.get("wall_block").getAsString();
             boolean useBlockName = GsonHelper.getAsBoolean(data, "use_block_name", true);
+            String directionName = GsonHelper.getAsString(data, "direction", "down");
+            Direction direction = Direction.byName(directionName);
+            if (direction == null) {
+                throw new ThingParseException("Invalid direction: " + directionName);
+            }
             return (props, builder) -> {
-                ResourceLocation blockName = new ResourceLocation(signName);
-                ResourceLocation wallBlockName = new ResourceLocation(wallSignName);
-                return new FlexSignItem(RegistryObject.create(blockName, ForgeRegistries.BLOCKS),
-                        RegistryObject.create(wallBlockName, ForgeRegistries.BLOCKS), useBlockName,
-                        props, builder);
+                ResourceLocation blockId = new ResourceLocation(blockName);
+                ResourceLocation wallBlockId = new ResourceLocation(wallBlockName);
+                return new FlexStandingAndWallBlockItem(
+                        RegistryObject.create(blockId, ForgeRegistries.BLOCKS),
+                        RegistryObject.create(wallBlockId, ForgeRegistries.BLOCKS),
+                        useBlockName, props, builder, direction);
             };
         });
         FlexBlockType.register("jsonmore:wall_sign", data -> {

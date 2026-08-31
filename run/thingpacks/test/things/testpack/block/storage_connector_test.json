@@ -1,0 +1,20 @@
+{
+  "type": "jsonmore:storage_connector",
+  "map_color": "stone",
+  "explosion_resistance": 3.0,
+  "destroy_time": 2.0,
+  "sound_type": "stone",
+
+  "radius": 8,
+  "connectable": "testpack:containers",
+  "screen": "autosizedgui:auto",
+
+  "assemble_sound": "minecraft:block.beacon.activate",
+  "disassemble_sound": "minecraft:block.beacon.deactivate",
+  "open_sound": "minecraft:block.barrel.open",
+  "close_sound": "minecraft:block.barrel.close",
+
+  "item": true,
+  "replaceable": false,
+  "push_reaction": "block"
+}

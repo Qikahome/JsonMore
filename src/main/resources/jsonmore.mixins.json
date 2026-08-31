@@ -11,7 +11,8 @@
     "MixinUncraftingMenu",
     "MixinTwilightForestJEICompat",
     "MixinFlexBarrelBlockItem",
-    "MixinFlexHorizontalDirectionalBlock"
+    "MixinFlexHorizontalDirectionalBlock",
+    "MixinLevel"
   ],
   "client": [],
   "server": [],

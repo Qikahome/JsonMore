@@ -6,7 +6,6 @@ import javax.annotation.Nullable;
 
 import com.google.common.collect.Maps;
 
-import dev.gigaherz.jsonthings.things.IFlexBlock;
 import dev.gigaherz.jsonthings.things.events.FlexEventContext;
 import dev.gigaherz.jsonthings.things.events.FlexEventHandler;
 import dev.gigaherz.jsonthings.things.events.FlexEventResult;
@@ -14,18 +13,23 @@ import dev.gigaherz.jsonthings.things.shapes.DynamicShape;
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
+import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.BlockGetter;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.WallSignBlock;
+import net.minecraft.world.level.block.entity.BlockEntityType;
+import net.minecraft.world.level.block.entity.SignBlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.properties.Property;
 import net.minecraft.world.level.block.state.properties.WoodType;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.shapes.CollisionContext;
 import net.minecraft.world.phys.shapes.VoxelShape;
+import qikahome.jsonmore.lib.IFlexEntityBlock;
 
-public class FlexWallSignBlock extends WallSignBlock implements IFlexBlock {
+public class FlexWallSignBlock extends WallSignBlock implements IFlexEntityBlock<SignBlockEntity> {
     public FlexWallSignBlock(Properties props, WoodType woodType, Map<Property<?>, Comparable<?>> propertyDefaultValues) {
         super(props, woodType);
         initializeFlex(propertyDefaultValues);
@@ -124,6 +128,23 @@ public class FlexWallSignBlock extends WallSignBlock implements IFlexBlock {
                 .withHand(player, handIn)
                 .withRayTrace(hit), () -> FlexEventResult.of(super.use(state, worldIn, pos, player, handIn, hit)))
                 .result();
+    }
+
+    // Recreation of SignItem.updateCustomBlockEntityTag: 物品放置后打开编辑界面
+    @Override
+    public void setPlacedBy(Level level, BlockPos pos, BlockState state, @Nullable LivingEntity placer,
+            ItemStack stack) {
+        super.setPlacedBy(level, pos, state, placer, stack);
+        if (level.isClientSide || !(placer instanceof Player player)) return;
+        if (stack.hasTag() && stack.getTag().contains("BlockEntityTag")) return;
+        if (level.getBlockEntity(pos) instanceof SignBlockEntity be) {
+            openTextEdit(player, be, true);
+        }
+    }
+
+    @Override
+    public BlockEntityType<SignBlockEntity> getBlockEntityType() {
+        return BlockEntityType.SIGN;
     }
 
     // endregion

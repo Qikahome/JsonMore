@@ -58,9 +58,10 @@ import net.minecraftforge.network.NetworkHooks;
 import static qikahome.jsonmore.JsonMore.LOGGER;
 import qikahome.jsonmore.lib.ContainerScreenType;
 import qikahome.jsonmore.lib.IFlexEntityBlock;
+import qikahome.jsonmore.lib.IProtectedBlock;
 
 public class StorageConnectorBlock extends BaseEntityBlock
-        implements IFlexEntityBlock<StorageConnectorBlock.ControllerBlockEntity> {
+        implements IFlexEntityBlock<StorageConnectorBlock.ControllerBlockEntity>, IProtectedBlock {
 
     public static final BooleanProperty CONNECTED = BooleanProperty.create("connected");
 
@@ -260,20 +261,22 @@ public class StorageConnectorBlock extends BaseEntityBlock
     }
 
     @Override
-    public void onRemove(BlockState oldState, Level level, BlockPos pos, BlockState newState, boolean isMoving) {
+    public boolean maySetBlock(BlockState oldState, Level level, BlockPos pos, BlockState newState,
+            int updateFlags, int updateLimit) {
         if (!oldState.is(newState.getBlock())) {
             BlockEntity be = level.getBlockEntity(pos);
             if (be instanceof ControllerBlockEntity cbe && cbe.isAssembled()) {
-                // Play sound using oldState before disassemble (current state is air)
-                if (oldState.getBlock() instanceof StorageConnectorBlock scb) {
-                    level.playSound(null, pos, scb.soundDisassemble, SoundSource.BLOCKS, 1.0F, 1.0F);
+                if (!level.isClientSide) {
+                    // Play sound using oldState before disassemble (current state is air)
+                    if (oldState.getBlock() instanceof StorageConnectorBlock scb) {
+                        level.playSound(null, pos, scb.soundDisassemble, SoundSource.BLOCKS, 1.0F, 1.0F);
+                    }
+                    cbe.disassemble(level);
+                    return false;
                 }
-                cbe.disassemble(level);
-                level.setBlock(pos, oldState.setValue(CONNECTED, false), 2); // Restore self without connected state
-                return;
             }
-            super.onRemove(oldState, level, pos, newState, isMoving);
         }
+        return true;
     }
 
     @Override

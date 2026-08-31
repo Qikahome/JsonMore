@@ -12,6 +12,7 @@
     {"item": "testpack:container_expand_z"},
     {"item": "testpack:container_expand_o"},
     {"item": "testpack:container_expand_multi"},
-    {"item": "testpack:container_expand_keep"}
+    {"item": "testpack:container_expand_keep"},
+    {"item": "testpack:storage_connector_test"}
   ]
 }
