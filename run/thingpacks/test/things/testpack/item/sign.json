@@ -1,6 +1,6 @@
 {
-    "type": "jsonmore:sign",
-    "standing_sign": "testpack:standing_sign",
-    "wall_sign": "testpack:wall_sign",
+    "type": "jsonmore:standing_and_wall",
+    "block": "testpack:standing_sign",
+    "wall_block": "testpack:wall_sign",
     "max_stack_size": 64
 }

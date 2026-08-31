@@ -10,10 +10,15 @@ import java.util.function.Supplier;
 
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
+import com.google.gson.JsonPrimitive;
+import com.mojang.serialization.JsonOps;
 
 import dev.gigaherz.jsonthings.things.parsers.ThingParseException;
 import dev.gigaherz.jsonthings.things.serializers.FlexBlockType;
 import dev.gigaherz.jsonthings.things.serializers.FlexBlockType.DefaultTypeProperties;
+import dev.gigaherz.jsonthings.things.serializers.FlexItemType;
+import dev.gigaherz.jsonthings.util.Utils;
+import net.minecraft.core.Direction;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.Identifier;
 import net.minecraft.sounds.SoundEvent;
@@ -24,6 +29,7 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.StateDefinition;
 import net.minecraft.world.level.block.state.properties.BlockStateProperties;
 import net.minecraft.world.level.block.state.properties.Property;
+import net.minecraft.world.level.block.state.properties.WoodType;
 import net.neoforged.neoforge.registries.DeferredHolder;
 import qikahome.jsonmore.lib.BlockedDirection;
 import qikahome.jsonmore.lib.ContainerPart;
@@ -38,6 +44,68 @@ import qikahome.jsonmore.minecraft.StorageConnectorBlock.ControllerBlockEntity;
 
 public class MinecraftPlugin {
     public static void load() {
+        FlexItemType.register("jsonmore:standing_and_wall", data -> {
+            String blockName = data.get("block").getAsString();
+            String wallBlockName = data.get("wall_block").getAsString();
+            boolean useBlockName = GsonHelper.getAsBoolean(data, "use_block_name", true);
+            String directionName = GsonHelper.getAsString(data, "direction", "down");
+            Direction direction = Direction.byName(directionName);
+            if (direction == null) {
+                throw new ThingParseException("Invalid direction: " + directionName);
+            }
+            return (props, builder) -> {
+                if (useBlockName) props.useBlockDescriptionPrefix();
+                Block block = Utils.getOrCrash(BuiltInRegistries.BLOCK, Identifier.parse(blockName));
+                Block wallBlock = Utils.getOrCrash(BuiltInRegistries.BLOCK, Identifier.parse(wallBlockName));
+                return new FlexStandingAndWallBlockItem(block, wallBlock, direction, props, builder);
+            };
+        });
+        FlexBlockType.register("jsonmore:standing_sign", data -> {
+            String woodTypeName = GsonHelper.getAsString(data, "wood_type", "oak");
+            return (props, builder) -> {
+                List<Property<?>> _properties = builder.getProperties();
+                Map<Property<?>, Comparable<?>> propertyDefaultValues = builder.getPropertyDefaultValues();
+                WoodType woodType = WoodType.CODEC.parse(JsonOps.INSTANCE, new JsonPrimitive(woodTypeName))
+                        .getOrThrow(msg -> new ThingParseException(
+                                "Error parsing block " + builder.getRegistryName() + ": wood type not found " + woodTypeName + ": " + msg));
+                return new FlexStandingSignBlock(woodType, props, propertyDefaultValues) {
+                    @Override
+                    protected void createBlockStateDefinition(StateDefinition.Builder<Block, BlockState> builder1) {
+                        super.createBlockStateDefinition(builder1);
+                        for (Property<?> property : _properties) {
+                            try {
+                                builder1.add(property);
+                            } catch (IllegalArgumentException e) {
+                                throw new ThingParseException("Property " + property + " not found", e);
+                            }
+                        }
+                    }
+                };
+            };
+        }, DefaultTypeProperties.builder().defaultSeeThrough(false).defaultReplaceable(false));
+        FlexBlockType.register("jsonmore:wall_sign", data -> {
+            String woodTypeName = GsonHelper.getAsString(data, "wood_type", "oak");
+            return (props, builder) -> {
+                List<Property<?>> _properties = builder.getProperties();
+                Map<Property<?>, Comparable<?>> propertyDefaultValues = builder.getPropertyDefaultValues();
+                WoodType woodType = WoodType.CODEC.parse(JsonOps.INSTANCE, new JsonPrimitive(woodTypeName))
+                        .getOrThrow(msg -> new ThingParseException(
+                                "Error parsing block " + builder.getRegistryName() + ": wood type not found " + woodTypeName + ": " + msg));
+                return new FlexWallSignBlock(woodType, props, propertyDefaultValues) {
+                    @Override
+                    protected void createBlockStateDefinition(StateDefinition.Builder<Block, BlockState> builder1) {
+                        super.createBlockStateDefinition(builder1);
+                        for (Property<?> property : _properties) {
+                            try {
+                                builder1.add(property);
+                            } catch (IllegalArgumentException e) {
+                                //pass
+                            }
+                        }
+                    }
+                };
+            };
+        }, DefaultTypeProperties.builder().defaultSeeThrough(false).defaultReplaceable(false));
         FlexBlockType.register("jsonmore:container", data -> {
             int slots = GsonHelper.getAsInt(data, "slots", 27);
             Identifier openSound = Identifier.parse(
