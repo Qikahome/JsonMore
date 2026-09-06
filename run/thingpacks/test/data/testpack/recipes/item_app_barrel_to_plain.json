@@ -17,7 +17,7 @@
     "result": {
         "item": "testpack:test_container_plain"
     },
-    "drop_container": false,
+    "drop_container": true,
     "keep_block_state": true,
     "sneaking": true
 }

@@ -14,7 +14,7 @@ import slimeknights.tconstruct.library.tools.stat.ModifierStatsBuilder;
 /**
  * A material stat that has dynamic stat fields.
  */
-public record DynamicMaterialStats(MaterialStatType<?> type, List<DynamicStat<?>> stats, List<Function<Float, Component>> localizedInfo, List<Component> localizedDescriptions) implements IMaterialStats//.ScaledTooltip 
+public record DynamicMaterialStats(MaterialStatType<?> type, List<DynamicStat<?>> stats, List<Function<Float, Component>> localizedInfo, List<Component> localizedDescriptions) implements IMaterialStats.ScaledTooltip
 {
 
 	@Override
@@ -31,6 +31,8 @@ public record DynamicMaterialStats(MaterialStatType<?> type, List<DynamicStat<?>
 	public List<Component> getLocalizedInfo() {
 		return getLocalizedInfo(1);
 	}
+
+	@Override
 	public List<Component> getLocalizedInfo(float scale) {
 		return localizedInfo.stream().map(f -> f.apply(scale)).toList();
 	}

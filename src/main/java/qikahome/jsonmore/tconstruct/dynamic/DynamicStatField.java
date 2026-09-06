@@ -13,7 +13,7 @@ import slimeknights.mantle.data.loadable.field.LoadableField;
 import slimeknights.mantle.data.loadable.primitive.StringLoadable;
 import slimeknights.mantle.data.loadable.record.RecordLoadable;
 
-public interface DynamicStatField<S extends DynamicStatField.DynamicStat, T extends IToolStat<?>> extends RecordLoadable<S>, IHaveLoader {
+public interface DynamicStatField<S extends DynamicStatField.DynamicStat<?>, T extends IToolStat<?>> extends RecordLoadable<S>, IHaveLoader {
 
     public static final GenericLoaderRegistry<DynamicStatField<?, ?>> REGISTRY = new GenericLoaderRegistry<>(
             "Dynamic Stat Field", false);

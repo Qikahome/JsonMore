@@ -1,0 +1,23 @@
+{
+    "type": "jsonmore:item_application",
+    "block": {
+        "item": "minecraft:furnace"
+    },
+    "tool": {
+        "type": "jsonmore:counted",
+        "ingredient": {
+            "item": "minecraft:paper"
+        },
+        "count": 1
+    },
+    "result": {
+        "item": "minecraft:cobblestone"
+    },
+    "force_input": {
+        "block": "minecraft:furnace",
+        "properties": {
+            "lit": "true"
+        }
+    },
+    "sneaking": true
+}

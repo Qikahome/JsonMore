@@ -42,7 +42,7 @@ public class DynamicMaterialStatType extends MaterialStatType<IMaterialStats> im
      */
     @SuppressWarnings("null")
     public DynamicMaterialStatType(MaterialStatsId id, String durabilityField, List<DynamicStatField<?,?>> statFields) {
-        super(id,(IMaterialStats/*.ScaledTooltip*/)null,null); // We cannot get the default stats before the stat type is loaded
+        super(id,(IMaterialStats.ScaledTooltip)null,null); // We cannot get the default stats before the stat type is loaded
         this.durabilityField = durabilityField;
         this.statFields = statFields;
     }

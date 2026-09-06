@@ -245,20 +245,32 @@ Triggered by right-clicking a block with a tool in hand. Replaces the block and 
 | `block` | [Ingredient](ingredient_types.md) | Yes | -- | Target block matcher |
 | `tool` | [Self-consuming ingredient](ingredient_types.md#self-consuming-ingredients) | Yes | -- | Held item matcher, supports consumption logic |
 | `result` | Object | Yes | -- | Replacement item result |
-| `drop_container` | Boolean | No | `true` | Whether to drop the original container |
+| `drop_container` | Boolean | No | `true` | How the original block is handled: `true` = breaking semantics (container contents spill), `false` = silent replacement |
 | `keep_block_state` | Boolean | No | `false` | Whether to preserve the original block's BlockState properties |
 | `update_block` | Boolean | No | `true` | Whether to trigger block updates (redstone, observer detection) |
 | `sneaking` | Boolean | No | *ignored* | Sneak requirement |
+| `force_input` | Object | No | -- | Match the input by its actual block/state instead of item conversion (matches blocks without items) |
+| `force_output` | Object | No | -- | Force placing a specific block/state; result need not be that block's item |
 
 **Field Details:**
 
-- **block**: An [ingredient](ingredient_types.md) matching the target block. Supports special ingredients like `nbt_copy` for handling block NBT during application.
+- **block**: An [ingredient](ingredient_types.md) matching the target block. Supports special ingredients like `nbt_copy` for handling block NBT during application. If the right-clicked block has **no item representation** (e.g. most tech blocks), the item-based match is skipped, and `force_input` must be provided to match it.
 - **tool**: An [ingredient](ingredient_types.md) for the held item. Supports self-consuming ingredients like `tool_damaging`, `counted`, or `nbt_copy` for copying NBT from the tool to the result.
-- **result**: The replacement item. If the result is a block item and `drop_container` is `false`, the new block replaces the original in place.
-- **drop_container**: Whether to drop the original container block. When `false`, the container's contents are preserved, and the new block inherits the original block data.
-- **keep_block_state**: Whether to copy the original block's BlockState properties to the new block. Compatible properties are matched automatically; directional properties (e.g., `facing`) support subset mapping (e.g., 6-direction to 4-direction), and container `open` is forced to `false`.
-- **update_block**: Whether to trigger block updates. When `false`, only syncs the client-side display without triggering neighbor updates (redstone, observers won't react). Suitable for "silent replacement" scenarios.
+- **result**: The replacement item. If it is a block item and no `force_output` is given, that block (default state) replaces the original in place; if it is neither a block item nor backed by `force_output`, the original block is removed and this item is dropped.
+- **drop_container**: How the original block is handled. `true` (default) uses "breaking" semantics — the block entity is not removed first, so container blocks spill their contents via vanilla behavior (the block itself is not loot-dropped). `false` silently replaces — the old block entity is removed first and data is **not** migrated automatically. To preserve contents/data, use `nbt_copy` on the `block` ingredient to write the block data into `result`; it is loaded automatically on placement.
+- **keep_block_state**: Whether to copy the original block's BlockState properties to the new block. Compatible properties are matched automatically; directional properties (e.g., `facing`) support subset mapping (e.g., 6-direction to 4-direction), and container `open` is forced to `false`. Properties explicitly listed in `force_output` override copied values.
+- **update_block**: Whether to trigger block updates. When `false`, only syncs the client-side display without triggering neighbor updates (redstone, observers won't react). Suitable for "silent replacement" scenarios; block entity data loading and `setPlacedBy` still run.
 - **sneaking**: `true` requires the player to sneak, `false` requires the player to not sneak. When unset, sneaking state is ignored.
+- **force_input / force_output**: Optional state spec objects, see below.
+
+### force_input / force_output State Spec
+
+Both fields are optional objects with the shape `{ "block": "...", "properties": { "property": "value" } }`. `block` and `properties` may each be omitted:
+
+- **force_input**: Matches the right-clicked block by its **actual block and properties** (instead of converting it to an item first). Only the listed properties are compared; unlisted ones are not required, and `block` and properties must all match. If the block has an item representation, the `block` ingredient's item match must still pass (both apply); if it has no item, this is the only way to match.
+- **force_output**: Specifies the block/state to place, bypassing the "result must be a placeable block item and only places its default state" limitation — so it can output **blocks without items** (e.g. a lit furnace) and non-default states. Property priority: `force_output` explicit properties > `keep_block_state` copied values > defaults.
+- Property values are written as strings, e.g. `"facing": "east"`, `"lit": "true"`.
+- After a successful placement, the vanilla "place with NBT" flow runs: block entity data carried by `result` is loaded, and the new block's `setPlacedBy` is invoked (JsonMore signs open their edit screen here). Both steps still run with `update_block=false`; only the block update broadcast is skipped.
 
 > **Note**: Recipe triggering requires the held item to be in the `jsonmore:item_application_tool` item tag. Pack authors must add their applicable tool items to this tag.
 
@@ -324,6 +336,39 @@ Triggered by right-clicking a block with a tool in hand. Replaces the block and 
 - Block state properties are preserved
 - Paper is not consumed (count: 0)
 - `nbt_copy` copies the block's NBT data to the result item
+
+### Example: Placing a non-default block state (force_output)
+
+```json
+{
+    "type": "jsonmore:item_application",
+    "block": {
+        "item": "minecraft:stone"
+    },
+    "tool": {
+        "type": "jsonmore:counted",
+        "ingredient": {
+            "item": "minecraft:paper"
+        },
+        "count": 0
+    },
+    "result": {
+        "item": "minecraft:furnace"
+    },
+    "force_output": {
+        "block": "minecraft:furnace",
+        "properties": {
+            "facing": "east",
+            "lit": "true"
+        }
+    }
+}
+```
+
+**Explanation:**
+- Right-click stone with paper
+- Stone is replaced by a **lit furnace facing east** (a non-default state that normal placement cannot produce)
+- `result` is still used for JEI display and as the NBT carrier; placement is decided by `force_output`
 
 ### Interaction Tag `jsonmore:item_application_tool`
 

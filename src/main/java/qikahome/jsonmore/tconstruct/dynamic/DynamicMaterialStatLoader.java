@@ -13,7 +13,6 @@ import net.minecraft.network.chat.Component;
 import slimeknights.mantle.data.loadable.record.RecordLoadable;
 import slimeknights.mantle.util.typed.TypedMap;
 import slimeknights.tconstruct.library.materials.stats.IMaterialStats;
-// import slimeknights.tconstruct.library.materials.stats.IMaterialStats.ScaledTooltip;
 import qikahome.jsonmore.tconstruct.dynamic.DynamicStatField.DynamicStat;
 import qikahome.jsonmore.tconstruct.dynamic.FloatDynamicStatField.FloatDynamicStat;
 
@@ -46,11 +45,11 @@ public record DynamicMaterialStatLoader(DynamicMaterialStatType type, List<Dynam
         return stats;
     }
 
-    @SuppressWarnings("rawtypes")
+    @SuppressWarnings({"rawtypes","unchecked"})
     @Override
     public void encode(FriendlyByteBuf buffer, IMaterialStats value) {
         DynamicMaterialStats stats = value instanceof RepairableDynamicMaterialStats ? ((RepairableDynamicMaterialStats)value).stats() : (DynamicMaterialStats) value;
-        for(DynamicStat stat:stats.stats()) {
+        for(DynamicStat stat : stats.stats()) {
             stat.getLoader().encode(buffer, stat);
         }
     }
@@ -79,7 +78,7 @@ public record DynamicMaterialStatLoader(DynamicMaterialStatType type, List<Dynam
         return stats;
     }
 
-    @SuppressWarnings("rawtypes")
+    @SuppressWarnings({"rawtypes","unchecked"})
     @Override
     public void serialize(IMaterialStats value, JsonObject json) {
         DynamicMaterialStats stats = value instanceof RepairableDynamicMaterialStats ? ((RepairableDynamicMaterialStats)value).stats() : (DynamicMaterialStats) value;

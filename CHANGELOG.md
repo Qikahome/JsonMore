@@ -1,5 +1,21 @@
 # Json More Changelog
 
+## 1.2.11
+
+### 新增 / Added
+- `jsonmore:item_application` 新增 `force_input` / `force_output`：按 block + properties 精确匹配输入方块 / 指定输出方块状态，支持无对应物品的方块与非默认状态
+  - `jsonmore:item_application` gains `force_input` / `force_output` to match input blocks and force output block states by block + properties (supports blocks without items and non-default states)
+
+### 变更 / Changed
+- `drop_container: false` 不再自动把旧方块实体数据整体迁移到新方块，需要保留内容/NBT 时请配合 `jsonmore:nbt_copy` 原料显式完成
+  - `drop_container: false` no longer auto-migrates the old block entity data to the new block; carry content/NBT over explicitly with `jsonmore:nbt_copy`
+- 方块型输出改为模拟原版放置：放置后装载产物 NBT 并调用方块 `setPlacedBy`；`drop_container: true` 时旧容器按原版破坏语义处理（onRemove 洒出内容物）
+  - Block-type outputs now mimic vanilla placement (result NBT is loaded and `setPlacedBy` is called); with `drop_container: true` old containers are removed with vanilla break semantics
+- 替换/移除失败时自动回滚旧方块实体，不残留损坏状态
+  - Failed replacement/removal rolls back the old block entity, leaving no corrupted states
+- 依赖更新：Tinkers' Construct 3.12.0.220 / Mantle 1.11.117（开发环境 JEI 15.56.0.205，满足 TCon 3.12 的 JEI ≥15.56.0.204 要求）
+  - Dependency update: Tinkers' Construct 3.12.0.220 / Mantle 1.11.117 (JEI 15.56.0.205 in dev, satisfying TCon 3.12's JEI ≥15.56.0.204 requirement)
+
 ## 1.2.10
 
 ### 新增 / Added

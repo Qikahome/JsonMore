@@ -1,8 +1,14 @@
 package qikahome.jsonmore.lib.recipe;
 
+import java.util.LinkedHashMap;
+import java.util.Map;
+import java.util.Optional;
+
 import javax.annotation.Nullable;
 
+import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
+import com.google.gson.JsonSyntaxException;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
@@ -19,6 +25,7 @@ import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
 import net.minecraft.world.item.crafting.Ingredient;
 import net.minecraft.world.item.crafting.Recipe;
 import net.minecraft.world.item.crafting.RecipeSerializer;
@@ -26,6 +33,7 @@ import net.minecraft.world.item.crafting.RecipeType;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.EntityBlock;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.StateDefinition;
@@ -38,10 +46,11 @@ import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.items.wrapper.RecipeWrapper;
 import net.minecraft.core.registries.Registries;
+import net.minecraftforge.registries.ForgeRegistries;
 import qikahome.jsonmore.lib.ingredient.SelfConsumingIngredient;
 
 @Mod.EventBusSubscriber
-public class ItemApplicationRecipe implements Recipe<RecipeWrapper> {
+public class ItemApplicationRecipe implements Recipe<RecipeWrapper>, IConsumingRecipe {
     public static final ResourceLocation TYPE_ID = new ResourceLocation("jsonmore:item_application");
     public static final RecipeType<ItemApplicationRecipe> TYPE = new RecipeType<>() {
         @Override
@@ -61,9 +70,20 @@ public class ItemApplicationRecipe implements Recipe<RecipeWrapper> {
     private final boolean updateBlock;
     @Nullable
     private final Boolean sneaking;
+    /**
+     * 输入强制：直接按方块/方块状态匹配被右键的方块，而非将其转为物品后匹配。
+     */
+    @Nullable
+    private final ForceBlockState forceInput;
+    /**
+     * 输出强制：指定放置的方块/方块状态，绕过"result 必须是可放置物品且放默认状态"的限制。
+     */
+    @Nullable
+    private final ForceBlockState forceOutput;
 
     public ItemApplicationRecipe(ResourceLocation id, Ingredient block, Ingredient tool, ItemStack result,
-            boolean dropContainer, boolean keepBlockState, boolean updateBlock, @Nullable Boolean sneaking) {
+            boolean dropContainer, boolean keepBlockState, boolean updateBlock, @Nullable Boolean sneaking,
+            @Nullable ForceBlockState forceInput, @Nullable ForceBlockState forceOutput) {
         this.id = id;
         this.block = block;
         this.tool = tool;
@@ -72,10 +92,26 @@ public class ItemApplicationRecipe implements Recipe<RecipeWrapper> {
         this.keepBlockState = keepBlockState;
         this.updateBlock = updateBlock;
         this.sneaking = sneaking;
+        this.forceInput = forceInput;
+        this.forceOutput = forceOutput;
     }
 
+    /**
+     * 输入匹配规则：
+     * - 被右键方块有对应物品时，须通过 block 原料的物品匹配；
+     * - 无对应物品（如技术方块）时跳过物品匹配，只能靠 force_input 命中；
+     * - force_input 存在时，其声明的方块/属性必须与当前状态一致（未声明的属性不要求）。
+     */
     public boolean testBlock(BlockState state) {
-        return block.test(new ItemStack(state.getBlock().asItem()));
+        Item blockItem = state.getBlock().asItem();
+        boolean hasItem = blockItem != Items.AIR;
+        if (hasItem && !block.test(new ItemStack(blockItem))) {
+            return false;
+        }
+        if (!hasItem && forceInput == null) {
+            return false;
+        }
+        return forceInput == null || forceInput.matches(state);
     }
 
     public boolean testTool(ItemStack stack) {
@@ -109,6 +145,16 @@ public class ItemApplicationRecipe implements Recipe<RecipeWrapper> {
 
     public ItemStack getRecipeResult() {
         return result;
+    }
+
+    @Nullable
+    public ForceBlockState getForceInput() {
+        return forceInput;
+    }
+
+    @Nullable
+    public ForceBlockState getForceOutput() {
+        return forceOutput;
     }
 
     @Override
@@ -193,53 +239,57 @@ public class ItemApplicationRecipe implements Recipe<RecipeWrapper> {
         ItemStack heldItem = player.getItemInHand(hand);
         BlockState oldState = level.getBlockState(pos);
 
-        ItemStack blockStack = new ItemStack(oldState.getBlock().asItem());
-        BlockEntity blockEntity = level.getBlockEntity(pos);
-        if (blockEntity != null) {
-            blockStack.addTagElement("BlockEntityTag", blockEntity.saveWithFullMetadata());
+        BlockEntity oldBlockEntity = level.getBlockEntity(pos);
+        CompoundTag oldData = oldBlockEntity != null ? oldBlockEntity.saveWithFullMetadata() : null;
+
+        // 旧方块作为 nbt_copy 的 NBT 载体：无对应物品时借用 block 原料的代表物品占位（nbt_copy 只读 tag，不校验物品）
+        ItemStack blockCarrier = new ItemStack(oldState.getBlock().asItem());
+        if (blockCarrier.isEmpty()) {
+            ItemStack[] blockItems = block.getItems();
+            blockCarrier = blockItems.length > 0 ? new ItemStack(blockItems[0].getItem()) : new ItemStack(Blocks.STONE);
+        }
+        if (oldBlockEntity != null) {
+            blockCarrier.addTagElement("BlockEntityTag", oldData);
         }
 
         SelfConsumingIngredient.outputModify(tool, heldItem, primaryResult);
-        SelfConsumingIngredient.outputModify(block, blockStack, primaryResult);
+        SelfConsumingIngredient.outputModify(block, blockCarrier, primaryResult);
 
-        if (primaryResult.getItem() instanceof BlockItem blockItem) {
-            BlockState newState = blockItem.getBlock().defaultBlockState();
+        // 目标方块：force_output 优先（可指定无物品方块），否则 result 为方块物品时用其方块
+        Block targetBlock = null;
+        if (forceOutput != null) {
+            targetBlock = forceOutput.getBlock();
+        }
+        if (targetBlock == null && primaryResult.getItem() instanceof BlockItem blockItem) {
+            targetBlock = blockItem.getBlock();
+        }
 
+        if (targetBlock != null) {
+            BlockState newState = targetBlock.defaultBlockState();
             if (keepBlockState) {
                 newState = copyCompatibleProperties(oldState, newState);
             }
-
-            if (!dropContainer) {
-                CompoundTag oldData = null;
-                BlockEntity oldBlockEntity = level.getBlockEntity(pos);
-                if (oldBlockEntity != null) {
-                    oldData = oldBlockEntity.saveWithFullMetadata();
-                }
-                level.removeBlockEntity(pos);
-                if (updateBlock) {
-                    level.destroyBlock(pos, false);
-                }
-                level.setBlock(pos, newState, updateBlock ? 3 : 2);
-                if (oldData != null) {
-                    BlockEntity newBlockEntity = level.getBlockEntity(pos);
-                    if (newBlockEntity != null) {
-                        newBlockEntity.load(oldData);
-                    }
-                }
-            } else {
-                if (updateBlock) {
-                    level.destroyBlock(pos, false);
-                } else {
-                    level.removeBlockEntity(pos);
-                }
-                level.setBlock(pos, newState, updateBlock ? 3 : 2);
+            if (forceOutput != null) {
+                newState = forceOutput.applyTo(newState);
             }
+            replaceBlock(level, pos, player, newState, primaryResult, oldData);
         } else {
+            if (forceOutput != null) {
+                qikahome.jsonmore.JsonMore.LOGGER.warn(
+                        "ItemApplicationRecipe {}: force_output 指定的方块不存在且 result 不是方块物品，退化为普通物品掉落",
+                        id);
+            }
+            // 非方块输出：移除旧方块并掉落 result 物品
             if (updateBlock) {
-                level.destroyBlock(pos, false);
+                if (!level.destroyBlock(pos, false)) {
+                    return;
+                }
             } else {
                 level.removeBlockEntity(pos);
-                level.setBlock(pos, Blocks.AIR.defaultBlockState(), 2);
+                if (!level.setBlock(pos, Blocks.AIR.defaultBlockState(), 2)) {
+                    restoreBlockEntity(level, pos, oldData);
+                    return;
+                }
             }
             Block.popResource(level, pos, primaryResult);
         }
@@ -266,6 +316,61 @@ public class ItemApplicationRecipe implements Recipe<RecipeWrapper> {
                     }
                 }
             }
+        }
+    }
+
+    /**
+     * 方块型输出统一替换逻辑。
+     * <p>
+     * drop_container=true：走"破坏"语义——不摘除旧 BE，让旧方块 onRemove（容器会洒出内容物）自然清理；
+     * drop_container=false：静默替换——先摘除旧 BE 防止洒出，数据保留完全交给 result 的 nbt_copy。
+     * <p>
+     * 放置成功后按原版物品放置流程补两步：装载 result 携带的 BE 数据、调用方块 setPlacedBy。
+     */
+    private void replaceBlock(Level level, BlockPos pos, Player player, BlockState newState,
+            ItemStack placementStack, @Nullable CompoundTag oldData) {
+        if (dropContainer) {
+            if (updateBlock && !level.destroyBlock(pos, false)) {
+                return;
+            }
+            if (!level.setBlock(pos, newState, updateBlock ? 3 : 2)) {
+                return;
+            }
+        } else {
+            level.removeBlockEntity(pos);
+            if (updateBlock && !level.destroyBlock(pos, false)) {
+                restoreBlockEntity(level, pos, oldData);
+                return;
+            }
+            if (!level.setBlock(pos, newState, updateBlock ? 3 : 2)) {
+                restoreBlockEntity(level, pos, oldData);
+                return;
+            }
+        }
+
+        // 模拟原版物品放置：装载 BE 数据 + setPlacedBy
+        BlockItem.updateCustomBlockEntityTag(level, player, pos, placementStack);
+        BlockState placedState = level.getBlockState(pos);
+        placedState.getBlock().setPlacedBy(level, pos, placedState, player, placementStack);
+    }
+
+    /**
+     * 回滚：方块移除/替换被拒绝时，在旧方块仍未被替换的前提下恢复其 BE。
+     * 使用当前方块自身的 EntityBlock#newBlockEntity 创建 BE，避免 loadStatic 依据
+     * 旧数据里的 BE 类型创建出与当前方块不匹配的实体。
+     */
+    private static void restoreBlockEntity(Level level, BlockPos pos, @Nullable CompoundTag oldData) {
+        if (oldData == null)
+            return;
+        if (level.getBlockEntity(pos) != null)
+            return;
+        BlockState state = level.getBlockState(pos);
+        if (state.isAir() || !(state.getBlock() instanceof EntityBlock entityBlock))
+            return;
+        BlockEntity restored = entityBlock.newBlockEntity(pos, state);
+        if (restored != null) {
+            restored.load(oldData);
+            level.setBlockEntity(restored);
         }
     }
 
@@ -304,6 +409,120 @@ public class ItemApplicationRecipe implements Recipe<RecipeWrapper> {
         return null;
     }
 
+    /**
+     * 方块状态规格：`{ "block": "...", "properties": { "facing": "north" } }`。
+     * block 与 properties 都可省略；属性匹配/应用时只影响已列出的项，未列出的保留原值。
+     */
+    public static class ForceBlockState {
+        @Nullable
+        private final ResourceLocation blockId;
+        private final LinkedHashMap<String, String> properties;
+
+        public ForceBlockState(@Nullable ResourceLocation blockId, LinkedHashMap<String, String> properties) {
+            this.blockId = blockId;
+            this.properties = properties;
+        }
+
+        /** 解析出的方块；blockId 缺失或注册表无此方块时返回 null。 */
+        @Nullable
+        public Block getBlock() {
+            if (blockId == null)
+                return null;
+            Block block = ForgeRegistries.BLOCKS.getValue(blockId);
+            return block == null || block == Blocks.AIR ? null : block;
+        }
+
+        public boolean matches(BlockState state) {
+            if (blockId != null) {
+                ResourceLocation current = ForgeRegistries.BLOCKS.getKey(state.getBlock());
+                if (current == null || !current.equals(blockId)) {
+                    return false;
+                }
+            }
+            for (Map.Entry<String, String> entry : properties.entrySet()) {
+                Property<?> property = state.getBlock().getStateDefinition().getProperty(entry.getKey());
+                if (property == null || !valueMatches(state, property, entry.getValue())) {
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        /** 将已列出的属性应用到目标状态；解析失败的属性保持原值。 */
+        public BlockState applyTo(BlockState state) {
+            for (Map.Entry<String, String> entry : properties.entrySet()) {
+                Property<?> property = state.getBlock().getStateDefinition().getProperty(entry.getKey());
+                if (property != null) {
+                    state = setPropertyValue(state, property, entry.getValue());
+                }
+            }
+            return state;
+        }
+
+        @SuppressWarnings({ "unchecked", "rawtypes" })
+        private static boolean valueMatches(BlockState state, Property property, String value) {
+            Optional<?> parsed = property.getValue(value);
+            return parsed.isPresent() && state.getValue(property).equals(parsed.get());
+        }
+
+        @SuppressWarnings({ "unchecked", "rawtypes" })
+        private static BlockState setPropertyValue(BlockState state, Property property, String value) {
+            Optional<?> parsed = property.getValue(value);
+            return parsed.isPresent() ? state.setValue(property, (Comparable) parsed.get()) : state;
+        }
+
+        public static ForceBlockState fromJson(JsonElement element) {
+            if (!element.isJsonObject()) {
+                throw new JsonSyntaxException("force_input/force_output 必须是对象: {\"block\": ..., \"properties\": {...}}");
+            }
+            JsonObject json = element.getAsJsonObject();
+
+            ResourceLocation blockId = null;
+            if (json.has("block")) {
+                String blockName = json.get("block").getAsString();
+                try {
+                    blockId = new ResourceLocation(blockName);
+                } catch (RuntimeException e) {
+                    throw new JsonSyntaxException("非法方块 id: " + blockName);
+                }
+            }
+
+            LinkedHashMap<String, String> properties = new LinkedHashMap<>();
+            if (json.has("properties")) {
+                JsonObject propertiesJson = json.getAsJsonObject("properties");
+                for (String key : propertiesJson.keySet()) {
+                    properties.put(key, propertiesJson.get(key).getAsString());
+                }
+            }
+            return new ForceBlockState(blockId, properties);
+        }
+
+        public void write(FriendlyByteBuf buffer) {
+            buffer.writeBoolean(blockId != null);
+            if (blockId != null) {
+                buffer.writeUtf(blockId.toString());
+            }
+            buffer.writeVarInt(properties.size());
+            for (Map.Entry<String, String> entry : properties.entrySet()) {
+                buffer.writeUtf(entry.getKey());
+                buffer.writeUtf(entry.getValue());
+            }
+        }
+
+        public static ForceBlockState read(FriendlyByteBuf buffer) {
+            ResourceLocation blockId = null;
+            if (buffer.readBoolean()) {
+                blockId = new ResourceLocation(buffer.readUtf());
+            }
+            LinkedHashMap<String, String> properties = new LinkedHashMap<>();
+            int size = buffer.readVarInt();
+            for (int i = 0; i < size; i++) {
+                properties.put(buffer.readUtf(), buffer.readUtf());
+            }
+            return new ForceBlockState(blockId, properties);
+        }
+    }
+
     public static class Serializer implements RecipeSerializer<ItemApplicationRecipe> {
         public static final Serializer INSTANCE = new Serializer();
 
@@ -316,8 +535,13 @@ public class ItemApplicationRecipe implements Recipe<RecipeWrapper> {
             boolean keepBlockState = net.minecraft.util.GsonHelper.getAsBoolean(json, "keep_block_state", false);
             boolean updateBlock = net.minecraft.util.GsonHelper.getAsBoolean(json, "update_block", true);
             Boolean sneaking = json.has("sneaking") ? net.minecraft.util.GsonHelper.getAsBoolean(json, "sneaking") : null;
+            ForceBlockState forceInput = json.has("force_input") ? ForceBlockState.fromJson(json.get("force_input")) : null;
+            ForceBlockState forceOutput = json.has("force_output")
+                    ? ForceBlockState.fromJson(json.get("force_output"))
+                    : null;
 
-            return new ItemApplicationRecipe(id, block, tool, result, dropContainer, keepBlockState, updateBlock, sneaking);
+            return new ItemApplicationRecipe(id, block, tool, result, dropContainer, keepBlockState, updateBlock,
+                    sneaking, forceInput, forceOutput);
         }
 
         @Override
@@ -330,8 +554,13 @@ public class ItemApplicationRecipe implements Recipe<RecipeWrapper> {
             boolean updateBlock = buffer.readBoolean();
             boolean hasSneaking = buffer.readBoolean();
             Boolean sneaking = hasSneaking ? buffer.readBoolean() : null;
+            boolean hasForceInput = buffer.readBoolean();
+            ForceBlockState forceInput = hasForceInput ? ForceBlockState.read(buffer) : null;
+            boolean hasForceOutput = buffer.readBoolean();
+            ForceBlockState forceOutput = hasForceOutput ? ForceBlockState.read(buffer) : null;
 
-            return new ItemApplicationRecipe(id, block, tool, result, dropContainer, keepBlockState, updateBlock, sneaking);
+            return new ItemApplicationRecipe(id, block, tool, result, dropContainer, keepBlockState, updateBlock,
+                    sneaking, forceInput, forceOutput);
         }
 
         @Override
@@ -345,6 +574,14 @@ public class ItemApplicationRecipe implements Recipe<RecipeWrapper> {
             buffer.writeBoolean(recipe.sneaking != null);
             if (recipe.sneaking != null) {
                 buffer.writeBoolean(recipe.sneaking);
+            }
+            buffer.writeBoolean(recipe.forceInput != null);
+            if (recipe.forceInput != null) {
+                recipe.forceInput.write(buffer);
+            }
+            buffer.writeBoolean(recipe.forceOutput != null);
+            if (recipe.forceOutput != null) {
+                recipe.forceOutput.write(buffer);
             }
         }
     }

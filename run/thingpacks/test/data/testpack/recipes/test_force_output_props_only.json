@@ -1,0 +1,22 @@
+{
+    "type": "jsonmore:item_application",
+    "block": {
+        "item": "minecraft:cobblestone"
+    },
+    "tool": {
+        "type": "jsonmore:counted",
+        "ingredient": {
+            "item": "minecraft:paper"
+        },
+        "count": 1
+    },
+    "result": {
+        "item": "minecraft:furnace"
+    },
+    "force_output": {
+        "properties": {
+            "facing": "west"
+        }
+    },
+    "sneaking": true
+}
