@@ -1,5 +1,9 @@
 package qikahome.jsonmore.lib.recipe;
 
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 import javax.annotation.Nullable;
@@ -10,11 +14,15 @@ import com.mojang.serialization.codecs.RecordCodecBuilder;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
-import net.minecraft.core.HolderLookup;
+import net.minecraft.core.Holder;
 import net.minecraft.core.component.DataComponents;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.core.registries.Registries;
+import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.sounds.SoundEvents;
@@ -28,6 +36,7 @@ import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.ItemStackTemplate;
+import net.minecraft.world.item.Items;
 import net.minecraft.world.item.component.TypedEntityData;
 import net.minecraft.world.item.crafting.Ingredient;
 import net.minecraft.world.item.crafting.PlacementInfo;
@@ -39,6 +48,7 @@ import net.minecraft.world.item.crafting.RecipeType;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.EntityBlock;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.StateDefinition;
@@ -46,18 +56,23 @@ import net.minecraft.world.level.block.state.properties.BlockStateProperties;
 import net.minecraft.world.level.block.state.properties.EnumProperty;
 import net.minecraft.world.level.block.state.properties.Property;
 import net.minecraft.world.level.storage.TagValueInput;
-import net.minecraft.core.registries.Registries;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
+import net.neoforged.neoforge.client.event.ClientPlayerNetworkEvent;
+import net.neoforged.neoforge.client.event.RecipesReceivedEvent;
+import net.neoforged.neoforge.event.OnDatapackSyncEvent;
 import net.neoforged.neoforge.event.entity.player.PlayerInteractEvent;
 import qikahome.jsonmore.lib.ingredient.SelfConsumingIngredient;
 
 @EventBusSubscriber(modid = "jsonmore")
-public class ItemApplicationRecipe implements Recipe<RecipeInput> {
+public class ItemApplicationRecipe implements Recipe<RecipeInput>, IConsumingRecipe {
     public static final Identifier TYPE_ID = Identifier.parse("jsonmore:item_application");
     public static final RecipeType<ItemApplicationRecipe> TYPE = RecipeType.simple(TYPE_ID);
     public static final TagKey<Item> TOOL_TAG = TagKey.create(Registries.ITEM,
             Identifier.parse("jsonmore:item_application_tool"));
+
+    /** 客户端经 NeoForge 官方配方同步（sendRecipes）收到的本类型配方缓存，仅逻辑客户端使用。 */
+    private static volatile List<ItemApplicationRecipe> clientRecipes = List.of();
 
     private final Ingredient block;
     private final Ingredient tool;
@@ -67,9 +82,20 @@ public class ItemApplicationRecipe implements Recipe<RecipeInput> {
     private final boolean updateBlock;
     @Nullable
     private final Boolean sneaking;
+    /**
+     * 输入强制：直接按方块/方块状态匹配被右键的方块，而非将其转为物品后匹配。
+     */
+    @Nullable
+    private final ForceBlockState forceInput;
+    /**
+     * 输出强制：指定放置的方块/方块状态，绕过"result 必须是可放置物品且放默认状态"的限制。
+     */
+    @Nullable
+    private final ForceBlockState forceOutput;
 
     public ItemApplicationRecipe(Ingredient block, Ingredient tool, ItemStackTemplate result,
-            boolean dropContainer, boolean keepBlockState, boolean updateBlock, @Nullable Boolean sneaking) {
+            boolean dropContainer, boolean keepBlockState, boolean updateBlock, @Nullable Boolean sneaking,
+            @Nullable ForceBlockState forceInput, @Nullable ForceBlockState forceOutput) {
         this.block = block;
         this.tool = tool;
         this.result = result;
@@ -77,10 +103,26 @@ public class ItemApplicationRecipe implements Recipe<RecipeInput> {
         this.keepBlockState = keepBlockState;
         this.updateBlock = updateBlock;
         this.sneaking = sneaking;
+        this.forceInput = forceInput;
+        this.forceOutput = forceOutput;
     }
 
+    /**
+     * 输入匹配规则：
+     * - 被右键方块有对应物品时，须通过 block 原料的物品匹配；
+     * - 无对应物品（如技术方块）时跳过物品匹配，只能靠 force_input 命中；
+     * - force_input 存在时，其声明的方块/属性必须与当前状态一致（未声明的属性不要求）。
+     */
     public boolean testBlock(BlockState state) {
-        return block.test(new ItemStack(state.getBlock().asItem()));
+        Item blockItem = state.getBlock().asItem();
+        boolean hasItem = blockItem != Items.AIR;
+        if (hasItem && !block.test(new ItemStack(blockItem))) {
+            return false;
+        }
+        if (!hasItem && forceInput == null) {
+            return false;
+        }
+        return forceInput == null || forceInput.matches(state);
     }
 
     public boolean testTool(ItemStack stack) {
@@ -116,6 +158,16 @@ public class ItemApplicationRecipe implements Recipe<RecipeInput> {
         return result;
     }
 
+    @Nullable
+    public ForceBlockState getForceInput() {
+        return forceInput;
+    }
+
+    @Nullable
+    public ForceBlockState getForceOutput() {
+        return forceOutput;
+    }
+
     @Override
     public boolean matches(RecipeInput inv, Level level) {
         return block.test(inv.getItem(0)) && tool.test(inv.getItem(1));
@@ -125,11 +177,6 @@ public class ItemApplicationRecipe implements Recipe<RecipeInput> {
     public ItemStack assemble(RecipeInput inv) {
         return result.create();
     }
-
-    // @Override
-    // public ItemStack getResultItem(HolderLookup.Provider registries) {
-    //     return result;
-    // }
 
     @Override
     public RecipeSerializer<ItemApplicationRecipe> getSerializer() {
@@ -169,6 +216,29 @@ public class ItemApplicationRecipe implements Recipe<RecipeInput> {
     }
 
     @SubscribeEvent
+    public static void onDatapackSync(OnDatapackSyncEvent event) {
+        event.sendRecipes(TYPE);
+    }
+
+    /** 客户端收到平台同步的配方后整体替换缓存（覆盖登录与数据包重载两种时机）。 */
+    @SubscribeEvent
+    public static void onRecipesReceived(RecipesReceivedEvent event) {
+        if (!event.getRecipeTypes().contains(TYPE))
+            return;
+        List<ItemApplicationRecipe> list = new ArrayList<>();
+        for (var holder : event.getRecipeMap().byType(TYPE)) {
+            list.add(holder.value());
+        }
+        clientRecipes = List.copyOf(list);
+    }
+
+    /** 离开服务器时清空缓存，防止串服残留旧配方导致误拦。 */
+    @SubscribeEvent
+    public static void onClientLogout(ClientPlayerNetworkEvent.LoggingOut event) {
+        clientRecipes = List.of();
+    }
+
+    @SubscribeEvent
     public static void onRightClickBlock(PlayerInteractEvent.RightClickBlock event) {
         Level level = event.getLevel();
         ItemStack heldItem = event.getItemStack();
@@ -187,10 +257,25 @@ public class ItemApplicationRecipe implements Recipe<RecipeInput> {
 
         Player player = event.getEntity();
 
-        MinecraftServer server = level.getServer();
-        if (server == null)
+        // 客户端：用平台配方同步收到的全量配方做精确匹配（含 sneaking / force_input），命中才拦截。
+        // 缓存为空（尚未同步/串服已清空）时不拦截，由服务端兜底。
+        if (level.isClientSide()) {
+            for (var recipe : clientRecipes) {
+                Boolean sneaking = recipe.getSneaking();
+                if (sneaking != null && player.isShiftKeyDown() != sneaking)
+                    continue;
+                if (!recipe.testBlock(blockState))
+                    continue;
+                if (!recipe.testTool(heldItem))
+                    continue;
+                event.setCancellationResult(InteractionResult.SUCCESS);
+                event.setCanceled(true);
+                return;
+            }
             return;
+        }
 
+        MinecraftServer server = level.getServer();
         for (var holder : server.getRecipeManager().recipeMap().byType(TYPE)) {
             var recipe = holder.value();
             Boolean sneaking = recipe.getSneaking();
@@ -221,52 +306,57 @@ public class ItemApplicationRecipe implements Recipe<RecipeInput> {
         BlockState oldState = level.getBlockState(pos);
         var registries = level.registryAccess();
 
-        ItemStack blockStack = new ItemStack(oldState.getBlock().asItem());
-        BlockEntity blockEntity = level.getBlockEntity(pos);
-        if (blockEntity != null) {
-            blockStack.set(DataComponents.BLOCK_ENTITY_DATA,
-                    TypedEntityData.of(blockEntity.getType(), blockEntity.saveWithFullMetadata(registries)));
+        BlockEntity oldBlockEntity = level.getBlockEntity(pos);
+        CompoundTag oldData = oldBlockEntity != null ? oldBlockEntity.saveWithFullMetadata(registries) : null;
+
+        // 旧方块作为 nbt_copy 的 NBT 载体：无对应物品时借用 block 原料的代表物品占位（nbt_copy 只读组件，不校验物品）
+        ItemStack blockCarrier = new ItemStack(oldState.getBlock().asItem());
+        if (blockCarrier.isEmpty()) {
+            blockCarrier = block.items().map(Holder::value).map(ItemStack::new).findFirst()
+                    .orElse(new ItemStack(Blocks.STONE));
+        }
+        if (oldBlockEntity != null) {
+            blockCarrier.set(DataComponents.BLOCK_ENTITY_DATA,
+                    TypedEntityData.of(oldBlockEntity.getType(), oldData));
         }
 
         SelfConsumingIngredient.outputModify(tool, heldItem, primaryResult);
-        SelfConsumingIngredient.outputModify(block, blockStack, primaryResult);
+        SelfConsumingIngredient.outputModify(block, blockCarrier, primaryResult);
 
-        if (primaryResult.getItem() instanceof BlockItem blockItem) {
-            BlockState newState = blockItem.getBlock().defaultBlockState();
+        // 目标方块：force_output 优先（可指定无物品方块），否则 result 为方块物品时用其方块
+        Block targetBlock = null;
+        if (forceOutput != null) {
+            targetBlock = forceOutput.getBlock();
+        }
+        if (targetBlock == null && primaryResult.getItem() instanceof BlockItem blockItem) {
+            targetBlock = blockItem.getBlock();
+        }
 
+        if (targetBlock != null) {
+            BlockState newState = targetBlock.defaultBlockState();
             if (keepBlockState) {
                 newState = copyCompatibleProperties(oldState, newState);
             }
-
-            if (!dropContainer) {
-                BlockEntity oldBlockEntity = level.getBlockEntity(pos);
-                var oldData = oldBlockEntity != null ? oldBlockEntity.saveWithFullMetadata(registries) : null;
-                level.removeBlockEntity(pos);
-                if (updateBlock) {
-                    level.destroyBlock(pos, false);
-                }
-                level.setBlock(pos, newState, updateBlock ? 3 : 2);
-                if (oldData != null) {
-                    BlockEntity newBlockEntity = level.getBlockEntity(pos);
-                    if (newBlockEntity != null) {
-                        newBlockEntity.loadWithComponents(
-                                TagValueInput.create(ProblemReporter.DISCARDING, registries, oldData));
-                    }
-                }
-            } else {
-                if (updateBlock) {
-                    level.destroyBlock(pos, false);
-                } else {
-                    level.removeBlockEntity(pos);
-                }
-                level.setBlock(pos, newState, updateBlock ? 3 : 2);
+            if (forceOutput != null) {
+                newState = forceOutput.applyTo(newState);
             }
+            replaceBlock(level, pos, player, newState, primaryResult, oldData);
         } else {
+            if (forceOutput != null) {
+                qikahome.jsonmore.JsonMore.LOGGER.warn(
+                        "ItemApplicationRecipe: force_output 指定的方块不存在且 result 不是方块物品，退化为普通物品掉落");
+            }
+            // 非方块输出：移除旧方块并掉落 result 物品
             if (updateBlock) {
-                level.destroyBlock(pos, false);
+                if (!level.destroyBlock(pos, false)) {
+                    return;
+                }
             } else {
                 level.removeBlockEntity(pos);
-                level.setBlock(pos, Blocks.AIR.defaultBlockState(), 2);
+                if (!level.setBlock(pos, Blocks.AIR.defaultBlockState(), 2)) {
+                    restoreBlockEntity(level, pos, oldData);
+                    return;
+                }
             }
             Block.popResource(level, pos, primaryResult);
         }
@@ -293,6 +383,78 @@ public class ItemApplicationRecipe implements Recipe<RecipeInput> {
                     }
                 }
             }
+        }
+    }
+
+    /**
+     * 方块型输出统一替换逻辑。
+     * <p>
+     * drop_container=true：走"破坏"语义——不摘除旧 BE，让旧方块 onRemove（容器会洒出内容物）自然清理；
+     * drop_container=false：静默替换——先摘除旧 BE 防止洒出，数据保留完全交给 result 的 nbt_copy。
+     * <p>
+     * 放置成功后按原版物品放置流程补两步：装载 result 携带的 BE 数据、调用方块 setPlacedBy。
+     */
+    private void replaceBlock(ServerLevel level, BlockPos pos, Player player, BlockState newState,
+            ItemStack placementStack, @Nullable CompoundTag oldData) {
+        if (dropContainer) {
+            if (updateBlock && !level.destroyBlock(pos, false)) {
+                return;
+            }
+            if (!level.setBlock(pos, newState, updateBlock ? 3 : 2)) {
+                return;
+            }
+        } else {
+            level.removeBlockEntity(pos);
+            if (updateBlock && !level.destroyBlock(pos, false)) {
+                restoreBlockEntity(level, pos, oldData);
+                return;
+            }
+            if (!level.setBlock(pos, newState, updateBlock ? 3 : 2)) {
+                restoreBlockEntity(level, pos, oldData);
+                return;
+            }
+        }
+
+        // 模拟原版物品放置：装载 BE 数据 + setPlacedBy
+        loadBlockEntityData(level, player, pos, placementStack);
+        BlockState placedState = level.getBlockState(pos);
+        placedState.getBlock().setPlacedBy(level, pos, placedState, player, placementStack);
+    }
+
+    /** 读取放置栈的 BLOCK_ENTITY_DATA 组件，按原版"带 NBT 放置"语义合并装载进新 BE。 */
+    private static void loadBlockEntityData(Level level, @Nullable Player player, BlockPos pos, ItemStack stack) {
+        TypedEntityData typedData = stack.get(DataComponents.BLOCK_ENTITY_DATA);
+        if (typedData == null)
+            return;
+        BlockEntity blockEntity = level.getBlockEntity(pos);
+        if (blockEntity == null)
+            return;
+        var registries = level.registryAccess();
+        CompoundTag existing = blockEntity.saveWithoutMetadata(registries);
+        existing.merge(typedData.copyTagWithoutId());
+        blockEntity.loadWithComponents(
+                TagValueInput.create(ProblemReporter.DISCARDING, registries, existing));
+        blockEntity.setChanged();
+    }
+
+    /**
+     * 回滚：方块移除/替换被拒绝时，在旧方块仍未被替换的前提下恢复其 BE。
+     * 使用当前方块自身的 EntityBlock#newBlockEntity 创建 BE，避免 loadStatic 依据
+     * 旧数据里的 BE 类型创建出与当前方块不匹配的实体。
+     */
+    private static void restoreBlockEntity(Level level, BlockPos pos, @Nullable CompoundTag oldData) {
+        if (oldData == null)
+            return;
+        if (level.getBlockEntity(pos) != null)
+            return;
+        BlockState state = level.getBlockState(pos);
+        if (state.isAir() || !(state.getBlock() instanceof EntityBlock entityBlock))
+            return;
+        BlockEntity restored = entityBlock.newBlockEntity(pos, state);
+        if (restored != null) {
+            restored.loadWithComponents(
+                    TagValueInput.create(ProblemReporter.DISCARDING, level.registryAccess(), oldData));
+            level.setBlockEntity(restored);
         }
     }
 
@@ -336,9 +498,103 @@ public class ItemApplicationRecipe implements Recipe<RecipeInput> {
         return null;
     }
 
-    public static class Serializer{
+    /**
+     * 方块状态规格：`{ "block": "...", "properties": { "facing": "north" } }`。
+     * block 与 properties 都可省略；属性匹配/应用时只影响已列出的项，未列出的保留原值。
+     * properties 中的值统一按字符串解析。
+     */
+    public static class ForceBlockState {
+        @Nullable
+        private final Identifier blockId;
+        private final LinkedHashMap<String, String> properties;
 
+        public ForceBlockState(@Nullable Identifier blockId, LinkedHashMap<String, String> properties) {
+            this.blockId = blockId;
+            this.properties = properties;
+        }
 
+        public static final Codec<ForceBlockState> CODEC = RecordCodecBuilder.create(instance -> instance.group(
+                Identifier.CODEC.optionalFieldOf("block").forGetter(s -> Optional.ofNullable(s.blockId)),
+                Codec.unboundedMap(Codec.STRING, Codec.STRING).optionalFieldOf("properties", Map.of())
+                        .forGetter(s -> s.properties))
+                .apply(instance, (blockId, properties) -> new ForceBlockState(blockId.orElse(null),
+                        new LinkedHashMap<>(properties))));
+
+        /** 解析出的方块；blockId 缺失或注册表无此方块时返回 null。 */
+        @Nullable
+        public Block getBlock() {
+            if (blockId == null)
+                return null;
+            return BuiltInRegistries.BLOCK.getOptional(ResourceKey.create(Registries.BLOCK, blockId))
+                    .filter(block -> block != Blocks.AIR).orElse(null);
+        }
+
+        public boolean matches(BlockState state) {
+            if (blockId != null) {
+                Block block = getBlock();
+                if (block == null || state.getBlock() != block) {
+                    return false;
+                }
+            }
+            for (Map.Entry<String, String> entry : properties.entrySet()) {
+                Property<?> property = state.getBlock().getStateDefinition().getProperty(entry.getKey());
+                if (property == null || !valueMatches(state, property, entry.getValue())) {
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        /** 将已列出的属性应用到目标状态；解析失败的属性保持原值。 */
+        public BlockState applyTo(BlockState state) {
+            for (Map.Entry<String, String> entry : properties.entrySet()) {
+                Property<?> property = state.getBlock().getStateDefinition().getProperty(entry.getKey());
+                if (property != null) {
+                    state = setPropertyValue(state, property, entry.getValue());
+                }
+            }
+            return state;
+        }
+
+        @SuppressWarnings({ "unchecked", "rawtypes" })
+        private static boolean valueMatches(BlockState state, Property property, String value) {
+            Optional<?> parsed = property.getValue(value);
+            return parsed.isPresent() && state.getValue(property).equals(parsed.get());
+        }
+
+        @SuppressWarnings({ "unchecked", "rawtypes" })
+        private static BlockState setPropertyValue(BlockState state, Property property, String value) {
+            Optional<?> parsed = property.getValue(value);
+            return parsed.isPresent() ? state.setValue(property, (Comparable) parsed.get()) : state;
+        }
+
+        public void write(RegistryFriendlyByteBuf buffer) {
+            buffer.writeBoolean(blockId != null);
+            if (blockId != null) {
+                buffer.writeUtf(blockId.toString());
+            }
+            buffer.writeVarInt(properties.size());
+            for (Map.Entry<String, String> entry : properties.entrySet()) {
+                buffer.writeUtf(entry.getKey());
+                buffer.writeUtf(entry.getValue());
+            }
+        }
+
+        public static ForceBlockState read(RegistryFriendlyByteBuf buffer) {
+            Identifier blockId = null;
+            if (buffer.readBoolean()) {
+                blockId = Identifier.parse(buffer.readUtf());
+            }
+            LinkedHashMap<String, String> properties = new LinkedHashMap<>();
+            int size = buffer.readVarInt();
+            for (int i = 0; i < size; i++) {
+                properties.put(buffer.readUtf(), buffer.readUtf());
+            }
+            return new ForceBlockState(blockId, properties);
+        }
+    }
+
+    public static class Serializer {
         private static final MapCodec<ItemApplicationRecipe> CODEC = RecordCodecBuilder.mapCodec(
                 inst -> inst.group(
                         Ingredient.CODEC.fieldOf("block").forGetter(r -> r.block),
@@ -347,10 +603,16 @@ public class ItemApplicationRecipe implements Recipe<RecipeInput> {
                         Codec.BOOL.optionalFieldOf("drop_container", true).forGetter(r -> r.dropContainer),
                         Codec.BOOL.optionalFieldOf("keep_block_state", false).forGetter(r -> r.keepBlockState),
                         Codec.BOOL.optionalFieldOf("update_block", true).forGetter(r -> r.updateBlock),
-                        Codec.BOOL.optionalFieldOf("sneaking").forGetter(r -> Optional.ofNullable(r.sneaking)))
+                        Codec.BOOL.optionalFieldOf("sneaking").forGetter(r -> Optional.ofNullable(r.sneaking)),
+                        ForceBlockState.CODEC.optionalFieldOf("force_input")
+                                .forGetter(r -> Optional.ofNullable(r.forceInput)),
+                        ForceBlockState.CODEC.optionalFieldOf("force_output")
+                                .forGetter(r -> Optional.ofNullable(r.forceOutput)))
                         .apply(inst,
-                                (block, tool, result, drop, keep, update, sneak) -> new ItemApplicationRecipe(block,
-                                        tool, result, drop, keep, update, sneak.orElse(null))));
+                                (block, tool, result, drop, keep, update, sneak, forceInput,
+                                        forceOutput) -> new ItemApplicationRecipe(block, tool, result, drop, keep,
+                                                update, sneak.orElse(null), forceInput.orElse(null),
+                                                forceOutput.orElse(null))));
 
         private static final StreamCodec<RegistryFriendlyByteBuf, ItemApplicationRecipe> STREAM_CODEC = StreamCodec.of(
                 Serializer::toNetwork,
@@ -367,6 +629,14 @@ public class ItemApplicationRecipe implements Recipe<RecipeInput> {
             if (recipe.sneaking != null) {
                 buf.writeBoolean(recipe.sneaking);
             }
+            buf.writeBoolean(recipe.forceInput != null);
+            if (recipe.forceInput != null) {
+                recipe.forceInput.write(buf);
+            }
+            buf.writeBoolean(recipe.forceOutput != null);
+            if (recipe.forceOutput != null) {
+                recipe.forceOutput.write(buf);
+            }
         }
 
         private static ItemApplicationRecipe fromNetwork(RegistryFriendlyByteBuf buf) {
@@ -378,9 +648,15 @@ public class ItemApplicationRecipe implements Recipe<RecipeInput> {
             boolean updateBlock = buf.readBoolean();
             boolean hasSneaking = buf.readBoolean();
             Boolean sneaking = hasSneaking ? buf.readBoolean() : null;
-            return new ItemApplicationRecipe(block, tool, result, dropContainer, keepBlockState, updateBlock, sneaking);
+            boolean hasForceInput = buf.readBoolean();
+            ForceBlockState forceInput = hasForceInput ? ForceBlockState.read(buf) : null;
+            boolean hasForceOutput = buf.readBoolean();
+            ForceBlockState forceOutput = hasForceOutput ? ForceBlockState.read(buf) : null;
+            return new ItemApplicationRecipe(block, tool, result, dropContainer, keepBlockState, updateBlock, sneaking,
+                    forceInput, forceOutput);
         }
 
-        public static final RecipeSerializer<ItemApplicationRecipe> INSTANCE = new RecipeSerializer<>(CODEC, STREAM_CODEC);
+        public static final RecipeSerializer<ItemApplicationRecipe> INSTANCE = new RecipeSerializer<>(CODEC,
+                STREAM_CODEC);
     }
 }

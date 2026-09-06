@@ -13,6 +13,7 @@ import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.world.inventory.MenuType;
 import net.minecraft.world.item.crafting.RecipeSerializer;
+import net.minecraft.world.item.crafting.RecipeType;
 import net.minecraft.world.item.crafting.ShapedRecipe;
 import net.minecraft.world.item.crafting.ShapelessRecipe;
 import net.minecraft.world.level.block.entity.BlockEntityType;
@@ -83,6 +84,7 @@ public class JsonMore {
         BLOCK_ENTITY_TYPES.register(modEventBus);
         MENU_TYPES.register(modEventBus);
         RECIPE_SERIALIZERS.register(modEventBus);
+        RECIPE_TYPES.register(modEventBus);
         INGREDIENT_TYPES.register(modEventBus);
         CONDITION_CODECS.register(modEventBus);
 
@@ -127,6 +129,8 @@ public class JsonMore {
             .create(Registries.MENU, MODID);
     public static final DeferredRegister<RecipeSerializer<?>> RECIPE_SERIALIZERS = DeferredRegister
             .create(Registries.RECIPE_SERIALIZER, MODID);
+    public static final DeferredRegister<RecipeType<?>> RECIPE_TYPES = DeferredRegister
+            .create(Registries.RECIPE_TYPE, MODID);
     public static final DeferredRegister<IngredientType<?>> INGREDIENT_TYPES = DeferredRegister
             .create(NeoForgeRegistries.INGREDIENT_TYPES, MODID);
     public static final DeferredRegister<MapCodec<? extends ICondition>> CONDITION_CODECS = DeferredRegister
@@ -137,6 +141,8 @@ public class JsonMore {
             .register("shaped_consuming", () -> ShapedConsumingRecipe.SERIALIZER);
     public static final DeferredHolder<RecipeSerializer<?>, RecipeSerializer<ItemApplicationRecipe>> ITEM_APPLICATION_RECIPE = RECIPE_SERIALIZERS
             .register("item_application", () -> ItemApplicationRecipe.Serializer.INSTANCE);
+    public static final DeferredHolder<RecipeType<?>, RecipeType<ItemApplicationRecipe>> ITEM_APPLICATION_TYPE = RECIPE_TYPES
+            .register("item_application", () -> ItemApplicationRecipe.TYPE);
 
     static {
         NotIngredient.register();
