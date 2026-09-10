@@ -266,7 +266,7 @@ Wraps an ingredient and only makes it available in crafting when a specified con
 **Use Cases:**
 
 - Replace `forge:condition` (evaluated at recipe load time) for **runtime dynamic conditions**
-- Used with gamerule conditions (`jsonmore:gamerule_boolean`) to let players toggle recipes via commands during gameplay
+- Used with gamerule conditions (`jsonmore:gamerule`) to let players toggle recipes via commands during gameplay
 - Any scenario where the condition needs to be evaluated at crafting time rather than recipe load time
 
 **Example with gamerule condition:**
@@ -275,8 +275,8 @@ Wraps an ingredient and only makes it available in crafting when a specified con
 {
     "type": "jsonmore:condition",
     "condition": {
-        "type": "jsonmore:gamerule_boolean",
-        "key": "doMobSpawning"
+        "type": "jsonmore:gamerule",
+        "rule": "doMobSpawning"
     },
     "ingredient": {
         "item": "minecraft:rotten_flesh"
