@@ -183,11 +183,11 @@ Wraps an ingredient and applies operations to the item display list returned by 
         "item": "minecraft:stick"
     },
     "ops": [
-        { "op": "remove", "value": { "item": "minecraft:stick" } },
-        { "op": "add", "value": { "id": "minecraft:diamond", "Count": 1 } },
-        { "op": "add_all", "value": { "tag": "minecraft:planks" } },
-        { "op": "modify_nbt", "value": { "Enchantments": [] }, "mode": "merge" },
-        { "op": "modify_count", "operation": "multiply", "value": 2 }
+        { "handler": { "op": "remove", "value": { "item": "minecraft:stick" } } },
+        { "handler": { "op": "add", "value": { "id": "minecraft:diamond", "count": 1 } } },
+        { "handler": { "op": "add_all", "value": { "tag": "minecraft:planks" } } },
+        { "handler": { "op": "modify_count", "operation": "multiply", "value": 2 },
+          "filter": { "item": "minecraft:stick" } }
     ]
 }
 ```
@@ -200,15 +200,23 @@ Wraps an ingredient and applies operations to the item display list returned by 
 | `ingredient` | Ingredient | Yes | Inner ingredient |
 | `ops` | Array | Yes | List of operations, applied in order |
 
-**Available Operations (op):**
+**Elements of the `ops` array:**
 
-| Operation | Description | `value` Type | Optional Fields |
-|-----------|-------------|-------------|-----------------|
-| `remove` | Removes matching item stacks from the display list | Ingredient | `filter` |
-| `add_all` | Gets all item stacks from another ingredient and adds them to the display list | Ingredient | -- |
-| `add` | Adds a specific item stack to the display list | ItemStack SNBT | -- |
-| `modify_nbt` | Modifies the NBT of item stacks (`mode` can be `merge`/`replace`) | CompoundTag | `filter`, `mode` |
-| `modify_count` | Modifies the count of item stacks (`operation` can be `set`/`add`/`multiply`) | Integer | `filter`, `operation` |
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `handler` | Object | Yes | The operation itself; `handler.op` selects the operation type and the remaining fields depend on it |
+| `filter` | Ingredient | No | The operation is only applied to item stacks matching this filter |
+
+**Available Operations (`handler.op`):**
+
+| Operation | Description | Fields |
+|-----------|-------------|--------|
+| `remove` | Removes matching item stacks from the display list | `value`: Ingredient |
+| `add_all` | Gets all item stacks from another ingredient and adds them to the display list | `value`: Ingredient |
+| `add` | Adds a specific item stack to the display list | `value`: ItemStack (`{ "id": ..., "count": ... }` since 1.21) |
+| `modify_count` | Modifies the count of item stacks | `operation`: `set`/`add`/`multiply` (required, no default); `value`: integer (required) |
+
+> **Difference from 1.20.1**: in 1.20.1 the operation fields are written directly on the array element (`{ "op": ... }`); since 1.21 they must be wrapped in `handler`. The 1.20.1-only `modify_nbt` operation is no longer provided since 1.21 (item names/lore are data components now).
 
 **`filter` field**: Optional, type is Ingredient. Only item stacks matching this filter are affected.
 
@@ -266,7 +274,7 @@ Wraps an ingredient and only makes it available in crafting when a specified con
 **Use Cases:**
 
 - Replace `forge:condition` (evaluated at recipe load time) for **runtime dynamic conditions**
-- Used with gamerule conditions (`jsonmore:gamerule_boolean`) to let players toggle recipes via commands during gameplay
+- Used with gamerule conditions (`jsonmore:gamerule`) to let players toggle recipes via commands during gameplay
 - Any scenario where the condition needs to be evaluated at crafting time rather than recipe load time
 
 **Example with gamerule condition:**
@@ -275,8 +283,8 @@ Wraps an ingredient and only makes it available in crafting when a specified con
 {
     "type": "jsonmore:condition",
     "condition": {
-        "type": "jsonmore:gamerule_boolean",
-        "key": "doMobSpawning"
+        "type": "jsonmore:gamerule",
+        "rule": "doMobSpawning"
     },
     "ingredient": {
         "item": "minecraft:rotten_flesh"
