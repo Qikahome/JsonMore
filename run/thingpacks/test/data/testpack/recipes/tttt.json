@@ -3,6 +3,7 @@
     "ingredients": [
         {
             "type": "jsonmore:tool_damaging",
+            "fabric:type": "jsonmore:tool_damaging",
             "ingredient": {
                 "item": "minecraft:diamond_pickaxe"
             },
@@ -10,6 +11,7 @@
         },
         {
             "type": "jsonmore:tool_damaging",
+            "fabric:type": "jsonmore:tool_damaging",
             "ingredient": {
                 "tag": "minecraft:pickaxes"
             },

@@ -1,7 +1,7 @@
 package qikahome.jsonmore.lib.ingredient;
 
 import java.util.ArrayList;
-import java.util.stream.Stream;
+import java.util.List;
 
 import javax.annotation.Nullable;
 
@@ -9,6 +9,7 @@ import com.mojang.serialization.Codec;
 import com.mojang.serialization.MapCodec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 
+import net.fabricmc.fabric.api.recipe.v1.ingredient.CustomIngredientSerializer;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
@@ -17,9 +18,6 @@ import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.crafting.Ingredient;
 import net.minecraft.world.item.component.ItemLore;
-import net.neoforged.neoforge.common.crafting.IngredientType;
-import net.neoforged.neoforge.registries.DeferredHolder;
-import qikahome.jsonmore.JsonMore;
 
 public class CountedIngredient extends SelfConsumingIngredient {
     public static final ResourceLocation ID = ResourceLocation.parse("jsonmore:counted");
@@ -28,8 +26,8 @@ public class CountedIngredient extends SelfConsumingIngredient {
                     getIngredientField(),
                     Codec.INT.fieldOf("count").forGetter(i -> i.count))
                     .apply(v, CountedIngredient::new));
-    public static final DeferredHolder<IngredientType<?>, IngredientType<CountedIngredient>> TYPE = JsonMore.INGREDIENT_TYPES
-            .register(ID.getPath(), () -> new IngredientType<>(CODEC));
+    public static final CustomIngredientSerializer<CountedIngredient> SERIALIZER = new SimpleIngredientSerializer<>(ID,
+            CODEC);
 
     private final int count;
 
@@ -54,8 +52,8 @@ public class CountedIngredient extends SelfConsumingIngredient {
     }
 
     @Override
-    public Stream<ItemStack> getItems() {
-        return super.getItems().map(stack -> {
+    public List<ItemStack> getMatchingStacks() {
+        return super.getMatchingStacks().stream().map(stack -> {
             stack = stack.copy();
             if (count > 0) {
                 stack.setCount(count);
@@ -63,7 +61,7 @@ public class CountedIngredient extends SelfConsumingIngredient {
                 ItemLore lore = stack.get(DataComponents.LORE);
                 Component noConsume = Component.translatable("ui.jsonmore.no_consume");
                 if (lore == null) {
-                    stack.set(DataComponents.LORE, new ItemLore(new ArrayList<>(java.util.List.of(noConsume))));
+                    stack.set(DataComponents.LORE, new ItemLore(new ArrayList<>(List.of(noConsume))));
                 } else if (!lore.lines().contains(noConsume)) {
                     var lines = new ArrayList<>(lore.lines());
                     lines.add(noConsume);
@@ -71,7 +69,7 @@ public class CountedIngredient extends SelfConsumingIngredient {
                 }
             }
             return stack;
-        });
+        }).toList();
     }
 
     @Override
@@ -83,10 +81,11 @@ public class CountedIngredient extends SelfConsumingIngredient {
     }
 
     @Override
-    public IngredientType<?> getType() {
-        return TYPE.get();
+    public CustomIngredientSerializer<?> getSerializer() {
+        return SERIALIZER;
     }
 
     public static void register() {
+        CustomIngredientSerializer.register(SERIALIZER);
     }
 }

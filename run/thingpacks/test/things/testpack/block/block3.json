@@ -1,4 +1,7 @@
 {
+  "conditions": [
+    { "type": "mod_loaded", "modid": "tconstruct" }
+  ],
   "type": "jsonmore:fluid_tank",
   "capacity": 8000,
   "item": {

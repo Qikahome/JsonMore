@@ -1,47 +1,69 @@
 package qikahome.jsonmore.lib.ingredient;
 
-import java.util.stream.Stream;
+import java.util.List;
 
 import javax.annotation.Nullable;
+
+import com.google.gson.JsonObject;
 import com.mojang.serialization.Codec;
+import com.mojang.serialization.Dynamic;
+import com.mojang.serialization.JsonOps;
 import com.mojang.serialization.MapCodec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 
+import net.fabricmc.fabric.api.recipe.v1.ingredient.CustomIngredientSerializer;
+import net.fabricmc.fabric.api.resource.conditions.v1.ResourceCondition;
+import net.minecraft.core.component.DataComponents;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.item.crafting.Ingredient;
-import net.neoforged.neoforge.common.conditions.ICondition;
-import net.neoforged.neoforge.common.crafting.IngredientType;
-import net.neoforged.neoforge.registries.DeferredHolder;
-import qikahome.jsonmore.JsonMore;
 
 public class ConditionIngredient extends SelfConsumingIngredient {
     public static final ResourceLocation ID = ResourceLocation.parse("jsonmore:condition");
     private static final String DEFAULT_MESSAGE = "recipe.jsonmore.disabled";
 
+    /**
+     * Fabric 的资源条件不是 Neo 的 {@code ICondition} 体系，而是可注册的
+     * {@link ResourceCondition}；这里保留条件对象原文，运行时用官方 codec 解析后判定。
+     */
+    public static final Codec<JsonObject> JSON_OBJECT_CODEC = Codec.PASSTHROUGH.xmap(
+            dynamic -> dynamic.convert(JsonOps.INSTANCE).getValue().getAsJsonObject(),
+            json -> new Dynamic<>(JsonOps.INSTANCE, json));
+
     public static final MapCodec<ConditionIngredient> CODEC = RecordCodecBuilder.mapCodec(
             v -> v.group(
                     getIngredientField(),
-                    ICondition.CODEC.fieldOf("condition").forGetter(i -> i.condition),
+                    JSON_OBJECT_CODEC.fieldOf("condition").forGetter(i -> i.condition),
                     Codec.STRING.optionalFieldOf("message", DEFAULT_MESSAGE).forGetter(i -> i.message))
                     .apply(v, ConditionIngredient::new));
-    public static final DeferredHolder<IngredientType<?>, IngredientType<ConditionIngredient>> TYPE = JsonMore.INGREDIENT_TYPES
-            .register(ID.getPath(), () -> new IngredientType<>(CODEC));
+    public static final CustomIngredientSerializer<ConditionIngredient> SERIALIZER = new SimpleIngredientSerializer<>(ID,
+            CODEC);
 
-    @Nullable
-    private final ICondition condition;
+    private final JsonObject condition;
     private final String message;
 
-    private ConditionIngredient(Ingredient ingredient, @Nullable ICondition condition, String message) {
+    private ConditionIngredient(Ingredient ingredient, JsonObject condition, String message) {
         super(ingredient);
         this.condition = condition;
         this.message = message;
     }
 
     private boolean passes() {
-        return condition.test(ICondition.IContext.EMPTY);
+        try {
+            // Fabric 的条件 dispatch 键是 "condition"，而 JsonMore/Neo 的数据沿用 "type"；
+            // 解析前把键名换掉，数据格式就和 Neo 侧保持一致了。
+            JsonObject normalized = condition.deepCopy();
+            var type = normalized.remove("type");
+            if (type != null && !normalized.has("condition")) {
+                normalized.add("condition", type);
+            }
+            return ResourceCondition.CONDITION_CODEC.parse(JsonOps.INSTANCE, normalized)
+                    .result().map(c -> c.test(null)).orElse(false);
+        } catch (RuntimeException e) {
+            return false;
+        }
     }
 
     @Override
@@ -52,20 +74,21 @@ public class ConditionIngredient extends SelfConsumingIngredient {
     }
 
     @Override
-    public Stream<ItemStack> getItems() {
+    public List<ItemStack> getMatchingStacks() {
         if (!passes()) {
             ItemStack barrier = new ItemStack(Items.BARRIER);
-            barrier.set(net.minecraft.core.component.DataComponents.CUSTOM_NAME, Component.translatable(message));
-            return Stream.of(barrier);
+            barrier.set(DataComponents.CUSTOM_NAME, Component.translatable(message));
+            return List.of(barrier);
         }
-        return super.getItems();
+        return super.getMatchingStacks();
     }
 
     @Override
-    public IngredientType<?> getType() {
-        return TYPE.get();
+    public CustomIngredientSerializer<?> getSerializer() {
+        return SERIALIZER;
     }
 
     public static void register() {
+        CustomIngredientSerializer.register(SERIALIZER);
     }
 }

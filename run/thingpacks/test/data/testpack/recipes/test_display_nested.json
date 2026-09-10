@@ -8,6 +8,7 @@
     "key": {
         "a": {
             "type": "jsonmore:item_display_override",
+            "fabric:type": "jsonmore:item_display_override",
             "ingredient": {
                 "item": "minecraft:diamond"
             },
@@ -21,6 +22,7 @@
         },
         "b": {
             "type": "jsonmore:counted",
+            "fabric:type": "jsonmore:counted",
             "ingredient": {
                 "item": "minecraft:netherite_ingot"
             },

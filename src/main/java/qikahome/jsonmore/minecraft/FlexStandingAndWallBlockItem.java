@@ -24,10 +24,10 @@ import net.minecraft.world.item.TooltipFlag;
 import net.minecraft.world.item.UseAnim;
 import net.minecraft.world.item.component.ItemAttributeModifiers;
 import net.minecraft.world.item.context.UseOnContext;
-import net.minecraft.world.item.crafting.RecipeType;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
-import net.neoforged.neoforge.common.ItemAbility;
+import io.github.fabricators_of_create.porting_lib.tool.ItemAbility;
+import io.github.fabricators_of_create.porting_lib.tool.addons.ItemAbilityItem;
 
 import javax.annotation.Nullable;
 import java.util.List;
@@ -36,7 +36,7 @@ import java.util.Set;
 import java.util.function.Supplier;
 
 public class FlexStandingAndWallBlockItem extends StandingAndWallBlockItem
-        implements IEventRunner {
+        implements IEventRunner, ItemAbilityItem {
 
     public FlexStandingAndWallBlockItem(Block block, Block wallBlock, boolean useBlockName, Direction direction,
             Properties properties, ItemBuilder builder) {
@@ -48,7 +48,6 @@ public class FlexStandingAndWallBlockItem extends StandingAndWallBlockItem
         this.attributeModifiers = builder.getAttributeModifiers();
         this.lore = builder.getLore();
         this.toolActions = builder.getToolActions();
-        this.burnTime = Utils.orElse(builder.getBurnDuration(), 0);
         initializeFlex();
     }
 
@@ -79,7 +78,6 @@ public class FlexStandingAndWallBlockItem extends StandingAndWallBlockItem
     private final UseFinishMode useFinishMode;
     private final List<MutableComponent> lore;
     private final Set<ItemAbility> toolActions;
-    private final int burnTime;
 
     private void initializeFlex() {
         var builder = ItemAttributeModifiers.builder();
@@ -204,13 +202,11 @@ public class FlexStandingAndWallBlockItem extends StandingAndWallBlockItem
     @Override
     public boolean canPerformAction(ItemStack stack, ItemAbility toolAction) {
         if (toolActions != null) return toolActions.contains(toolAction);
-        return super.canPerformAction(stack, toolAction);
+        return false;
     }
 
-    @Override
-    public int getBurnTime(ItemStack itemStack, @Nullable RecipeType<?> recipeType) {
-        return burnTime;
-    }
+    // 燃烧时长（burn_duration）由 JsonThings 的 ItemParser.registerValues 经 Fabric FuelRegistry 注册
+    // （上游 Neo 借扩展注入的 Item#getBurnTime 在 vanilla/Fabric 不存在）。
 
     // endregion
 }

@@ -6,8 +6,6 @@ import dev.gigaherz.jsonthings.things.parsers.ThingParser;
 import dev.gigaherz.jsonthings.util.parse.JParse;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.level.GameRules;
-import net.neoforged.bus.api.IEventBus;
-import net.neoforged.neoforge.registries.RegisterEvent;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -18,12 +16,15 @@ public class GameRuleParser extends ThingParser<GameRuleBuilder> {
     public static final Logger LOGGER = LogManager.getLogger();
     private static boolean registered = false;
 
-    public GameRuleParser(IEventBus bus) {
+    public GameRuleParser() {
         super(GSON, "gamerule");
-        bus.addListener(this::register);
     }
 
-    public void register(RegisterEvent event) {
+    /**
+     * 上游 Neo 版在 {@code RegisterEvent} 里注册游戏规则；Fabric 无注册事件，
+     * 由 {@code JsonMore#onInitialize} 在 thingpack 解析完成后显式调用。
+     */
+    public void registerValues() {
         if (registered) {
             return;
         }

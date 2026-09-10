@@ -3,8 +3,9 @@
     "ingredients": [
         {
             "type": "jsonmore:condition",
+            "fabric:type": "jsonmore:condition",
             "condition": {
-                "type": "jsonmore:gamerule",
+                "condition": "jsonmore:gamerule",
                 "rule": "testpack.test_boolean_rule"
             },
             "ingredient": {

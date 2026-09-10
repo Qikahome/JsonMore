@@ -5,7 +5,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.stream.Stream;
 
 import javax.annotation.Nullable;
 
@@ -13,14 +12,12 @@ import com.mojang.serialization.Codec;
 import com.mojang.serialization.MapCodec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 
+import net.fabricmc.fabric.api.recipe.v1.ingredient.CustomIngredientSerializer;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.crafting.Ingredient;
-import net.neoforged.neoforge.common.crafting.IngredientType;
-import net.neoforged.neoforge.registries.DeferredHolder;
-import qikahome.jsonmore.JsonMore;
 
 public class ItemDisplayOverrideIngredient extends SelfConsumingIngredient {
     public static final ResourceLocation ID = ResourceLocation.parse("jsonmore:item_display_override");
@@ -139,7 +136,8 @@ public class ItemDisplayOverrideIngredient extends SelfConsumingIngredient {
     // ---- Instance ----
 
     private final List<OpEntry> ops;
-    @Nullable private List<ItemStack> cachedDisplayStacks;
+    @Nullable
+    private List<ItemStack> cachedDisplayStacks;
 
     public static final MapCodec<ItemDisplayOverrideIngredient> CODEC = RecordCodecBuilder.mapCodec(
             v -> v.group(
@@ -149,22 +147,16 @@ public class ItemDisplayOverrideIngredient extends SelfConsumingIngredient {
     /** 网络传输只发送应用 ops 后的展示物品列表，不发送 op 配置 */
     public static final StreamCodec<RegistryFriendlyByteBuf, ItemDisplayOverrideIngredient> NETWORK_STREAM_CODEC = StreamCodec
             .of(ItemDisplayOverrideIngredient::toNetwork, ItemDisplayOverrideIngredient::fromNetwork);
-    public static final DeferredHolder<IngredientType<?>, IngredientType<ItemDisplayOverrideIngredient>> TYPE = JsonMore.INGREDIENT_TYPES
-            .register(ID.getPath(), () -> new IngredientType<>(CODEC, NETWORK_STREAM_CODEC));
+    public static final CustomIngredientSerializer<ItemDisplayOverrideIngredient> SERIALIZER = new SimpleIngredientSerializer<>(
+            ID, CODEC, NETWORK_STREAM_CODEC);
 
     private ItemDisplayOverrideIngredient(Ingredient ingredient, List<OpEntry> ops) {
         super(ingredient);
         this.ops = ops;
     }
 
-    private ItemDisplayOverrideIngredient(Ingredient ingredient, Stream<ItemStack> displayStacks) {
-        super(ingredient);
-        this.ops = List.of();
-        this.cachedDisplayStacks = displayStacks.toList();
-    }
-
     @Override
-    public Stream<ItemStack> getItems() {
+    public List<ItemStack> getMatchingStacks() {
         if (cachedDisplayStacks == null) {
             List<ItemStack> result = new ArrayList<>();
             for (ItemStack stack : ingredient.getItems())
@@ -173,19 +165,19 @@ public class ItemDisplayOverrideIngredient extends SelfConsumingIngredient {
                 op.handler.apply(result, op.filter);
             cachedDisplayStacks = result;
         }
-        return cachedDisplayStacks.stream();
+        return cachedDisplayStacks;
     }
 
     @Override
-    public IngredientType<?> getType() {
-        return TYPE.get();
+    public CustomIngredientSerializer<?> getSerializer() {
+        return SERIALIZER;
     }
 
     // ---- Network ----
 
     private static void toNetwork(RegistryFriendlyByteBuf buf, ItemDisplayOverrideIngredient ingredient) {
         Ingredient.CONTENTS_STREAM_CODEC.encode(buf, ingredient.ingredient);
-        List<ItemStack> stacks = ingredient.getItems().toList();
+        List<ItemStack> stacks = ingredient.getMatchingStacks();
         buf.writeVarInt(stacks.size());
         for (ItemStack stack : stacks)
             ItemStack.STREAM_CODEC.encode(buf, stack);
@@ -197,7 +189,9 @@ public class ItemDisplayOverrideIngredient extends SelfConsumingIngredient {
         List<ItemStack> stacks = new ArrayList<>(size);
         for (int i = 0; i < size; i++)
             stacks.add(ItemStack.STREAM_CODEC.decode(buf));
-        return new ItemDisplayOverrideIngredient(ingredient, stacks.stream());
+        ItemDisplayOverrideIngredient result = new ItemDisplayOverrideIngredient(ingredient, List.of());
+        result.cachedDisplayStacks = stacks;
+        return result;
     }
 
     // ---- Op entry ----
@@ -212,5 +206,6 @@ public class ItemDisplayOverrideIngredient extends SelfConsumingIngredient {
     }
 
     public static void register() {
+        CustomIngredientSerializer.register(SERIALIZER);
     }
 }

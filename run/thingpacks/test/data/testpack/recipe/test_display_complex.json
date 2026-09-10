@@ -3,34 +3,31 @@
     "ingredients": [
         {
             "type": "jsonmore:item_display_override",
+            "fabric:type": "jsonmore:item_display_override",
             "ingredient": {
                 "tag": "minecraft:logs"
             },
             "ops": [
                 {
-                    "op": "remove",
-                    "value": {
-                        "item": "minecraft:oak_log"
+                    "handler": {
+                        "op": "remove",
+                        "value": {
+                            "item": "minecraft:oak_log"
+                        }
                     }
                 },
                 {
-                    "op": "modify_nbt",
-                    "value": {
-                        "display": {
-                            "Name": "{\"text\":\"搂r鐗规畩鍘熸湪\"}"
-                        }
-                    },
-                    "mode": "merge"
-                },
-                {
-                    "op": "modify_count",
-                    "operation": "multiply",
-                    "value": 2
+                    "handler": {
+                        "op": "modify_count",
+                        "operation": "multiply",
+                        "value": 2
+                    }
                 }
             ]
         }
     ],
-    "result": { "id": "minecraft:stick",
+    "result": {
+        "id": "minecraft:stick",
         "count": 8
     }
 }

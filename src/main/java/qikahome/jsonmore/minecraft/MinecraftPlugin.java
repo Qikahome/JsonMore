@@ -28,7 +28,7 @@ import net.minecraft.world.level.block.state.StateDefinition;
 import net.minecraft.world.level.block.state.properties.BlockStateProperties;
 import net.minecraft.world.level.block.state.properties.Property;
 import net.minecraft.world.level.block.state.properties.WoodType;
-import net.neoforged.neoforge.registries.DeferredHolder;
+import io.github.fabricators_of_create.porting_lib.registry.DeferredHolder;
 import qikahome.jsonmore.lib.BlockedDirection;
 import qikahome.jsonmore.lib.ContainerPart;
 import qikahome.jsonmore.lib.ContainerScreenType;

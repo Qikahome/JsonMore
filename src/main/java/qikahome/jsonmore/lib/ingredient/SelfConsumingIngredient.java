@@ -1,19 +1,19 @@
 package qikahome.jsonmore.lib.ingredient;
 
-import java.util.stream.Stream;
+import java.util.List;
 
 import javax.annotation.Nullable;
 
 import com.mojang.serialization.MapCodec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 
+import net.fabricmc.fabric.api.recipe.v1.ingredient.CustomIngredient;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.crafting.Ingredient;
-import net.neoforged.neoforge.common.crafting.ICustomIngredient;
 
-public abstract class SelfConsumingIngredient implements ICustomIngredient {
+public abstract class SelfConsumingIngredient implements CustomIngredient {
     protected static final MapCodec<Ingredient> INGREDIENT = Ingredient.CODEC.fieldOf("ingredient");
 
     protected static <T extends SelfConsumingIngredient> RecordCodecBuilder<T, Ingredient> getIngredientField() {
@@ -37,7 +37,7 @@ public abstract class SelfConsumingIngredient implements ICustomIngredient {
             @Nullable LivingEntity entity) {
         if (stack.isEmpty())
             return stack;
-        if (ingredient.getCustomIngredient() instanceof SelfConsumingIngredient selfConsumingIngredient)
+        if (Ingredients.unwrap(ingredient) instanceof SelfConsumingIngredient selfConsumingIngredient)
             return selfConsumingIngredient.consume(stack, level, entity);
         return vanillaConsume(stack);
     }
@@ -62,7 +62,9 @@ public abstract class SelfConsumingIngredient implements ICustomIngredient {
     protected static ItemStack vanillaConsume(ItemStack stack) {
         if (stack.isEmpty())
             return stack;
-        return stack.getCraftingRemainingItem();
+        if (!stack.getItem().hasCraftingRemainingItem())
+            return ItemStack.EMPTY;
+        return new ItemStack(stack.getItem().getCraftingRemainingItem());
     }
 
     /**
@@ -75,7 +77,7 @@ public abstract class SelfConsumingIngredient implements ICustomIngredient {
     public static void outputModify(Ingredient ingredient, ItemStack matched, ItemStack output) {
         if (matched.isEmpty())
             return;
-        if (ingredient.getCustomIngredient() instanceof SelfConsumingIngredient selfConsumingIngredient)
+        if (Ingredients.unwrap(ingredient) instanceof SelfConsumingIngredient selfConsumingIngredient)
             selfConsumingIngredient.outputModify(matched, output);
     }
 
@@ -90,8 +92,8 @@ public abstract class SelfConsumingIngredient implements ICustomIngredient {
     }
 
     @Override
-    public Stream<ItemStack> getItems() {
-        return Stream.of(ingredient.getItems());
+    public List<ItemStack> getMatchingStacks() {
+        return List.of(ingredient.getItems());
     }
 
     @Override
@@ -100,8 +102,8 @@ public abstract class SelfConsumingIngredient implements ICustomIngredient {
     }
 
     @Override
-    public boolean isSimple() {
-        return false;
+    public boolean requiresTesting() {
+        return true;
     }
 
 }

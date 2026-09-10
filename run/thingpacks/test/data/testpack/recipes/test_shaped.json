@@ -7,6 +7,7 @@
     "key": {
         "T": {
             "type": "jsonmore:tool_damaging",
+            "fabric:type": "jsonmore:tool_damaging",
             "ingredient": {
                 "tag": "minecraft:pickaxes"
             },
@@ -14,6 +15,7 @@
         },
         "#": {
             "type": "jsonmore:counted",
+            "fabric:type": "jsonmore:counted",
             "ingredient": {
                 "item": "minecraft:iron_ingot"
             },
@@ -21,6 +23,7 @@
         },
         "W": {
             "type": "jsonmore:counted",
+            "fabric:type": "jsonmore:counted",
             "ingredient": {
                 "item": "minecraft:water_bucket"
             },

@@ -13,6 +13,7 @@ import com.mojang.serialization.codecs.RecordCodecBuilder;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.HolderLookup;
+import net.minecraft.core.Registry;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.nbt.CompoundTag;
@@ -48,16 +49,28 @@ import net.minecraft.world.level.block.state.StateDefinition;
 import net.minecraft.world.level.block.state.properties.BlockStateProperties;
 import net.minecraft.world.level.block.state.properties.DirectionProperty;
 import net.minecraft.world.level.block.state.properties.Property;
+import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.core.registries.Registries;
-import net.neoforged.bus.api.SubscribeEvent;
-import net.neoforged.fml.common.EventBusSubscriber;
-import net.neoforged.neoforge.event.entity.player.PlayerInteractEvent;
+import net.fabricmc.fabric.api.event.player.UseBlockCallback;
 import qikahome.jsonmore.lib.ingredient.SelfConsumingIngredient;
 
-@EventBusSubscriber(modid = "jsonmore")
 public class ItemApplicationRecipe implements Recipe<RecipeInput>, IConsumingRecipe {
     public static final ResourceLocation TYPE_ID = ResourceLocation.parse("jsonmore:item_application");
-    public static final RecipeType<ItemApplicationRecipe> TYPE = RecipeType.simple(TYPE_ID);
+    // 原版 1.21.1 的 RecipeType 需自行注册进 BuiltInRegistries.RECIPE_TYPE（Neo 提供 RecipeType.simple）。
+    // 注册必须早于注册表冻结，故由 JsonMore 入口显式调用 register()；不能放静态初始化里，
+    // 因为本类首次被加载是 JEI 进世界时（那时注册表已冻结）。
+    public static RecipeType<ItemApplicationRecipe> TYPE;
+
+    public static void register() {
+        if (TYPE != null)
+            return;
+        TYPE = Registry.register(BuiltInRegistries.RECIPE_TYPE, TYPE_ID, new RecipeType<ItemApplicationRecipe>() {
+            @Override
+            public String toString() {
+                return TYPE_ID.toString();
+            }
+        });
+    }
     public static final TagKey<Item> TOOL_TAG = TagKey.create(Registries.ITEM,
             ResourceLocation.parse("jsonmore:item_application_tool"));
 
@@ -185,24 +198,25 @@ public class ItemApplicationRecipe implements Recipe<RecipeInput>, IConsumingRec
         return TYPE;
     }
 
-    @SubscribeEvent
-    public static void onRightClickBlock(PlayerInteractEvent.RightClickBlock event) {
-        Level level = event.getLevel();
-        ItemStack heldItem = event.getItemStack();
-        BlockPos pos = event.getPos();
+    /**
+     * 对应上游 NeoForge 的 {@code PlayerInteractEvent.RightClickBlock}：Fabric 侧等价钩子是
+     * {@link UseBlockCallback}，由 {@code JsonMore#onInitialize} 注册。
+     * <p>
+     * 返回 {@code SUCCESS} 表示接管本次右键（客户端会同步发包），{@code PASS} 表示交回原版流程。
+     */
+    public static InteractionResult onRightClickBlock(Player player, Level level, InteractionHand hand,
+            BlockHitResult hit) {
+        ItemStack heldItem = player.getItemInHand(hand);
+        BlockPos pos = hit.getBlockPos();
         BlockState blockState = level.getBlockState(pos);
 
         if (heldItem.isEmpty())
-            return;
+            return InteractionResult.PASS;
         if (blockState.isAir())
-            return;
-        if (event.isCanceled())
-            return;
+            return InteractionResult.PASS;
 
         if (!heldItem.is(TOOL_TAG))
-            return;
-
-        Player player = event.getEntity();
+            return InteractionResult.PASS;
 
         for (var holder : level.getRecipeManager().getAllRecipesFor(TYPE)) {
             var recipe = holder.value();
@@ -215,17 +229,15 @@ public class ItemApplicationRecipe implements Recipe<RecipeInput>, IConsumingRec
             if (!recipe.testTool(heldItem))
                 continue;
 
-            event.setCancellationResult(InteractionResult.SUCCESS);
-            event.setCanceled(true);
-
             if (level.isClientSide())
-                return;
+                return InteractionResult.SUCCESS;
 
             level.playSound(null, pos, SoundEvents.COPPER_BREAK, SoundSource.PLAYERS, 1, 1.45f);
 
-            recipe.apply((ServerLevel) level, pos, player, event.getHand());
-            return;
+            recipe.apply((ServerLevel) level, pos, player, hand);
+            return InteractionResult.SUCCESS;
         }
+        return InteractionResult.PASS;
     }
 
     public void apply(ServerLevel level, BlockPos pos, Player player, InteractionHand hand) {

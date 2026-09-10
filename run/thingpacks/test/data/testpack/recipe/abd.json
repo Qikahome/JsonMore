@@ -3,6 +3,7 @@
     "ingredients": [
         {
             "type": "jsonmore:counted",
+            "fabric:type": "jsonmore:counted",
             "ingredient": {
                 "item": "minecraft:iron_nugget"
             },
@@ -10,6 +11,7 @@
         },
         {
             "type": "jsonmore:counted",
+            "fabric:type": "jsonmore:counted",
             "ingredient": {
                 "item": "minecraft:iron_nugget"
             },
@@ -17,6 +19,7 @@
         },
         {
             "type": "jsonmore:counted",
+            "fabric:type": "jsonmore:counted",
             "ingredient": {
                 "item": "minecraft:iron_nugget"
             },
@@ -24,6 +27,7 @@
         },
         {
             "type": "jsonmore:counted",
+            "fabric:type": "jsonmore:counted",
             "ingredient": {
                 "item": "minecraft:iron_nugget"
             },

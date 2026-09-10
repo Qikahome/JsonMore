@@ -1,4 +1,7 @@
 {
+    "conditions": [
+        { "type": "mod_loaded", "modid": "tconstruct" }
+    ],
     "type": "tconstruct:tool_part",
     "group": "food_and_drinks",
     "stat_type": "testpack:test",

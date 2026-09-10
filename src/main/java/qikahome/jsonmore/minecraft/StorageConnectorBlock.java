@@ -255,9 +255,7 @@ public class StorageConnectorBlock extends BaseEntityBlock
                 Container container = cbe.getControllerContainer();
                 serverPlayer.openMenu(
                         screenType.createMenuProvider(Collections.singletonList(container),
-                                container.getContainerSize()),
-                        buffer -> screenType.writeAdditionalData(buffer,
-                                Collections.singletonList(container), container.getContainerSize()));
+                                container.getContainerSize()));
             }
         }
 
@@ -444,7 +442,6 @@ public class StorageConnectorBlock extends BaseEntityBlock
                 // Set CONNECTED=true on the block state
                 if (bs.hasProperty(FlexBarrelBlock.CONNECTED)) {
                     level.setBlock(target, bs.setValue(FlexBarrelBlock.CONNECTED, true), 2);
-                    level.invalidateCapabilities(target);
                 }
 
                 // Absorb items into controller
@@ -472,7 +469,6 @@ public class StorageConnectorBlock extends BaseEntityBlock
                 if (!state.getValue(CONNECTED)) {
                     level.setBlock(pos, state.setValue(CONNECTED, true), 2);
                 }
-                level.invalidateCapabilities(pos);
             }
             setChanged();
             LOGGER.debug("Storage controller at {} assembled: {} items, {} slots, {} connectors",
@@ -501,7 +497,6 @@ public class StorageConnectorBlock extends BaseEntityBlock
                     BlockState bs = level.getBlockState(targetPos);
                     if (bs.hasProperty(FlexBarrelBlock.CONNECTED) && bs.getValue(FlexBarrelBlock.CONNECTED)) {
                         level.setBlock(targetPos, bs.setValue(FlexBarrelBlock.CONNECTED, false), 2);
-                        level.invalidateCapabilities(targetPos);
                     }
                 }
 
@@ -541,7 +536,6 @@ public class StorageConnectorBlock extends BaseEntityBlock
                 if (currentState.hasProperty(CONNECTED) && currentState.getValue(CONNECTED)) {
                     level.setBlock(selfPos, currentState.setValue(StorageConnectorBlock.CONNECTED, false), 2);
                 }
-                level.invalidateCapabilities(selfPos);
 
                 setChanged();
             } finally {

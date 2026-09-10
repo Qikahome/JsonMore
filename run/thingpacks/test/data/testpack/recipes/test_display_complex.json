@@ -3,6 +3,7 @@
     "ingredients": [
         {
             "type": "jsonmore:item_display_override",
+            "fabric:type": "jsonmore:item_display_override",
             "ingredient": {
                 "tag": "minecraft:logs"
             },

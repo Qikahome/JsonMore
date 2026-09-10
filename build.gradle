@@ -1,58 +1,26 @@
+// JsonMore → Fabric (1.21.1)
+// 基线：JsonMore NeoForge 1.21.1 分支（本目录自 neoforge/1.21.1 分出）；构建配置参考 JsonThings-Fabric-1.21.1。
+// JsonThings-Fabric 作为 jar-in-jar 内嵌（其内部已自带 FabricatedForgeFluid 与所需 Porting Lib 模块）。
 plugins {
-    id 'java'
-    id 'idea'
+    // 版本下限由依赖决定：暮色森林 1.21.1 Fabric 版（Curse 8848279）用 Loom 1.17.20 构建，
+    // Loom 拒绝低于构建方的版本，故此处不能钉 1.13；AutoSizedGUI 1.1.0c 要求 ≥1.13.6。
+    id 'fabric-loom' version '1.17.+'
     id 'maven-publish'
-    id 'net.neoforged.moddev' version '1.0.11'
 }
 
-version = mod_version
 group = mod_group_id
+version = mod_version
 
 base {
-    archivesName = "${mod_id}-${minecraft_version}"
+    archivesName = "${mod_id}-${minecraft_version}-fabric"
 }
 
-java.toolchain.languageVersion = JavaLanguageVersion.of(21)
-
-println "Java: ${System.getProperty 'java.version'}, JVM: ${System.getProperty 'java.vm.version'} (${System.getProperty 'java.vendor'}), Arch: ${System.getProperty 'os.arch'}"
-
-neoForge {
-    version = neo_version
-    validateAccessTransformers = true
-
-    runs {
-        configureEach {
-            systemProperty 'forge.logging.markers', 'REGISTRIES'
-            systemProperty 'forge.logging.console.level', 'debug'
-        }
-
-        client {
-            client()
-            systemProperty 'forge.enabledGameTestNamespaces', mod_id
-        }
-
-        server {
-            server()
-            systemProperty 'forge.enabledGameTestNamespaces', mod_id
-            programArgument '--nogui'
-        }
-
-        data {
-            data()
-            programArguments.addAll '--mod', mod_id, '--all', '--output', file('src/generated/resources/').absolutePath, '--existing', file('src/main/resources/').absolutePath
-        }
-    }
-
-    mods {
-        "${mod_id}" {
-            sourceSet sourceSets.main
-        }
-    }
+java {
+    toolchain.languageVersion = JavaLanguageVersion.of(21)
+    withSourcesJar()
 }
 
-sourceSets.main.resources { srcDir 'src/generated/resources' }
-
-// 加载 secret.properties（上级目录，供多个子项目共享）
+// 加载 secret.properties（上级目录，供多个子项目共享：GitHub Packages 凭据等）
 def secretFile = file('../secret.properties')
 if (secretFile.exists()) {
     def secretProps = new Properties()
@@ -61,150 +29,198 @@ if (secretFile.exists()) {
 }
 
 repositories {
-    maven { url = 'https://maven.aliyun.com/repository/public' }
-
-    // AutoSizedGUI - GitHub Packages
     maven {
-        name = "GitHubPackages"
+        // hanbings 第三方代理：镜像 fabricmc/mavenCentral 等，缓解国外源过慢（若失效可移除）
+        url project.findProperty('loom_libraries_base') ?: 'https://repository.hanbings.io/proxy/'
+    }
+    maven {
+        url 'https://maven.aliyun.com/repository/public'
+        content {
+            includeGroupByRegex '.*'
+        }
+    }
+    mavenCentral()
+    maven {
+        // Minecraft 运行库（text2speech 等 Mojang 专属，仅发布于官方库）
+        url "https://libraries.minecraft.net/"
+    }
+    maven {
+        url "https://maven.fabricmc.net/"
+    }
+    maven {
+        // Porting Lib 1.21.1 beta 线（3.1.0-beta.x），发布在 devos snapshots
+        url "https://mvn.devos.one/snapshots"
+        content {
+            includeGroup "io.github.fabricators_of_create.Porting-Lib"
+        }
+    }
+    maven {
+        url "https://mvn.devos.one/releases"
+        content {
+            includeGroup "io.github.fabricators_of_create.Porting-Lib"
+        }
+    }
+    maven {
+        // Porting Lib 模块的传递依赖（部分模块 → reach-entity-attributes）
+        url "https://maven.jamieswhiteshirt.com/libs-release"
+        content {
+            includeGroup "com.jamieswhiteshirt"
+        }
+    }
+    maven {
+        // JsonThings-Fabric（GitHub Packages）
+        name = "JsonThingsFabric"
+        url = "https://maven.pkg.github.com/Qikahome/JsonThings-Fabric"
+        credentials {
+            username = project.findProperty("gpr.user") ?: System.getenv("GITHUB_ACTOR")
+            password = project.findProperty("gpr.key") ?: System.getenv("GH_PACKAGES_TOKEN") ?: System.getenv("GITHUB_TOKEN")
+        }
+    }
+    maven {
+        // FabricatedForgeFluid（GitHub Packages；JsonThings-Fabric 已内嵌，此处备用）
+        name = "FabricatedForgeFluid"
+        url = "https://maven.pkg.github.com/Qikahome/FabricatedForgeFluid"
+        credentials {
+            username = project.findProperty("gpr.user") ?: System.getenv("GITHUB_ACTOR")
+            password = project.findProperty("gpr.key") ?: System.getenv("GH_PACKAGES_TOKEN") ?: System.getenv("GITHUB_TOKEN")
+        }
+    }
+    maven {
+        // 上游 NeoForge 的脚本引擎 rhino-lib（dev.gigaherz.rhinolib，gigaherz 自维护的 Rhino 再分发；
+        // JsonThings-Fabric 的传递依赖，需能解析到才不会在配置阶段失败）
+        url "https://www.dogforce-games.com/maven/"
+        content {
+            includeGroup "dev.gigaherz.rhinolib"
+        }
+    }
+    mavenLocal()   // 自有库的本地发布产物（AutoSizedGUI 等）
+    maven {
+        // AutoSizedGUI（GitHub Packages）
+        name = "AutoSizedGUI"
         url = "https://maven.pkg.github.com/Qikahome/AutoSizedGUI"
         credentials {
             username = project.findProperty("gpr.user") ?: System.getenv("GITHUB_ACTOR")
             password = project.findProperty("gpr.key") ?: System.getenv("GH_PACKAGES_TOKEN") ?: System.getenv("GITHUB_TOKEN")
         }
     }
-
     maven {
-        name 'Dogforce Games'
-        url 'https://www.dogforce-games.com/maven/'
-    }
-    maven {
-        name 'BlameJared Maven'
-        url 'https://maven.blamejared.com'
-    }
-    maven {
-        name "ModMaven"
-        url "https://modmaven.dev"
-    }
-    maven { url = "https://maven.createmod.net" } // Create, Ponder, Flywheel
-    maven { url = "https://maven.ithundxr.dev/snapshots" } // Registrate
-    exclusiveContent {
-        forRepository {
-            maven {
-                name = "Modrinth"
-                url = "https://api.modrinth.com/maven"
-            }
-        }
-        filter {
-            includeGroup "maven.modrinth"
-        }
-    }
-    maven {
+        // CurseForge Maven（可选联动模组：暮色森林 / CyclopsCore / JEI）
         name = "CurseForge"
         url = "https://cursemaven.com"
-    }
-    flatDir {
-        dir 'libs'
+        content {
+            includeGroup "curse.maven"
+        }
     }
 }
 
 dependencies {
-    // JSON Things - 必需依赖
-    implementation "dev.gigaherz.jsonthings:JsonThings-1.21.1:${json_things_version}"
+    minecraft "com.mojang:minecraft:${project.property('minecraft_version')}"
+    // mojmap（官方映射），与上游 NeoForge 侧一致，源码可直接编译；不用 parchment（下载慢）
+    mappings loom.officialMojangMappings()
+    modImplementation "net.fabricmc:fabric-loader:${project.property('fabric_loader_version')}"
+    modImplementation "net.fabricmc.fabric-api:fabric-api:${project.property('fabric_api_version')}"
 
-    // AutoSizedGUI - 自动布局GUI（jarjar 嵌入）
-    implementation "qikahome:AutoSizedGUI-1.21.1:${autosizedgui_version}"
-    jarJar("qikahome:AutoSizedGUI-1.21.1:${autosizedgui_version}")
+    // JSON Things Fabric：必需前置，jar-in-jar 内嵌
+    // （其 jar 内已 include FabricatedForgeFluid 与 common/fluids/item_abilities/models/registry 等 Porting Lib 模块）
+    modImplementation(include("qikahome:JsonThings-1.21.1-fabric:${project.property('json_things_version')}"))
 
-    // JEI - 可选依赖
-    compileOnly "mezz.jei:jei-${minecraft_version}-neoforge-api:${jei_version}"
-    runtimeOnly "mezz.jei:jei-${minecraft_version}-neoforge:${jei_version}"
+    // AutoSizedGUI（自有库）：自动布局 GUI，jar-in-jar 内嵌
+    modImplementation(include("qikahome:AutoSizedGUI-${project.property('minecraft_version')}-fabric:${project.property('autosizedgui_version')}"))
 
-    // Jade - 可选依赖
-    runtimeOnly "curse.maven:jade-324717:6198776"
+    // Porting Lib：仅编译期 classpath（运行时由 JsonThings-Fabric 内嵌提供，故不 include）。
+    // 模块清单在移植过程中按实际 import 收敛。
+    def portingLibVersion = project.property('porting_lib_version')
+    def portingLibModules = [
+            'common', 'fluids', 'item_abilities', 'models', 'registry'
+    ]
+    portingLibModules.each { mod ->
+        modImplementation("io.github.fabricators_of_create.Porting-Lib:${mod}:${portingLibVersion}")
+    }
 
-    // Create - 可选依赖
-    implementation("com.simibubi.create:create-${minecraft_version}:${create_version}:slim") { transitive = false }
-    implementation("net.createmod.ponder:ponder-neoforge:${ponder_version}+mc${minecraft_version}")
-    compileOnly("dev.engine-room.flywheel:flywheel-neoforge-api-${minecraft_version}:${flywheel_version}")
-    runtimeOnly("dev.engine-room.flywheel:flywheel-neoforge-${minecraft_version}:${flywheel_version}")
+    // ---- 可选联动模组（仅编译期 API + 开发运行期，不打包进产物）----
+    // 注意必须用 modCompileOnly/modRuntimeOnly：Curse 上的模组 jar 是 intermediary 命名，
+    // 普通 compileOnly 不会重映射，会导致 class_xxxx 找不到符号。
+    // JEI（Just Enough Items）
+    modCompileOnly "curse.maven:jei-238222:${project.property('jei_cf_file')}"
+    modRuntimeOnly "curse.maven:jei-238222:${project.property('jei_cf_file')}"
 
-    // CyclopsCore - 可选依赖（用于滚动容器）
-    compileOnly "curse.maven:cyclops-core-232758:5612213"
-    runtimeOnly "curse.maven:cyclops-core-232758:5612213"
+    // CyclopsCore（滚动容器联动）
+    modCompileOnly "curse.maven:cyclops-core-232758:${project.property('cyclopscore_cf_file')}"
+    modRuntimeOnly "curse.maven:cyclops-core-232758:${project.property('cyclopscore_cf_file')}"
 
-    // Anvil MusBox - 可选依赖
-    compileOnly "blank:Anvil-MusBox-NeoForge-${minecraft_version}:${anvil_musbox_version}"
-    runtimeOnly "blank:Anvil-MusBox-NeoForge-${minecraft_version}:${anvil_musbox_version}"
+    // 暮色森林（Twilight Forest，自定义消耗原料/拆解台兼容）
+    // 1.21.1 的 Fabric 版目前只有 Beta（twilightforest-fabric-1.21.1-4.8.486），且跑不起来：
+    //   - TwilightForestMod 仍引用 net.neoforged.fml.config.IConfigSpec；
+    //   - 其 JappaPackReloadListener 在 JsonThings 的早期资源重载里 NPE（Minecraft.getResourceManager() 尚未就绪）。
+    // 故只保留编译期依赖，不进开发运行；待上游 Fabric 版稳定后再放开 modRuntimeOnly。
+    modCompileOnly "curse.maven:the-twilight-forest-227639:${project.property('twilight_forest_cf_file')}"
+    // modRuntimeOnly "curse.maven:the-twilight-forest-227639:${project.property('twilight_forest_cf_file')}"
 
-    // 暮色森林（Twilight Forest）- 可选依赖
-    compileOnly "curse.maven:the-twilight-forest-227639:5699076"
-    runtimeOnly "curse.maven:the-twilight-forest-227639:5699076"
-
-    // Create 也需要运行时
-    runtimeOnly("com.simibubi.create:create-${minecraft_version}:${create_version}:slim") { transitive = false }
-
-    // Registrate - Create 的传递依赖
-    implementation("com.tterrag.registrate:Registrate:${registrate_version}")
+    compileOnly 'org.jetbrains:annotations:24.0.1'
+    compileOnly "com.google.code.findbugs:jsr305:3.0.2"
 }
 
-tasks.named('processResources', ProcessResources).configure {
+loom {
+    accessWidenerPath = file("src/main/resources/jsonmore.accesswidener")
+    mixin {
+        // 固定 refmap 名，不随 archivesName 变化；需与 jsonmore.mixins.json 的 "refmap" 一致，
+        // 否则发布环境（intermediary）按此名找不到映射文件而崩溃。
+        defaultRefmapName = "jsonmore.refmap.json"
+    }
+
+    runs {
+        configureEach {
+            runDir = 'run'
+        }
+        client {
+            client()
+        }
+        server {
+            server()
+        }
+    }
+}
+
+processResources {
     var replaceProperties = [
-            minecraft_version: minecraft_version, minecraft_version_range: minecraft_version_range,
-            neo_version: neo_version, neo_version_range: neo_version_range,
-            loader_version_range: loader_version_range,
-            mod_id: mod_id, mod_name: mod_name, mod_license: mod_license, mod_version: mod_version,
-            mod_authors: mod_authors, mod_description: mod_description,
-            jei_range: jei_range,
-            json_things_range: json_things_range,
-            cyclopscore_range: cyclopscore_range,
-            anvil_musbox_range: anvil_musbox_range,
-            twilight_forest_range: twilight_forest_range
+            version                     : project.version,
+            mod_id                      : mod_id,
+            minecraft_version_range     : minecraft_version_range,
+            fabric_loader_version_range : fabric_loader_version_range,
+            fabric_api_version_range    : fabric_api_version_range,
+            json_things_range           : json_things_range,
+            autosizedgui_range          : autosizedgui_range,
+            jei_range                   : jei_range,
+            cyclopscore_range           : cyclopscore_range,
+            twilight_forest_range       : twilight_forest_range
     ]
     inputs.properties replaceProperties
 
-    filesMatching(['META-INF/neoforge.mods.toml', 'pack.mcmeta']) {
-        expand replaceProperties + [project: project]
-    }
-}
-
-tasks.named('jar', Jar).configure {
-    // 从 local.properties 读取输出目录（不提交到 Git）
-    def localProps = new Properties()
-    def localFile = file('local.properties')
-    if (localFile.exists()) {
-        localFile.withInputStream { localProps.load(it) }
-        def outputDir = localProps.getProperty('build_output_dir')
-        if (outputDir) {
-            destinationDirectory = file(outputDir)
-        }
-    }
-
-    manifest {
-        attributes([
-                'Specification-Title'     : mod_id,
-                'Specification-Vendor'    : mod_authors,
-                'Specification-Version'   : '1',
-                'Implementation-Title'    : project.name,
-                'Implementation-Version'  : project.jar.archiveVersion,
-                'Implementation-Vendor'   : mod_authors,
-                'Implementation-Timestamp': new Date().format("yyyy-MM-dd'T'HH:mm:ssZ")
-        ])
-    }
-}
-
-publishing {
-    publications {
-        register('mavenJava', MavenPublication) {
-            artifact jar
-        }
-    }
-    repositories {
-        maven {
-            url "file://${project.projectDir}/mcmodsrepo"
-        }
+    filesMatching(["fabric.mod.json", "pack.mcmeta"]) {
+        expand replaceProperties
     }
 }
 
 tasks.withType(JavaCompile).configureEach {
     options.encoding = 'UTF-8'
+}
+
+publishing {
+    publications {
+        mavenFabric(MavenPublication) {
+            artifactId = "${mod_id}-${minecraft_version}-fabric"
+            from components.java
+        }
+    }
+    // 发布：由 .github/workflows/publish.yml 在打 tag 时触发（GitHub Packages + Release）
+    repositories {
+        maven {
+            name = "GitHubPackages"
+            url = "https://maven.pkg.github.com/Qikahome/JsonMore"
+            credentials {
+                username = System.getenv("GITHUB_ACTOR")
+                password = System.getenv("GITHUB_TOKEN")
+            }
+        }
+    }
 }

@@ -8,15 +8,13 @@ import com.mojang.serialization.Codec;
 import com.mojang.serialization.MapCodec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 
+import net.fabricmc.fabric.api.recipe.v1.ingredient.CustomIngredientSerializer;
 import net.minecraft.core.component.DataComponentType;
 import net.minecraft.core.component.DataComponentPatch;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.crafting.Ingredient;
-import net.neoforged.neoforge.common.crafting.IngredientType;
-import net.neoforged.neoforge.registries.DeferredHolder;
-import qikahome.jsonmore.JsonMore;
 import qikahome.jsonmore.Utils;
 
 public class NBTCopyIngredient extends SelfConsumingIngredient {
@@ -28,8 +26,8 @@ public class NBTCopyIngredient extends SelfConsumingIngredient {
                     Utils.enumCodec(Mode.class).fieldOf("mode").forGetter(i -> i.mode),
                     Codec.STRING.listOf().optionalFieldOf("tags", List.of()).forGetter(i -> i.tags))
                     .apply(v, NBTCopyIngredient::new));
-    public static final DeferredHolder<IngredientType<?>, IngredientType<NBTCopyIngredient>> TYPE = JsonMore.INGREDIENT_TYPES
-            .register(ID.getPath(), () -> new IngredientType<>(CODEC));
+    public static final CustomIngredientSerializer<NBTCopyIngredient> SERIALIZER = new SimpleIngredientSerializer<>(ID,
+            CODEC);
 
     public enum Mode {
         REPLACE_ALL,
@@ -118,10 +116,11 @@ public class NBTCopyIngredient extends SelfConsumingIngredient {
     }
 
     @Override
-    public IngredientType<?> getType() {
-        return TYPE.get();
+    public CustomIngredientSerializer<?> getSerializer() {
+        return SERIALIZER;
     }
 
     public static void register() {
+        CustomIngredientSerializer.register(SERIALIZER);
     }
 }

@@ -1,6 +1,6 @@
 package qikahome.jsonmore.autosizedgui;
 
-import net.minecraft.network.RegistryFriendlyByteBuf;
+import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.world.Container;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
@@ -41,7 +41,7 @@ public class AutoSizedMenu extends AbstractContainerMenu implements IFlexContain
         this.container.startOpen(playerInventory.player);
     }
 
-    public AutoSizedMenu(int id, Inventory playerInventory, RegistryFriendlyByteBuf data) {
+    public AutoSizedMenu(int id, Inventory playerInventory, FriendlyByteBuf data) {
         this(AUTO_SIZED_MENU.get(), id, playerInventory, new SimpleContainer(data.readVarInt()));
     }
 

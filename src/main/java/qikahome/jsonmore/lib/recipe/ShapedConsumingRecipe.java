@@ -22,8 +22,7 @@ import net.minecraft.world.item.crafting.Ingredient;
 import net.minecraft.world.item.crafting.RecipeSerializer;
 import net.minecraft.world.item.crafting.ShapedRecipe;
 import net.minecraft.world.item.crafting.ShapedRecipePattern;
-import net.neoforged.neoforge.common.CommonHooks;
-import net.neoforged.neoforge.server.ServerLifecycleHooks;
+import qikahome.jsonmore.Utils;
 import qikahome.jsonmore.lib.ingredient.SelfConsumingIngredient;
 
 import static qikahome.jsonmore.lib.recipe.ShapelessConsumingRecipe.backtrackMatch;
@@ -188,12 +187,12 @@ public class ShapedConsumingRecipe extends ShapedRecipe implements IConsumingRec
         NonNullList<ItemStack> remainingItems = NonNullList.withSize(container.size(), ItemStack.EMPTY);
         Map<Integer, Ingredient> slotToIngredient = matchIngredients(container);
 
-        Player player = CommonHooks.getCraftingPlayer();
+        Player player = Utils.getCraftingPlayer();
         ServerLevel level = null;
         if (player != null && player.level() instanceof ServerLevel serverLevel)
             level = serverLevel;
         if (level == null) {
-            var server = ServerLifecycleHooks.getCurrentServer();
+            var server = Utils.getCurrentServer();
             if (server != null) level = server.overworld();
             else return remainingItems; // 客户端预览，跳过消耗逻辑
         }

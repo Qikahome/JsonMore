@@ -2,31 +2,38 @@ package qikahome.jsonmore.minecraft.gamerule;
 
 import java.util.Optional;
 
+import javax.annotation.Nullable;
+
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.MapCodec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 
+import net.fabricmc.fabric.api.resource.conditions.v1.ResourceCondition;
+import net.fabricmc.fabric.api.resource.conditions.v1.ResourceConditionType;
+import net.fabricmc.fabric.api.resource.conditions.v1.ResourceConditions;
+import net.minecraft.core.HolderLookup;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.world.level.GameRules;
-import net.neoforged.neoforge.common.conditions.ICondition;
-import net.neoforged.neoforge.registries.DeferredHolder;
-import net.neoforged.neoforge.server.ServerLifecycleHooks;
-import qikahome.jsonmore.JsonMore;
 import qikahome.jsonmore.Utils;
 import qikahome.jsonmore.Utils.IntRange;
 
-public class GameRuleCondition implements ICondition {
+/**
+ * 资源条件 {@code jsonmore:gamerule}：按游戏规则名（可带取值范围）决定资源是否加载。
+ * <p>
+ * 对应上游 Neo 的 {@code ICondition}，Fabric 侧等价物是 {@link ResourceCondition}。
+ */
+public class GameRuleCondition implements ResourceCondition {
     public static final ResourceLocation ID = ResourceLocation.parse("jsonmore:gamerule");
     public static final MapCodec<GameRuleCondition> CODEC = RecordCodecBuilder.mapCodec(
             v -> v.group(
                     Codec.STRING.fieldOf("rule").forGetter(c -> c.ruleName),
-                    Utils.IntRange.CODEC.optionalFieldOf("value").forGetter(c -> c.valueRange))
+                    IntRange.CODEC.optionalFieldOf("value").forGetter(c -> c.valueRange))
                     .apply(v, GameRuleCondition::new));
-    public static final DeferredHolder<MapCodec<? extends ICondition>, MapCodec<GameRuleCondition>> HOLDER = JsonMore.CONDITION_CODECS
-            .register("gamerule", () -> CODEC);
+    public static final ResourceConditionType<GameRuleCondition> TYPE = ResourceConditionType.create(ID, CODEC);
 
     public static void register() {
+        ResourceConditions.register(TYPE);
     }
 
     private final String ruleName;
@@ -38,8 +45,8 @@ public class GameRuleCondition implements ICondition {
     }
 
     @Override
-    public boolean test(IContext context) {
-        MinecraftServer server = ServerLifecycleHooks.getCurrentServer();
+    public boolean test(@Nullable HolderLookup.Provider registryLookup) {
+        MinecraftServer server = Utils.getCurrentServer();
 
         if (server == null)
             return false;
@@ -73,7 +80,7 @@ public class GameRuleCondition implements ICondition {
     }
 
     @Override
-    public MapCodec<? extends ICondition> codec() {
-        return CODEC;
+    public ResourceConditionType<?> getType() {
+        return TYPE;
     }
 }

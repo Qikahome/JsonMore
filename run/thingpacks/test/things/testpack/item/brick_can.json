@@ -1,4 +1,7 @@
 {
+  "conditions": [
+    { "type": "mod_loaded", "modid": "tconstruct" }
+  ],
 
   "type": "jsonmore:copper_can",
   "capacity": 250,

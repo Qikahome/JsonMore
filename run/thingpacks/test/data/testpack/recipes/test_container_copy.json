@@ -3,6 +3,7 @@
   "ingredients": [
     {
       "type": "jsonmore:not",
+      "fabric:type": "jsonmore:not",
       "ingredient": {
         "tag": "planks"
       }

@@ -10,8 +10,10 @@
         },
         "p": {
             "type": "jsonmore:nbt_copy",
+            "fabric:type": "jsonmore:nbt_copy",
             "ingredient": {
                 "type": "jsonmore:remainder_override",
+                "fabric:type": "jsonmore:remainder_override",
                 "ingredient": {
                     "tag": "minecraft:pickaxes"
                 },

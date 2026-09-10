@@ -57,6 +57,8 @@ Use the `/gamerule` command to view or modify GameRules:
 
 `jsonmore:gamerule` can be used as a recipe loading condition, determining whether a recipe is loaded based on the current value of a game rule.
 
+On Fabric this goes through Fabric API's resource conditions (`fabric-resource-conditions-api-v1`): the recipe JSON uses the top-level `fabric:load_conditions` key (either a single condition or a list of conditions), and the type key of a condition object is `condition` — not the Neo/Forge `conditions` + `type`.
+
 **(Object)** Root object.
 - **rule** (string) Game rule name in dot format (same as `/gamerule` command)
 - **value** (optional) Expected value:
@@ -64,41 +66,41 @@ Use the `/gamerule` command to view or modify GameRules:
   - Integer (e.g., `5`) -> treated as an **integer rule**, exact match
   - Range string (e.g., `[1,3]`, `[2,)`) -> treated as an **integer rule**, range match
 
-> For boolean rule negation, use `forge:not` instead of explicitly specifying `false` in `jsonmore:gamerule`.
+> For boolean rule negation, use `fabric:not` (the negated condition goes in its `value` field) instead of explicitly specifying `false` in `jsonmore:gamerule`.
 
 ```jsonc
 // Boolean rule: recipe loads when rule is true
 {
-  "type": "jsonmore:gamerule",
+  "condition": "jsonmore:gamerule",
   "rule": "jsonmore.some_flag"
 }
 
-// Boolean rule negation: via forge:not
+// Boolean rule negation: via fabric:not
 {
-  "type": "forge:not",
+  "condition": "fabric:not",
   "value": {
-    "type": "jsonmore:gamerule",
+    "condition": "jsonmore:gamerule",
     "rule": "jsonmore.some_flag"
   }
 }
 
 // Integer rule: exact match
 {
-  "type": "jsonmore:gamerule",
+  "condition": "jsonmore:gamerule",
   "rule": "jsonmore.some_count",
   "value": 5
 }
 
 // Integer rule: range match (closed interval)
 {
-  "type": "jsonmore:gamerule",
+  "condition": "jsonmore:gamerule",
   "rule": "jsonmore.some_count",
   "value": "[3,10)"
 }
 
 // Integer rule: range match (lower bound only)
 {
-  "type": "jsonmore:gamerule",
+  "condition": "jsonmore:gamerule",
   "rule": "jsonmore.some_count",
   "value": "[100,]"
 }
@@ -111,9 +113,9 @@ Only load the advanced crafting recipe when `jsonmore.enable_advanced_crafting` 
 ```json
 {
   "type": "minecraft:crafting_shaped",
-  "conditions": [
+  "fabric:load_conditions": [
     {
-      "type": "jsonmore:gamerule",
+      "condition": "jsonmore:gamerule",
       "rule": "jsonmore.enable_advanced_crafting"
     }
   ],
@@ -125,3 +127,5 @@ Only load the advanced crafting recipe when `jsonmore.enable_advanced_crafting` 
   "result": { "item": "minecraft:beacon" }
 }
 ```
+
+> The condition is evaluated **when recipes are loaded** (world load / `/reload`), not on each crafting attempt. On the first world join `Utils#getCurrentServer()` is not set yet, so the condition always evaluates to `false`; it takes effect after a `/reload`. For runtime dynamic checks use the [`jsonmore:condition`](recipes/ingredient_types.md) ingredient instead.

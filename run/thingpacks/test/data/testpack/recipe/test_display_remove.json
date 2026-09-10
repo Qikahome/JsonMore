@@ -3,14 +3,17 @@
     "ingredients": [
         {
             "type": "jsonmore:item_display_override",
+            "fabric:type": "jsonmore:item_display_override",
             "ingredient": {
                 "tag": "minecraft:planks"
             },
             "ops": [
                 {
-                    "op": "remove",
-                    "value": {
-                        "item": "minecraft:oak_planks"
+                    "handler": {
+                        "op": "remove",
+                        "value": {
+                            "item": "minecraft:oak_planks"
+                        }
                     }
                 }
             ]
@@ -19,7 +22,8 @@
             "item": "minecraft:stick"
         }
     ],
-    "result": { "id": "minecraft:stick",
+    "result": {
+        "id": "minecraft:stick",
         "count": 4
     }
 }

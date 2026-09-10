@@ -126,7 +126,7 @@ public class FilteredChestMenu extends AbstractContainerMenu implements IFlexCon
         @Override
         public boolean mayPlace(ItemStack stack) {
             if (blockEntity != null) {
-                return blockEntity.canPlaceItem(this.getSlotIndex(), stack);
+                return blockEntity.canPlaceItem(this.index, stack);
             }
             return super.mayPlace(stack);
         }

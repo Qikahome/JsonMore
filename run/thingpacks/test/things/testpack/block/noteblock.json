@@ -1,4 +1,7 @@
 {
+  "conditions": [
+    { "type": "mod_loaded", "modid": "anvil_musbox" }
+  ],
   "type": "jsonmore:noteblock",
   "instrument_block_tag": "crystal_sound_blocks",
   "instrument_name": "block.minecraft.amethyst_block",

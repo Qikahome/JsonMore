@@ -5,6 +5,9 @@ import com.mojang.serialization.DataResult;
 import com.mojang.serialization.DynamicOps;
 import com.mojang.serialization.codecs.PrimitiveCodec;
 
+import net.minecraft.server.MinecraftServer;
+import net.minecraft.world.entity.player.Player;
+
 import static qikahome.jsonmore.JsonMore.LOGGER;
 
 import java.util.function.Supplier;
@@ -14,6 +17,37 @@ import java.util.regex.Pattern;
 import javax.annotation.Nullable;
 
 public class Utils {
+    /**
+     * Fabric 没有 {@code ServerLifecycleHooks}，当前服务器由 {@code JsonMore} 订阅
+     * {@code ServerLifecycleEvents} 维护，等价上游 Neo 的 {@code ServerLifecycleHooks#getCurrentServer()}。
+     */
+    @Nullable
+    private static MinecraftServer currentServer;
+
+    public static void setCurrentServer(@Nullable MinecraftServer server) {
+        currentServer = server;
+    }
+
+    @Nullable
+    public static MinecraftServer getCurrentServer() {
+        return currentServer;
+    }
+
+    /**
+     * 合成台取结果的那一刻（{@code ResultSlot#onTake}）所处的玩家，由 {@code MixinResultSlot} 维护，
+     * 等价上游 Neo 的 {@code CommonHooks#getCraftingPlayer()}。
+     */
+    private static final ThreadLocal<Player> CRAFTING_PLAYER = new ThreadLocal<>();
+
+    public static void setCraftingPlayer(@Nullable Player player) {
+        CRAFTING_PLAYER.set(player);
+    }
+
+    @Nullable
+    public static Player getCraftingPlayer() {
+        return CRAFTING_PLAYER.get();
+    }
+
     /**
      * 执行Supplier类型的Lambda，捕获异常并返回默认值
      * 

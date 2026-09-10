@@ -1,4 +1,7 @@
 {
+  "conditions": [
+    { "type": "mod_loaded", "modid": "tconstruct" }
+  ],
   "type": "jsonmore:tinker_chest",
   "capacity": 8000,
   "item": {

@@ -1,6 +1,6 @@
 package qikahome.jsonmore.lib.ingredient;
 
-import java.util.stream.Stream;
+import java.util.List;
 
 import javax.annotation.Nullable;
 
@@ -10,28 +10,25 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
-import net.neoforged.neoforge.common.crafting.ICustomIngredient;
-import net.neoforged.neoforge.common.crafting.IngredientType;
-import net.neoforged.neoforge.registries.DeferredHolder;
-import qikahome.jsonmore.JsonMore;
+import net.fabricmc.fabric.api.recipe.v1.ingredient.CustomIngredient;
+import net.fabricmc.fabric.api.recipe.v1.ingredient.CustomIngredientSerializer;
 
-public class TrueIngredient implements ICustomIngredient {
+public class TrueIngredient implements CustomIngredient {
     public static final ResourceLocation ID = ResourceLocation.parse("jsonmore:true");
     public static final TrueIngredient INSTANCE = new TrueIngredient();
     public static final MapCodec<TrueIngredient> CODEC = MapCodec.unit(INSTANCE);
-    public static final DeferredHolder<IngredientType<?>, IngredientType<TrueIngredient>> TYPE = JsonMore.INGREDIENT_TYPES
-            .register(ID.getPath(), () -> new IngredientType<>(CODEC));
+    public static final CustomIngredientSerializer<TrueIngredient> SERIALIZER = new SimpleIngredientSerializer<>(ID, CODEC);
 
-    private static final Stream<ItemStack> ANYTHING_STACK;
+    private static final List<ItemStack> ANYTHING_STACK;
 
     static {
         ItemStack stack = new ItemStack(Items.STICK);
         stack.set(DataComponents.CUSTOM_NAME, Component.translatable("ingredient.jsonmore.true"));
-        ANYTHING_STACK = Stream.of(stack);
+        ANYTHING_STACK = List.of(stack);
     }
 
     @Override
-    public Stream<ItemStack> getItems() {
+    public List<ItemStack> getMatchingStacks() {
         return ANYTHING_STACK;
     }
 
@@ -41,15 +38,16 @@ public class TrueIngredient implements ICustomIngredient {
     }
 
     @Override
-    public boolean isSimple() {
-        return false;
+    public boolean requiresTesting() {
+        return true;
     }
 
     public static void register() {
+        CustomIngredientSerializer.register(SERIALIZER);
     }
 
     @Override
-    public IngredientType<?> getType() {
-        return TYPE.get();
+    public CustomIngredientSerializer<?> getSerializer() {
+        return SERIALIZER;
     }
 }

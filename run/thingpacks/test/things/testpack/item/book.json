@@ -1,4 +1,7 @@
 {
+    "conditions": [
+        { "type": "mod_loaded", "modid": "mantle" }
+    ],
     "type": "jsonmore:book",
     "book_id": "my_test:test_book",
     "book_data": [

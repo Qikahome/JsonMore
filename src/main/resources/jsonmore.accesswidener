@@ -1,0 +1,19 @@
+accessWidener v2 named
+
+# Unicode book font
+accessible field net/minecraft/client/Minecraft fontManager Lnet/minecraft/client/gui/font/FontManager;
+
+# Expose GameRules fields for GameRuleCondition
+accessible field net/minecraft/world/level/GameRules GAME_RULE_TYPES Ljava/util/Map;
+
+# 动态游戏规则注册（FlexGameRuleType / GameRuleParser）：上游由 NeoForge 的 AT 开放
+accessible method net/minecraft/world/level/GameRules register (Ljava/lang/String;Lnet/minecraft/world/level/GameRules$Category;Lnet/minecraft/world/level/GameRules$Type;)Lnet/minecraft/world/level/GameRules$Key;
+accessible method net/minecraft/world/level/GameRules$BooleanValue create (ZLjava/util/function/BiConsumer;)Lnet/minecraft/world/level/GameRules$Type;
+accessible method net/minecraft/world/level/GameRules$IntegerValue create (ILjava/util/function/BiConsumer;)Lnet/minecraft/world/level/GameRules$Type;
+
+# ShapedConsumingRecipe 需要直接读取原版 pattern
+accessible field net/minecraft/world/item/crafting/ShapedRecipe pattern Lnet/minecraft/world/item/crafting/ShapedRecipePattern;
+
+# Fabric 的 fabric-screen-handler-api 已移除 ScreenRegistry，容器屏幕需自行注册到 MenuScreens
+accessible class net/minecraft/client/gui/screens/MenuScreens$ScreenConstructor
+accessible method net/minecraft/client/gui/screens/MenuScreens register (Lnet/minecraft/world/inventory/MenuType;Lnet/minecraft/client/gui/screens/MenuScreens$ScreenConstructor;)V

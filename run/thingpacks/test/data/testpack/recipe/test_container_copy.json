@@ -3,11 +3,11 @@
   "ingredients": [
     {
       "type": "jsonmore:not",
+      "fabric:type": "jsonmore:not",
       "ingredient": {
         "tag": "planks"
       }
     }
-  ],
-  "result": { "id": "testpack:container_large"
-  }
+  ],//disable
+  "result": { "id": "testpack:test_container_plain" }
 }

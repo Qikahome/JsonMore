@@ -31,14 +31,15 @@ import net.minecraft.world.entity.player.Inventory;
 import qikahome.jsonmore.JsonMore;
 
 import org.cyclops.cyclopscore.client.gui.component.button.ButtonArrow;
-import org.cyclops.cyclopscore.client.gui.container.ContainerScreenScrolling;
+// CyclopsCore 的 Fabric 版把跨加载器的基类统一加了 Common 后缀（NeoForge 版无此后缀）
+import org.cyclops.cyclopscore.client.gui.container.ContainerScreenScrollingCommon;
 
 /**
  * GUI for the {@link org.cyclops.colossalchests.block.ColossalChest}.
  * @author rubensworks
  *
  */
-public class ScrollingContainerScreen extends ContainerScreenScrolling<ScrollingContainerAdapter> {
+public class ScrollingContainerScreen extends ContainerScreenScrollingCommon<ScrollingContainerAdapter> {
 
     private static final int TEXTUREWIDTH = 195;
     private static final int TEXTUREHEIGHT = 194;

@@ -347,9 +347,7 @@ public class FlexBarrelBlock extends BaseEntityBlock
                     if (controllerState.getBlock() instanceof StorageConnectorBlock scb) {
                         serverPlayer.openMenu(
                                 scb.screenType.createMenuProvider(Collections.singletonList(container),
-                                        container.getContainerSize()),
-                                buffer -> scb.screenType.writeAdditionalData(buffer,
-                                        Collections.singletonList(container), container.getContainerSize()));
+                                        container.getContainerSize()));
                     }
                 }
             }
@@ -386,9 +384,7 @@ public class FlexBarrelBlock extends BaseEntityBlock
                             : screenType;
                     var containers = getContainers(level, pos, state);
                     var containerSize = MultiContainer.of(containers).getContainerSize();
-                    serverPlayer.openMenu(screen.createMenuProvider(containers, containerSize),
-                            buffer -> screen.writeAdditionalData(buffer, this.getContainers(level, pos, state),
-                                    containerSize));
+                    serverPlayer.openMenu(screen.createMenuProvider(containers, containerSize));
                 }
                 if (angerPiglins) {
                     PiglinAi.angerNearbyPiglins(player, true);
@@ -430,8 +426,9 @@ public class FlexBarrelBlock extends BaseEntityBlock
             case ALWAYS -> true;
             case SILK_TOUCH -> {
                 var silkTouch = player.level().registryAccess()
-                        .holderOrThrow(net.minecraft.world.item.enchantment.Enchantments.SILK_TOUCH);
-                yield player.getMainHandItem().getEnchantmentLevel(silkTouch) > 0;
+                        .registryOrThrow(net.minecraft.core.registries.Registries.ENCHANTMENT)
+                        .getHolderOrThrow(net.minecraft.world.item.enchantment.Enchantments.SILK_TOUCH);
+                yield player.getMainHandItem().getEnchantments().getLevel(silkTouch) > 0;
             }
             case NEVER -> false;
         };
@@ -459,7 +456,6 @@ public class FlexBarrelBlock extends BaseEntityBlock
                     connected = mode.connect(neighborState, neighborPos, level, neighborDir.getOpposite());
                 }
                 if (connected) {
-                    level.invalidateCapabilities(neighborPos);
                     return true;
                 }
             }
@@ -681,12 +677,10 @@ public class FlexBarrelBlock extends BaseEntityBlock
                 var neiPart = neighborState.getValue(PART);
                 var neiFacing = neighborState.getValue(BlockStateProperties.FACING);
                 if (neiPart.getWorldDirection(neiFacing) != direction) {
-                    if (level instanceof Level l) l.invalidateCapabilities(pos);
                     return super.updateShape(state, direction, neighborState, level, pos, neighborPos)
                             .setValue(PART, ContainerPart.NONE);
                 }
             } else {
-                if (level instanceof Level l) l.invalidateCapabilities(pos);
                 return super.updateShape(state, direction, neighborState, level, pos, neighborPos)
                         .setValue(PART, ContainerPart.NONE);
             }
@@ -791,9 +785,11 @@ public class FlexBarrelBlock extends BaseEntityBlock
             }
         }
 
+        // 原版没有 BlockEntity#onLoad（Neo 扩展），但 setLevel 正是在区块加载/放置时由原版调用，
+        // 且调用前 position 已就绪，语义等价。
         @Override
-        public void onLoad() {
-            super.onLoad();
+        public void setLevel(Level level) {
+            super.setLevel(level);
             if (level != null && !level.isClientSide) {
                 BlockState state = level.getBlockState(worldPosition);
                 if (state.hasProperty(CONNECTED)) {

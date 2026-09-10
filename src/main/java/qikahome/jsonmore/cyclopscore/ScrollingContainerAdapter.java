@@ -24,7 +24,7 @@ SOFTWARE.
 package qikahome.jsonmore.cyclopscore;
 
 import com.google.common.collect.Lists;
-import net.minecraft.network.RegistryFriendlyByteBuf;
+import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.world.Container;
 import net.minecraft.world.CompoundContainer;
 import net.minecraft.world.entity.player.Inventory;
@@ -32,9 +32,10 @@ import net.minecraft.world.inventory.Slot;
 import qikahome.jsonmore.lib.IFlexContainer;
 import qikahome.jsonmore.lib.MultiContainer;
 
-import org.cyclops.cyclopscore.inventory.LargeInventory;
-import org.cyclops.cyclopscore.inventory.container.ContainerExtended;
-import org.cyclops.cyclopscore.inventory.container.ScrollingInventoryContainer;
+// CyclopsCore 的 Fabric 版把跨加载器的基类统一加了 Common 后缀（NeoForge 版无此后缀）
+import org.cyclops.cyclopscore.inventory.LargeInventoryCommon;
+import org.cyclops.cyclopscore.inventory.container.ContainerExtendedCommon;
+import org.cyclops.cyclopscore.inventory.container.ScrollingInventoryContainerCommon;
 import org.cyclops.cyclopscore.inventory.slot.SlotExtended;
 
 import java.util.Collections;
@@ -47,7 +48,7 @@ import static qikahome.jsonmore.JsonMore.LOGGER;
  * @author rubensworks
  *
  */
-public class ScrollingContainerAdapter extends ScrollingInventoryContainer<Slot> implements IFlexContainer {
+public class ScrollingContainerAdapter extends ScrollingInventoryContainerCommon<Slot> implements IFlexContainer {
 
     private static final int INVENTORY_OFFSET_X = 9;
     private static final int INVENTORY_OFFSET_Y = 112;
@@ -66,8 +67,8 @@ public class ScrollingContainerAdapter extends ScrollingInventoryContainer<Slot>
 
     private final List<Slot> chestSlots;
 
-    public ScrollingContainerAdapter(int id, Inventory playerInventory, RegistryFriendlyByteBuf data) {
-        this(id, playerInventory, new LargeInventory(data.readVarInt(), 64));
+    public ScrollingContainerAdapter(int id, Inventory playerInventory, FriendlyByteBuf data) {
+        this(id, playerInventory, new LargeInventoryCommon(data.readVarInt(), 64));
     }
 
     public ScrollingContainerAdapter(int id, Inventory playerInventory, Container inventory) {
@@ -113,16 +114,16 @@ public class ScrollingContainerAdapter extends ScrollingInventoryContainer<Slot>
         Slot slot = getSlot(slotIndex);
         // Yes I know this is ugly.
         // If you are reading this and know a better way, please tell me.
-        ContainerExtended.setSlotPosX(slot, Integer.MIN_VALUE);
-        ContainerExtended.setSlotPosY(slot, Integer.MIN_VALUE);
+        ContainerExtendedCommon.setSlotPosX(slot, Integer.MIN_VALUE);
+        ContainerExtendedCommon.setSlotPosY(slot, Integer.MIN_VALUE);
     }
 
     protected void enableSlot(int slotIndex, int row, int column) {
         Slot slot = getSlot(slotIndex);
         // Yes I know this is ugly.
         // If you are reading this and know a better way, please tell me.
-        ContainerExtended.setSlotPosX(slot, CHEST_INVENTORY_OFFSET_X + column * 18);
-        ContainerExtended.setSlotPosY(slot, CHEST_INVENTORY_OFFSET_Y + row * 18);
+        ContainerExtendedCommon.setSlotPosX(slot, CHEST_INVENTORY_OFFSET_X + column * 18);
+        ContainerExtendedCommon.setSlotPosY(slot, CHEST_INVENTORY_OFFSET_Y + row * 18);
     }
 
     @Override
