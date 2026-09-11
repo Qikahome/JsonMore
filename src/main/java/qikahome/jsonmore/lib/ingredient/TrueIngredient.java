@@ -1,30 +1,24 @@
 package qikahome.jsonmore.lib.ingredient;
 
-import java.util.stream.Stream;
+import java.util.List;
 
 import javax.annotation.Nullable;
 
-import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 
-import net.minecraft.core.registries.Registries;
+import net.fabricmc.fabric.api.recipe.v1.ingredient.CustomIngredient;
+import net.fabricmc.fabric.api.recipe.v1.ingredient.CustomIngredientSerializer;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
-import net.minecraft.world.item.crafting.Ingredient;
-import net.minecraftforge.common.crafting.AbstractIngredient;
-import net.minecraftforge.common.crafting.CraftingHelper;
-import net.minecraftforge.common.crafting.IIngredientSerializer;
-//import net.minecraftforge.registries.ForgeRegistries;
 
-public class TrueIngredient extends AbstractIngredient {
+public class TrueIngredient implements CustomIngredient {
     public static final ResourceLocation ID = new ResourceLocation("jsonmore:true");
     public static final TrueIngredient INSTANCE = new TrueIngredient();
 
     private TrueIngredient() {
-        super(Stream.empty());
     }
 
     private static final ItemStack ANYTHING_STACK;
@@ -34,14 +28,14 @@ public class TrueIngredient extends AbstractIngredient {
         ANYTHING_STACK.setHoverName(Component.translatable("ingredient.jsonmore.true"));
     }
 
-    @Override
+    /** 展示物品入口（保持 Forge 原版的数组形式，供 NotIngredient 复用）。 */
     public ItemStack[] getItems() {
         return new ItemStack[] { ANYTHING_STACK.copy() }; // 注意要copy，避免修改原实例
     }
 
     @Override
-    public boolean isEmpty() {
-        return false;
+    public List<ItemStack> getMatchingStacks() {
+        return List.of(getItems());
     }
 
     @Override
@@ -50,32 +44,34 @@ public class TrueIngredient extends AbstractIngredient {
     }
 
     @Override
-    public boolean isSimple() {
-        return false;
+    public boolean requiresTesting() {
+        return true;
     }
 
     @Override
-    public IIngredientSerializer<? extends Ingredient> getSerializer() {
+    public CustomIngredientSerializer<?> getSerializer() {
         return Serializer.INSTANCE;
     }
 
-    @Override
-    public JsonElement toJson() {
-        JsonObject json = new JsonObject();
-        json.addProperty("type", ID.toString());
-        return json;
-    }
-
-    public static class Serializer implements IIngredientSerializer<TrueIngredient> {
+    public static class Serializer implements CustomIngredientSerializer<TrueIngredient> {
         public static final Serializer INSTANCE = new Serializer();
 
         @Override
-        public TrueIngredient parse(FriendlyByteBuf buffer) {
+        public ResourceLocation getIdentifier() {
+            return ID;
+        }
+
+        @Override
+        public TrueIngredient read(JsonObject json) {
             return TrueIngredient.INSTANCE;
         }
 
         @Override
-        public TrueIngredient parse(JsonObject json) {
+        public void write(JsonObject json, TrueIngredient ingredient) {
+        }
+
+        @Override
+        public TrueIngredient read(FriendlyByteBuf buffer) {
             return TrueIngredient.INSTANCE;
         }
 
@@ -85,6 +81,6 @@ public class TrueIngredient extends AbstractIngredient {
     }
 
     public static void register() {
-        CraftingHelper.register(ID, Serializer.INSTANCE);
+        CustomIngredientSerializer.register(Serializer.INSTANCE);
     }
 }

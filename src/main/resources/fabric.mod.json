@@ -1,0 +1,45 @@
+{
+  "schemaVersion": 1,
+  "id": "jsonmore",
+  "version": "${version}",
+  "name": "Json More",
+  "description": "More things in JSON sauce.",
+  "license": "MIT",
+  "authors": [
+    "Qikahome"
+  ],
+  "contact": {
+    "homepage": "https://github.com/Qikahome/JsonMore",
+    "issues": "https://github.com/Qikahome/JsonMore/issues"
+  },
+  "environment": "*",
+  "entrypoints": {
+    "main": [
+      "qikahome.jsonmore.JsonMore"
+    ],
+    "client": [
+      "qikahome.jsonmore.JsonMoreClient"
+    ],
+    "jsonthings": [
+      "qikahome.jsonmore.JsonMoreThingPlugin"
+    ],
+    "jei_mod_plugin": [
+      "qikahome.jsonmore.lib.recipe.jei.JsonMoreJEIPlugin"
+    ]
+  },
+  "mixins": [
+    "jsonmore.mixins.json"
+  ],
+  "accessWidener": "jsonmore.accesswidener",
+  "depends": {
+    "fabricloader": "${fabric_loader_version_range}",
+    "fabric-api": "${fabric_api_version_range}",
+    "minecraft": "${minecraft_version_range}",
+    "java": ">=17",
+    "jsonthings": "${json_things_range}",
+    "autosizedgui": "${autosizedgui_range}"
+  },
+  "recommends": {
+    "jei": "${jei_range}"
+  }
+}

@@ -24,7 +24,6 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraftforge.network.NetworkHooks;
 import net.minecraft.sounds.SoundEvent;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
@@ -92,6 +91,15 @@ import net.minecraft.world.level.block.Mirror;
 import qikahome.jsonmore.JsonMore;
 import static qikahome.jsonmore.lib.ContainerPart.PART;
 
+/**
+ * Flex 桶方块。
+ *
+ * <p>物品能力（原 Forge 的 {@code IItemHandler} 能力）在 Fabric 侧由入口类
+ * {@code JsonMore#onInitialize()} 中注册的 {@code ItemStorage.SIDED.registerFallback(...)} 统一提供：
+ * 未被抓取时对 {@code MultiContainer.of(flex.getContainers(...))} 建 {@code InventoryStorage}，
+ * 被抓取时由容器自身（{@code FlexBarrelBlockEntity} 的 {@code getItems()/getContainerSize()}）
+ * 转发到 {@code StorageConnectorBlock.ControllerBlockEntity}。因此本类不再有 {@code getCapability} 实现。
+ */
 public class FlexBarrelBlock extends BaseEntityBlock
         implements IFlexEntityBlock<FlexBarrelBlock.FlexBarrelBlockEntity>, SimpleWaterloggedBlock, IProtectedBlock {
 
@@ -347,11 +355,11 @@ public class FlexBarrelBlock extends BaseEntityBlock
                     Container container = controller.getControllerContainer();
                     BlockState controllerState = level.getBlockState(controller.getBlockPos());
                     if (controllerState.getBlock() instanceof StorageConnectorBlock scb) {
-                        NetworkHooks.openScreen(serverPlayer,
-                                scb.screenType.createMenuProvider(Collections.singletonList(container),
-                                        container.getContainerSize()),
-                                buffer -> scb.screenType.writeAdditionalData(buffer,
-                                        Collections.singletonList(container), container.getContainerSize()));
+                        // Fabric 无 NetworkHooks.openScreen(provider, bufConsumer)：
+                        // 附加开屏数据由 ContainerScreenType#createMenuProvider 内部以
+                        // ExtendedScreenHandlerFactory 形式携带；原版菜单类型则为普通 MenuProvider。
+                        serverPlayer.openMenu(scb.screenType.createMenuProvider(
+                                Collections.singletonList(container), container.getContainerSize()));
                     }
                 }
             }
@@ -388,9 +396,8 @@ public class FlexBarrelBlock extends BaseEntityBlock
                             : screenType;
                     var containers = getContainers(level, pos, state);
                     var containerSize = MultiContainer.of(containers).getContainerSize();
-                    NetworkHooks.openScreen(serverPlayer, screen.createMenuProvider(containers, containerSize),
-                            buffer -> screen.writeAdditionalData(buffer, this.getContainers(level, pos, state),
-                                    containerSize));
+                    // 附加开屏数据随 ContainerScreenType#createMenuProvider 一起提供（见方法头注释）
+                    serverPlayer.openMenu(screen.createMenuProvider(containers, containerSize));
                 }
                 if (angerPiglins) {
                     PiglinAi.angerNearbyPiglins(player, true);
@@ -431,8 +438,9 @@ public class FlexBarrelBlock extends BaseEntityBlock
     private boolean shouldKeepInventory(Player player) {
         return switch (keepInventory) {
             case ALWAYS -> true;
-            case SILK_TOUCH -> player.getMainHandItem().getEnchantmentLevel(
-                    net.minecraft.world.item.enchantment.Enchantments.SILK_TOUCH) > 0;
+            // 1.20.1 无 ItemStack#getEnchantmentLevel，用 EnchantmentHelper 取附魔等级
+            case SILK_TOUCH -> net.minecraft.world.item.enchantment.EnchantmentHelper.getItemEnchantmentLevel(
+                    net.minecraft.world.item.enchantment.Enchantments.SILK_TOUCH, player.getMainHandItem()) > 0;
             case NEVER -> false;
         };
     }
@@ -927,49 +935,9 @@ public class FlexBarrelBlock extends BaseEntityBlock
             }
         }
 
-        private net.minecraftforge.common.util.LazyOptional<net.minecraftforge.items.IItemHandlerModifiable> itemHandler;
-
-        @Override
-        public void setBlockState(BlockState state) {
-            super.setBlockState(state);
-            if (this.itemHandler != null) {
-                net.minecraftforge.common.util.LazyOptional<?> oldHandler = this.itemHandler;
-                this.itemHandler = null;
-                oldHandler.invalidate();
-            }
-        }
-
-        @Override
-        public <T> net.minecraftforge.common.util.LazyOptional<T> getCapability(
-                net.minecraftforge.common.capabilities.Capability<T> cap, @Nullable Direction side) {
-            if (isConnected() && !this.remove) {
-                ControllerBlockEntity controller = getController();
-                if (controller != null)
-                    return controller.getCapability(cap, side);
-                return net.minecraftforge.common.util.LazyOptional.empty();
-            }
-            if (cap == net.minecraftforge.common.capabilities.ForgeCapabilities.ITEM_HANDLER && !this.remove) {
-                if (this.itemHandler == null) {
-                    this.itemHandler = net.minecraftforge.common.util.LazyOptional.of(this::createHandler);
-                }
-                return this.itemHandler.cast();
-            }
-            return super.getCapability(cap, side);
-        }
-
-        private net.minecraftforge.items.IItemHandlerModifiable createHandler() {
-            return new net.minecraftforge.items.wrapper.InvWrapper(
-                    MultiContainer.of(flexBlock.getContainers(getLevel(), getBlockPos(), getBlockState())));
-        }
-
-        @Override
-        public void invalidateCaps() {
-            super.invalidateCaps();
-            if (itemHandler != null) {
-                itemHandler.invalidate();
-                itemHandler = null;
-            }
-        }
+        // Forge 的 LazyOptional<IItemHandler> 能力（getCapability/setBlockState/invalidateCaps）
+        // 已整体移除：物品能力由入口类 JsonMore 的 ItemStorage.SIDED.registerFallback 提供。
+        // 未被抓取时 getContainers 返回自身，被抓取时 getItems/getContainerSize 转发到控制器。
 
         public void recheckOpen() {
             if (!this.remove) {

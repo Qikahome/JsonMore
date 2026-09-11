@@ -2,20 +2,16 @@ package qikahome.jsonmore.lib.ingredient;
 
 import javax.annotation.Nullable;
 
-import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParseException;
 
+import net.fabricmc.fabric.api.recipe.v1.ingredient.CustomIngredientSerializer;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.GsonHelper;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.crafting.Ingredient;
-import net.minecraftforge.common.crafting.CraftingHelper;
-import net.minecraftforge.common.crafting.IIngredientSerializer;
-import net.minecraftforge.fml.ModList;
-import qikahome.jsonmore.tconstruct.TConstructPlugin;
 
 public class ToolDamagingIngredient extends SelfConsumingIngredient {
     public static final ResourceLocation ID = new ResourceLocation("jsonmore:tool_damaging");
@@ -34,6 +30,7 @@ public class ToolDamagingIngredient extends SelfConsumingIngredient {
             throw new IllegalArgumentException("ToolDamagingIngredient only consumes single items");
         ItemStack copy = stack.copy();
         ItemStack remainder = super.consume(stack);
+        // 1.20.1 原版签名是 hurt(int, RandomSource, ServerPlayer)，第三参传 null 即可。
         if (copy.hurt(damage, RandomSource.create(), null)) {
             copy = remainder;
         }
@@ -45,8 +42,8 @@ public class ToolDamagingIngredient extends SelfConsumingIngredient {
         ItemStack[] items = super.getItems();
         for (int i = 0; i < items.length; i++) {
             items[i] = items[i].copy();
-            if (items[i].getMaxDamage()>=damage){
-                items[i].setDamageValue(items[i].getMaxDamage()-damage);
+            if (items[i].getMaxDamage() >= damage) {
+                items[i].setDamageValue(items[i].getMaxDamage() - damage);
             }
         }
         return items;
@@ -55,10 +52,7 @@ public class ToolDamagingIngredient extends SelfConsumingIngredient {
     @Override
     public boolean test(@Nullable ItemStack stack) {
         if (super.test(stack)) {
-            ModList modList = ModList.get();
             int maxDamage = stack.getMaxDamage();
-            if (modList.isLoaded("tconstruct"))
-                maxDamage = TConstructPlugin.getRealMaxDamage(stack, maxDamage);
             if (stack.isDamageableItem() && maxDamage - stack.getDamageValue() >= damage)
                 return true;
         }
@@ -66,31 +60,27 @@ public class ToolDamagingIngredient extends SelfConsumingIngredient {
     }
 
     @Override
-    public IIngredientSerializer<? extends Ingredient> getSerializer() {
+    public CustomIngredientSerializer<?> getSerializer() {
         return Serializer.INSTANCE;
     }
 
-    @Override
-    public JsonElement toJson() {
-        JsonObject json = new JsonObject();
-        json.addProperty("type", ID.toString());
-        json.add("ingredient", ingredient.toJson());
-        json.addProperty("damage", damage);
-        return json;
-    }
-
-    public static class Serializer implements IIngredientSerializer<ToolDamagingIngredient> {
+    public static class Serializer implements CustomIngredientSerializer<ToolDamagingIngredient> {
         public static final Serializer INSTANCE = new Serializer();
 
         @Override
-        public ToolDamagingIngredient parse(FriendlyByteBuf buffer) {
+        public ResourceLocation getIdentifier() {
+            return ID;
+        }
+
+        @Override
+        public ToolDamagingIngredient read(FriendlyByteBuf buffer) {
             Ingredient ingredient = Ingredient.fromNetwork(buffer);
             int damage = buffer.readVarInt();
             return new ToolDamagingIngredient(ingredient, damage);
         }
 
         @Override
-        public ToolDamagingIngredient parse(JsonObject json) {
+        public ToolDamagingIngredient read(JsonObject json) {
             if (!json.has("ingredient")) {
                 throw new JsonParseException("Tool damaging ingredient must have 'ingredient' field");
             }
@@ -98,10 +88,9 @@ public class ToolDamagingIngredient extends SelfConsumingIngredient {
             int damage = GsonHelper.getAsInt(json, "damage", 1);
             Ingredient ingredient;
             if (json.has("remainder_override")) {
-                ingredient = RemainderOverrideIngredient.Serializer.INSTANCE.parse(json);
+                ingredient = RemainderOverrideIngredient.Serializer.INSTANCE.read(json).toVanilla();
             } else {
-                JsonElement ingredientJson = json.get("ingredient");
-                ingredient = Ingredient.fromJson(ingredientJson);
+                ingredient = Ingredient.fromJson(json.get("ingredient"));
             }
 
             return new ToolDamagingIngredient(ingredient, damage);
@@ -112,9 +101,15 @@ public class ToolDamagingIngredient extends SelfConsumingIngredient {
             ingredient.ingredient.toNetwork(buffer);
             buffer.writeVarInt(ingredient.damage);
         }
+
+        @Override
+        public void write(JsonObject json, ToolDamagingIngredient ingredient) {
+            json.add("ingredient", ingredient.ingredient.toJson());
+            json.addProperty("damage", ingredient.damage);
+        }
     }
 
     public static void register() {
-        CraftingHelper.register(ID, Serializer.INSTANCE);
+        CustomIngredientSerializer.register(Serializer.INSTANCE);
     }
 }

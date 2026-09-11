@@ -9,7 +9,7 @@
             "item": "minecraft:diamond"
         },
         "p": {
-            "type": "jsonmore:nbt_copy",
+            "fabric:type": "jsonmore:nbt_copy",
             "ingredient": {
                 "tag": "minecraft:pickaxes"
             },

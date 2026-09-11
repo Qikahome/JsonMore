@@ -2,7 +2,7 @@
     "type": "jsonmore:shapeless_consuming",
     "ingredients": [
         {
-            "type": "jsonmore:item_display_override",
+            "fabric:type": "jsonmore:item_display_override",
             "ingredient": {
                 "tag": "minecraft:pickaxes"
             },

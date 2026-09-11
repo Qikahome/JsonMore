@@ -1,42 +1,47 @@
 package qikahome.jsonmore.lib.ingredient;
 
-import java.util.stream.Stream;
+import java.util.List;
 
 import javax.annotation.Nullable;
 
-import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParseException;
 
+import net.fabricmc.fabric.api.recipe.v1.ingredient.CustomIngredient;
+import net.fabricmc.fabric.api.recipe.v1.ingredient.CustomIngredientSerializer;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.crafting.Ingredient;
-import net.minecraftforge.common.crafting.AbstractIngredient;
-import net.minecraftforge.common.crafting.CraftingHelper;
-import net.minecraftforge.common.crafting.IIngredientSerializer;
 
-public class NotIngredient extends AbstractIngredient {
+public class NotIngredient implements CustomIngredient {
     public static final ResourceLocation ID = new ResourceLocation("jsonmore:not");
 
     private final Ingredient ingredient;
 
     private NotIngredient(Ingredient ingredient) {
-        super(Stream.empty());
         this.ingredient = ingredient;
     }
 
     public static Ingredient of(Ingredient ingredient) {
-        if (ingredient instanceof NotIngredient not) {
+        if (Ingredients.unwrap(ingredient) instanceof NotIngredient not) {
             return not.ingredient;
         }
-        return new NotIngredient(ingredient);
+        return new NotIngredient(ingredient).toVanilla();
+    }
+
+    /**
+     * 便捷重载：Fabric 的自定义原料不是 {@link Ingredient}，调用方拿到 {@link CustomIngredient}
+     * 时可直接传入，内部再经 {@link CustomIngredient#toVanilla()} 转换。
+     */
+    public static Ingredient of(CustomIngredient ingredient) {
+        return new NotIngredient(ingredient.toVanilla()).toVanilla();
     }
 
     private ItemStack[] cachedDisplayStacks = null;
 
-    @Override
+    /** 展示物品入口（保持 Forge 原版的数组形式）。 */
     public ItemStack[] getItems() {
         if (cachedDisplayStacks == null) {
             ItemStack[] subItems = ingredient.getItems();
@@ -62,8 +67,8 @@ public class NotIngredient extends AbstractIngredient {
     }
 
     @Override
-    public boolean isEmpty() {
-        return false;
+    public List<ItemStack> getMatchingStacks() {
+        return List.of(getItems());
     }
 
     @Override
@@ -75,41 +80,37 @@ public class NotIngredient extends AbstractIngredient {
     }
 
     @Override
-    public boolean isSimple() {
-        return false;
+    public boolean requiresTesting() {
+        // 展示列表是"取反"后的展示栈，并非接受集合，必须走直接测试。
+        return true;
     }
 
     @Override
-    public IIngredientSerializer<? extends Ingredient> getSerializer() {
+    public CustomIngredientSerializer<?> getSerializer() {
         return Serializer.INSTANCE;
     }
 
-    @Override
-    public JsonElement toJson() {
-        JsonObject json = new JsonObject();
-        json.addProperty("type", ID.toString());
-        json.add("ingredient", ingredient.toJson());
-        return json;
-    }
-
-    public static class Serializer implements IIngredientSerializer<NotIngredient> {
+    public static class Serializer implements CustomIngredientSerializer<NotIngredient> {
         public static final Serializer INSTANCE = new Serializer();
 
         @Override
-        public NotIngredient parse(FriendlyByteBuf buffer) {
+        public ResourceLocation getIdentifier() {
+            return ID;
+        }
+
+        @Override
+        public NotIngredient read(FriendlyByteBuf buffer) {
             Ingredient ingredient = Ingredient.fromNetwork(buffer);
             return new NotIngredient(ingredient);
         }
 
         @Override
-        public NotIngredient parse(JsonObject json) {
+        public NotIngredient read(JsonObject json) {
             if (!json.has("ingredient")) {
                 throw new JsonParseException("Not ingredient must have 'ingredient' field");
             }
 
-            JsonElement ingredientJson = json.get("ingredient");
-            Ingredient ingredient = Ingredient.fromJson(ingredientJson);
-
+            Ingredient ingredient = Ingredient.fromJson(json.get("ingredient"));
             return new NotIngredient(ingredient);
         }
 
@@ -117,9 +118,14 @@ public class NotIngredient extends AbstractIngredient {
         public void write(FriendlyByteBuf buffer, NotIngredient ingredient) {
             ingredient.ingredient.toNetwork(buffer);
         }
+
+        @Override
+        public void write(JsonObject json, NotIngredient ingredient) {
+            json.add("ingredient", ingredient.ingredient.toJson());
+        }
     }
 
     public static void register() {
-        CraftingHelper.register(ID, Serializer.INSTANCE);
+        CustomIngredientSerializer.register(Serializer.INSTANCE);
     }
 }

@@ -1,7 +1,7 @@
 {
     "type": "jsonmore:item_application",
     "block": {
-        "type": "jsonmore:nbt_copy",
+        "fabric:type": "jsonmore:nbt_copy",
         "ingredient": {
             "item": "testpack:test_container_plain"
         },

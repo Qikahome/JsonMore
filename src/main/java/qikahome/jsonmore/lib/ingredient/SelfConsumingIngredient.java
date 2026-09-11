@@ -1,12 +1,20 @@
 package qikahome.jsonmore.lib.ingredient;
 
+import java.util.List;
+
 import javax.annotation.Nullable;
 
+import net.fabricmc.fabric.api.recipe.v1.ingredient.CustomIngredient;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.crafting.Ingredient;
-import net.minecraftforge.common.crafting.AbstractIngredient;
 
-public abstract class SelfConsumingIngredient extends AbstractIngredient {
+/**
+ * "自消耗"原料的公共基类，对应 Forge 原版的 {@code AbstractIngredient} 子类。
+ * <p>
+ * Fabric 侧的 {@link CustomIngredient} 通过 {@link CustomIngredient#toVanilla()} 转成原版
+ * {@link Ingredient}，因此这里只保留消耗/输出改写的公共逻辑，展示物品仍走 {@link #getItems()}。
+ */
+public abstract class SelfConsumingIngredient implements CustomIngredient {
     protected final Ingredient ingredient;
 
     public SelfConsumingIngredient(Ingredient ingredient) {
@@ -23,7 +31,7 @@ public abstract class SelfConsumingIngredient extends AbstractIngredient {
     public static ItemStack consume(Ingredient ingredient, ItemStack stack) {
         if (stack.isEmpty())
             return stack;
-        if (ingredient instanceof SelfConsumingIngredient selfConsumingIngredient)
+        if (Ingredients.unwrap(ingredient) instanceof SelfConsumingIngredient selfConsumingIngredient)
             return selfConsumingIngredient.consume(stack);
         return vanillaConsume(stack);
     }
@@ -48,7 +56,10 @@ public abstract class SelfConsumingIngredient extends AbstractIngredient {
     protected static ItemStack vanillaConsume(ItemStack stack) {
         if (stack.isEmpty())
             return stack;
-        return stack.getCraftingRemainingItem();
+        // 1.20.1 的物品栈没有 Forge 的 getCraftingRemainingItem()，改用 Item 上的同名方法。
+        if (!stack.getItem().hasCraftingRemainingItem())
+            return ItemStack.EMPTY;
+        return new ItemStack(stack.getItem().getCraftingRemainingItem());
     }
 
     /**
@@ -61,7 +72,7 @@ public abstract class SelfConsumingIngredient extends AbstractIngredient {
     public static void outputModify(Ingredient ingredient, ItemStack matched, ItemStack output) {
         if (matched.isEmpty())
             return;
-        if (ingredient instanceof SelfConsumingIngredient selfConsumingIngredient)
+        if (Ingredients.unwrap(ingredient) instanceof SelfConsumingIngredient selfConsumingIngredient)
             selfConsumingIngredient.outputModify(matched, output);
     }
 
@@ -75,14 +86,17 @@ public abstract class SelfConsumingIngredient extends AbstractIngredient {
         outputModify(ingredient, matched, output);
     }
 
-    @Override
+    /**
+     * Forge 原版的展示物品入口（返回数组）。Fabric 接口只要求 {@link #getMatchingStacks()}，
+     * 这里保留该方法供各子类照常覆写，并由基类统一转换成列表。
+     */
     public ItemStack[] getItems() {
         return ingredient.getItems();
     }
 
     @Override
-    public boolean isEmpty() {
-        return ingredient.isEmpty();
+    public List<ItemStack> getMatchingStacks() {
+        return List.of(getItems());
     }
 
     @Override
@@ -91,10 +105,7 @@ public abstract class SelfConsumingIngredient extends AbstractIngredient {
     }
 
     @Override
-    public boolean isSimple() {
-        return false;
+    public boolean requiresTesting() {
+        return true;
     }
-
-    @Override
-    public abstract net.minecraftforge.common.crafting.IIngredientSerializer<? extends Ingredient> getSerializer();
 }

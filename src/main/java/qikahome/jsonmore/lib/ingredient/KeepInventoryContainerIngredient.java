@@ -1,24 +1,21 @@
 package qikahome.jsonmore.lib.ingredient;
 
-import java.util.stream.Stream;
+import java.util.List;
 
 import javax.annotation.Nullable;
 
-import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParseException;
 
+import net.fabricmc.fabric.api.recipe.v1.ingredient.CustomIngredient;
+import net.fabricmc.fabric.api.recipe.v1.ingredient.CustomIngredientSerializer;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.item.crafting.Ingredient;
-import net.minecraftforge.common.crafting.AbstractIngredient;
-import net.minecraftforge.common.crafting.CraftingHelper;
-import net.minecraftforge.common.crafting.IIngredientSerializer;
 
-public class KeepInventoryContainerIngredient extends AbstractIngredient {
+public class KeepInventoryContainerIngredient implements CustomIngredient {
     public static final ResourceLocation ID = new ResourceLocation("jsonmore:keep_inventory_container");
 
     public enum Mode {
@@ -29,7 +26,6 @@ public class KeepInventoryContainerIngredient extends AbstractIngredient {
     private final Mode mode;
 
     public KeepInventoryContainerIngredient(Mode mode) {
-        super(Stream.empty());
         this.mode = mode;
     }
 
@@ -65,35 +61,38 @@ public class KeepInventoryContainerIngredient extends AbstractIngredient {
     }
 
     @Override
-    public boolean isSimple() {
-        return false;
+    public List<ItemStack> getMatchingStacks() {
+        // 与 Forge 原版一致：该原料没有展示物品，仅靠 test 匹配（配合 NotIngredient 展示）。
+        return List.of();
     }
 
     @Override
-    public IIngredientSerializer<? extends Ingredient> getSerializer() {
+    public boolean requiresTesting() {
+        return true;
+    }
+
+    @Override
+    public CustomIngredientSerializer<?> getSerializer() {
         return Serializer.INSTANCE;
     }
 
-    @Override
-    public JsonElement toJson() {
-        JsonObject json = new JsonObject();
-        json.addProperty("type", ID.toString());
-        json.addProperty("mode", mode.name().toLowerCase());
-        return json;
-    }
-
-    public static class Serializer implements IIngredientSerializer<KeepInventoryContainerIngredient> {
+    public static class Serializer implements CustomIngredientSerializer<KeepInventoryContainerIngredient> {
         public static final Serializer INSTANCE = new Serializer();
 
         @Override
-        public KeepInventoryContainerIngredient parse(FriendlyByteBuf buffer) {
+        public ResourceLocation getIdentifier() {
+            return ID;
+        }
+
+        @Override
+        public KeepInventoryContainerIngredient read(FriendlyByteBuf buffer) {
             String modeStr = buffer.readUtf();
             Mode mode = Mode.valueOf(modeStr.toUpperCase());
             return new KeepInventoryContainerIngredient(mode);
         }
 
         @Override
-        public KeepInventoryContainerIngredient parse(JsonObject json) {
+        public KeepInventoryContainerIngredient read(JsonObject json) {
             String modeStr = json.has("mode") ? json.get("mode").getAsString().toUpperCase() : "MAY";
             try {
                 Mode mode = Mode.valueOf(modeStr);
@@ -107,9 +106,14 @@ public class KeepInventoryContainerIngredient extends AbstractIngredient {
         public void write(FriendlyByteBuf buffer, KeepInventoryContainerIngredient ingredient) {
             buffer.writeUtf(ingredient.mode.name().toLowerCase());
         }
+
+        @Override
+        public void write(JsonObject json, KeepInventoryContainerIngredient ingredient) {
+            json.addProperty("mode", ingredient.mode.name().toLowerCase());
+        }
     }
 
     public static void register() {
-        CraftingHelper.register(ID, Serializer.INSTANCE);
+        CustomIngredientSerializer.register(Serializer.INSTANCE);
     }
 }

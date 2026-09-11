@@ -1,7 +1,5 @@
 package qikahome.jsonmore.lib.ingredient;
 
-import static qikahome.jsonmore.JsonMore.LOGGER;
-
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
@@ -17,6 +15,7 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParseException;
 
+import net.fabricmc.fabric.api.recipe.v1.ingredient.CustomIngredientSerializer;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.Tag;
@@ -25,8 +24,6 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.GsonHelper;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.crafting.Ingredient;
-import net.minecraftforge.common.crafting.CraftingHelper;
-import net.minecraftforge.common.crafting.IIngredientSerializer;
 
 public class NBTCopyIngredient extends SelfConsumingIngredient {
     public static final ResourceLocation ID = new ResourceLocation("jsonmore:nbt_copy");
@@ -117,7 +114,7 @@ public class NBTCopyIngredient extends SelfConsumingIngredient {
             if (!valid) {
                 throw new com.google.gson.JsonSyntaxException("Invalid tag path: " + path);
             }
-            
+
             if (!keys.isEmpty()) {
                 specs.add(new PathSpec(keys, indices));
             }
@@ -290,35 +287,20 @@ public class NBTCopyIngredient extends SelfConsumingIngredient {
     }
 
     @Override
-    public IIngredientSerializer<? extends Ingredient> getSerializer() {
+    public CustomIngredientSerializer<?> getSerializer() {
         return Serializer.INSTANCE;
     }
 
-    @Override
-    public JsonElement toJson() {
-        JsonObject json = new JsonObject();
-        json.addProperty("type", ID.toString());
-        json.add("ingredient", ingredient.toJson());
-        json.addProperty("mode", mode.name());
-        if (tags != null && !tags.isEmpty()) {
-            if (tags.size() == 1) {
-                json.addProperty("tags", tags.get(0));
-            } else {
-                JsonArray tagsArray = new JsonArray();
-                for (String tag : tags) {
-                    tagsArray.add(tag);
-                }
-                json.add("tags", tagsArray);
-            }
-        }
-        return json;
-    }
-
-    public static class Serializer implements IIngredientSerializer<NBTCopyIngredient> {
+    public static class Serializer implements CustomIngredientSerializer<NBTCopyIngredient> {
         public static final Serializer INSTANCE = new Serializer();
 
         @Override
-        public NBTCopyIngredient parse(FriendlyByteBuf buffer) {
+        public ResourceLocation getIdentifier() {
+            return ID;
+        }
+
+        @Override
+        public NBTCopyIngredient read(FriendlyByteBuf buffer) {
             Ingredient ingredient = Ingredient.fromNetwork(buffer);
             int modeOrdinal = buffer.readVarInt();
             Mode mode = Mode.values()[modeOrdinal];
@@ -326,7 +308,7 @@ public class NBTCopyIngredient extends SelfConsumingIngredient {
             List<String> tags = null;
             if (hasTags) {
                 int tagCount = buffer.readVarInt();
-                tags = new java.util.ArrayList<>();
+                tags = new ArrayList<>();
                 for (int i = 0; i < tagCount; i++) {
                     tags.add(buffer.readUtf());
                 }
@@ -335,7 +317,7 @@ public class NBTCopyIngredient extends SelfConsumingIngredient {
         }
 
         @Override
-        public NBTCopyIngredient parse(JsonObject json) {
+        public NBTCopyIngredient read(JsonObject json) {
             if (!json.has("ingredient")) {
                 throw new JsonParseException("NBTCopyIngredient must have 'ingredient' field");
             }
@@ -354,7 +336,7 @@ public class NBTCopyIngredient extends SelfConsumingIngredient {
             if (json.has("tags")) {
                 JsonElement tagsElement = json.get("tags");
                 if (tagsElement.isJsonArray()) {
-                    tags = new java.util.ArrayList<>();
+                    tags = new ArrayList<>();
                     for (JsonElement element : tagsElement.getAsJsonArray()) {
                         tags.add(element.getAsString());
                     }
@@ -365,10 +347,9 @@ public class NBTCopyIngredient extends SelfConsumingIngredient {
 
             Ingredient ingredient;
             if (json.has("remainder_override")) {
-                ingredient = RemainderOverrideIngredient.Serializer.INSTANCE.parse(json);
+                ingredient = RemainderOverrideIngredient.Serializer.INSTANCE.read(json).toVanilla();
             } else {
-                JsonElement ingredientJson = json.get("ingredient");
-                ingredient = Ingredient.fromJson(ingredientJson);
+                ingredient = Ingredient.fromJson(json.get("ingredient"));
             }
 
             return new NBTCopyIngredient(ingredient, mode, tags);
@@ -386,9 +367,26 @@ public class NBTCopyIngredient extends SelfConsumingIngredient {
                 }
             }
         }
+
+        @Override
+        public void write(JsonObject json, NBTCopyIngredient ingredient) {
+            json.add("ingredient", ingredient.ingredient.toJson());
+            json.addProperty("mode", ingredient.mode.name());
+            if (ingredient.tags != null && !ingredient.tags.isEmpty()) {
+                if (ingredient.tags.size() == 1) {
+                    json.addProperty("tags", ingredient.tags.get(0));
+                } else {
+                    JsonArray tagsArray = new JsonArray();
+                    for (String tag : ingredient.tags) {
+                        tagsArray.add(tag);
+                    }
+                    json.add("tags", tagsArray);
+                }
+            }
+        }
     }
 
     public static void register() {
-        CraftingHelper.register(ID, Serializer.INSTANCE);
+        CustomIngredientSerializer.register(Serializer.INSTANCE);
     }
 }

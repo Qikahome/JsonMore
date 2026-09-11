@@ -7,7 +7,7 @@
     ],
     "key": {
         "D": {
-            "type": "jsonmore:counted",
+            "fabric:type": "jsonmore:counted",
             "ingredient": {
                 "item": "minecraft:deepslate"
             },

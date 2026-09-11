@@ -7,7 +7,7 @@
     ],
     "key": {
         "d": {
-            "type": "jsonmore:counted",
+            "fabric:type": "jsonmore:counted",
             "ingredient": {
                 "item": "minecraft:diamond_block"
             },

@@ -2,7 +2,7 @@
     "type": "minecraft:crafting_shapeless",
     "ingredients": [
         {
-            "type": "jsonmore:condition",
+            "fabric:type": "jsonmore:condition",
             "condition": {
                 "type": "jsonmore:gamerule",
                 "rule": "testpack.test_boolean_rule"

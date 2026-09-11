@@ -4,7 +4,7 @@
         "item": "minecraft:cobblestone"
     },
     "tool": {
-        "type": "jsonmore:counted",
+        "fabric:type": "jsonmore:counted",
         "ingredient": {
             "item": "minecraft:paper"
         },

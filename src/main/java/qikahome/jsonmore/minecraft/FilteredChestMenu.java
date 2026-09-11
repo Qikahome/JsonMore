@@ -126,7 +126,8 @@ public class FilteredChestMenu extends AbstractContainerMenu implements IFlexCon
         @Override
         public boolean mayPlace(ItemStack stack) {
             if (blockEntity != null) {
-                return blockEntity.canPlaceItem(this.getSlotIndex(), stack);
+                // 1.20.1 vanilla 的 Slot 没有 Forge 扩展的 getSlotIndex()，直接读 public 字段 index
+                return blockEntity.canPlaceItem(this.index, stack);
             }
             return super.mayPlace(stack);
         }

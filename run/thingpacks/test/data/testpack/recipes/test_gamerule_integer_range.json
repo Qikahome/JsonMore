@@ -1,8 +1,8 @@
 {
     "type": "minecraft:crafting_shapeless",
-    "conditions": [
+    "fabric:load_conditions": [
         {
-            "type": "jsonmore:gamerule",
+            "condition": "jsonmore:gamerule",
             "rule": "testpack.test_integer_rule",
             "value": "[5,20]"
         }

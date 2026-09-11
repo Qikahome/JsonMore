@@ -1,37 +1,36 @@
 package qikahome.jsonmore.lib.ingredient;
 
-import java.util.stream.Stream;
-
 import javax.annotation.Nullable;
 
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParseException;
 
+import net.fabricmc.fabric.api.recipe.v1.ingredient.CustomIngredientSerializer;
+import net.fabricmc.fabric.api.resource.conditions.v1.ResourceConditions;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.item.crafting.Ingredient;
-import net.minecraftforge.common.crafting.CraftingHelper;
-import net.minecraftforge.common.crafting.IIngredientSerializer;
-import net.minecraftforge.common.crafting.conditions.ICondition;
 
 public class ConditionIngredient extends SelfConsumingIngredient {
     public static final ResourceLocation ID = new ResourceLocation("jsonmore:condition");
     private static final String DEFAULT_MESSAGE = "recipe.jsonmore.disabled";
 
-    @Nullable
-    private final ICondition condition;
+    /**
+     * Fabric 1.20.1 的资源条件是 JSON 版，这里保留条件对象原文，运行时改键后交给
+     * {@link ResourceConditions#conditionMatches(JsonObject)} 求值。
+     */
     @Nullable
     private final JsonObject conditionJson;
     private final boolean networkPasses;
     private final String message;
 
-    private ConditionIngredient(Ingredient ingredient, @Nullable ICondition condition, @Nullable JsonObject conditionJson, boolean networkPasses, String message) {
+    private ConditionIngredient(Ingredient ingredient, @Nullable JsonObject conditionJson, boolean networkPasses,
+            String message) {
         super(ingredient);
-        this.condition = condition;
         this.conditionJson = conditionJson;
         this.networkPasses = networkPasses;
         this.message = message;
@@ -40,7 +39,18 @@ public class ConditionIngredient extends SelfConsumingIngredient {
     private boolean passes() {
         if (conditionJson == null)
             return networkPasses; // 从网络来的，使用服务端评估结果
-        return condition.test(ICondition.IContext.EMPTY);
+        try {
+            // Fabric 的条件 dispatch 键是 "condition"，而 JsonMore 数据沿用 "type"；
+            // 求值前把键名换掉，数据格式就和原版保持一致了。
+            JsonObject normalized = conditionJson.deepCopy();
+            JsonElement type = normalized.remove("type");
+            if (type != null && !normalized.has("condition")) {
+                normalized.add("condition", type);
+            }
+            return ResourceConditions.conditionMatches(normalized);
+        } catch (RuntimeException e) {
+            return false;
+        }
     }
 
     @Override
@@ -55,52 +65,44 @@ public class ConditionIngredient extends SelfConsumingIngredient {
         if (!passes()) {
             ItemStack barrier = new ItemStack(Items.BARRIER);
             barrier.setHoverName(Component.translatable(message));
-            return new ItemStack[]{ barrier };
+            return new ItemStack[] { barrier };
         }
         return super.getItems();
     }
 
     @Override
-    public IIngredientSerializer<? extends Ingredient> getSerializer() {
+    public CustomIngredientSerializer<?> getSerializer() {
         return Serializer.INSTANCE;
     }
 
-    @Override
-    public JsonElement toJson() {
-        JsonObject json = new JsonObject();
-        json.addProperty("type", ID.toString());
-        if (conditionJson != null)
-            json.add("condition", conditionJson.deepCopy());
-        json.add("ingredient", ingredient.toJson());
-        if (!DEFAULT_MESSAGE.equals(message))
-            json.addProperty("message", message);
-        return json;
-    }
-
-    public static class Serializer implements IIngredientSerializer<ConditionIngredient> {
+    public static class Serializer implements CustomIngredientSerializer<ConditionIngredient> {
         public static final Serializer INSTANCE = new Serializer();
 
         @Override
-        public ConditionIngredient parse(FriendlyByteBuf buffer) {
-            boolean passes = buffer.readBoolean();
-            Ingredient ingredient = Ingredient.fromNetwork(buffer);
-            String message = buffer.readUtf();
-            return new ConditionIngredient(ingredient, null, null, passes, message);
+        public ResourceLocation getIdentifier() {
+            return ID;
         }
 
         @Override
-        public ConditionIngredient parse(JsonObject json) {
+        public ConditionIngredient read(FriendlyByteBuf buffer) {
+            boolean passes = buffer.readBoolean();
+            Ingredient ingredient = Ingredient.fromNetwork(buffer);
+            String message = buffer.readUtf();
+            return new ConditionIngredient(ingredient, null, passes, message);
+        }
+
+        @Override
+        public ConditionIngredient read(JsonObject json) {
             if (!json.has("condition"))
                 throw new JsonParseException("Condition ingredient must have 'condition' field");
             if (!json.has("ingredient"))
                 throw new JsonParseException("Condition ingredient must have 'ingredient' field");
 
             JsonObject conditionJson = json.getAsJsonObject("condition").deepCopy();
-            ICondition condition = CraftingHelper.getCondition(conditionJson);
             Ingredient ingredient = Ingredient.fromJson(json.get("ingredient"));
             String message = json.has("message") ? json.get("message").getAsString() : DEFAULT_MESSAGE;
 
-            return new ConditionIngredient(ingredient, condition, conditionJson, false, message);
+            return new ConditionIngredient(ingredient, conditionJson, false, message);
         }
 
         @Override
@@ -109,9 +111,18 @@ public class ConditionIngredient extends SelfConsumingIngredient {
             ingredient.ingredient.toNetwork(buffer);
             buffer.writeUtf(ingredient.message);
         }
+
+        @Override
+        public void write(JsonObject json, ConditionIngredient ingredient) {
+            if (ingredient.conditionJson != null)
+                json.add("condition", ingredient.conditionJson.deepCopy());
+            json.add("ingredient", ingredient.ingredient.toJson());
+            if (!DEFAULT_MESSAGE.equals(ingredient.message))
+                json.addProperty("message", ingredient.message);
+        }
     }
 
     public static void register() {
-        CraftingHelper.register(ID, Serializer.INSTANCE);
+        CustomIngredientSerializer.register(Serializer.INSTANCE);
     }
 }

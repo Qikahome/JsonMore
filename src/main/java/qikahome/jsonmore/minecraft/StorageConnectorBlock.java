@@ -54,12 +54,19 @@ import net.minecraft.world.level.block.state.properties.Property;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.shapes.CollisionContext;
 import net.minecraft.world.phys.shapes.VoxelShape;
-import net.minecraftforge.network.NetworkHooks;
 import static qikahome.jsonmore.JsonMore.LOGGER;
 import qikahome.jsonmore.lib.ContainerScreenType;
 import qikahome.jsonmore.lib.IFlexEntityBlock;
 import qikahome.jsonmore.lib.IProtectedBlock;
 
+/**
+ * 存储连接器方块：通过 BFS 聚合半径内的多个 Flex 桶，对外表现为一个统一的扁平容器。
+ *
+ * <p>物品能力（原 Forge 的 {@code IItemHandler} 能力）在 Fabric 侧由入口类
+ * {@code JsonMore#onInitialize()} 中注册的 {@code ItemStorage.SIDED.registerFallback(...)} 提供：
+ * 控制器方块实体自身即 {@code WorldlyContainer}，入口对其调用 {@code InventoryStorage.of(cbe, side)}。
+ * 因此本类不再有 {@code getCapability} 实现。
+ */
 public class StorageConnectorBlock extends BaseEntityBlock
         implements IFlexEntityBlock<StorageConnectorBlock.ControllerBlockEntity>, IProtectedBlock {
 
@@ -244,11 +251,11 @@ public class StorageConnectorBlock extends BaseEntityBlock
         if (be instanceof ControllerBlockEntity cbe && cbe.isAssembled() && cbe.getContainerSize() > 0) {
             if (player instanceof ServerPlayer serverPlayer) {
                 Container container = cbe.getControllerContainer();
-                NetworkHooks.openScreen(serverPlayer,
-                        screenType.createMenuProvider(Collections.singletonList(container),
-                                container.getContainerSize()),
-                        buffer -> screenType.writeAdditionalData(buffer,
-                                Collections.singletonList(container), container.getContainerSize()));
+                // Fabric 无 NetworkHooks.openScreen(provider, bufConsumer)：
+                // 附加开屏数据由 ContainerScreenType#createMenuProvider 内部以
+                // ExtendedScreenHandlerFactory 形式携带；原版菜单类型则为普通 MenuProvider。
+                serverPlayer.openMenu(screenType.createMenuProvider(
+                        Collections.singletonList(container), container.getContainerSize()));
             }
         }
 
@@ -662,15 +669,8 @@ public class StorageConnectorBlock extends BaseEntityBlock
         //  Capability
         // ========================================================================
 
-        @Override
-        public <T> net.minecraftforge.common.util.LazyOptional<T> getCapability(
-                net.minecraftforge.common.capabilities.Capability<T> cap, @Nullable Direction side) {
-            if (!remove && cap == net.minecraftforge.common.capabilities.ForgeCapabilities.ITEM_HANDLER) {
-                return net.minecraftforge.common.util.LazyOptional
-                        .of(() -> new net.minecraftforge.items.wrapper.InvWrapper(this)).cast();
-            }
-            return super.getCapability(cap, side);
-        }
+        // Forge 的 LazyOptional<IItemHandler> 能力已移除：物品能力由入口类 JsonMore 的
+        // ItemStorage.SIDED.registerFallback 提供（控制器本身即 WorldlyContainer，见类注释）。
 
         // ========================================================================
         //  Internal data class

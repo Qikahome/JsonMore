@@ -1,14 +1,14 @@
 {
     "type": "jsonmore:item_application",
     "block": {
-        "type": "jsonmore:nbt_copy",
+        "fabric:type": "jsonmore:nbt_copy",
         "ingredient": {
             "item": "minecraft:barrel"
         },
         "mode": "REPLACE"
     },
     "tool": {
-        "type": "jsonmore:counted",
+        "fabric:type": "jsonmore:counted",
         "ingredient": {
             "item": "minecraft:paper"
         },

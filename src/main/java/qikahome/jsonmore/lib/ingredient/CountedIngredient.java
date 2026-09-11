@@ -4,18 +4,16 @@ import static qikahome.jsonmore.JsonMore.LOGGER;
 
 import javax.annotation.Nullable;
 
-import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParseException;
 
+import net.fabricmc.fabric.api.recipe.v1.ingredient.CustomIngredientSerializer;
 import net.minecraft.nbt.StringTag;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.GsonHelper;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.crafting.Ingredient;
-import net.minecraftforge.common.crafting.CraftingHelper;
-import net.minecraftforge.common.crafting.IIngredientSerializer;
 
 public class CountedIngredient extends SelfConsumingIngredient {
     public static final ResourceLocation ID = new ResourceLocation("jsonmore:counted");
@@ -74,31 +72,27 @@ public class CountedIngredient extends SelfConsumingIngredient {
     }
 
     @Override
-    public IIngredientSerializer<? extends Ingredient> getSerializer() {
+    public CustomIngredientSerializer<?> getSerializer() {
         return Serializer.INSTANCE;
     }
 
-    @Override
-    public JsonElement toJson() {
-        JsonObject json = new JsonObject();
-        json.addProperty("type", ID.toString());
-        json.add("ingredient", ingredient.toJson());
-        json.addProperty("count", count);
-        return json;
-    }
-
-    public static class Serializer implements IIngredientSerializer<CountedIngredient> {
+    public static class Serializer implements CustomIngredientSerializer<CountedIngredient> {
         public static final Serializer INSTANCE = new Serializer();
 
         @Override
-        public CountedIngredient parse(FriendlyByteBuf buffer) {
+        public ResourceLocation getIdentifier() {
+            return ID;
+        }
+
+        @Override
+        public CountedIngredient read(FriendlyByteBuf buffer) {
             Ingredient ingredient = Ingredient.fromNetwork(buffer);
             int count = buffer.readVarInt();
             return new CountedIngredient(ingredient, count);
         }
 
         @Override
-        public CountedIngredient parse(JsonObject json) {
+        public CountedIngredient read(JsonObject json) {
             if (!json.has("ingredient")) {
                 throw new JsonParseException("Counted ingredient must have 'ingredient' field");
             }
@@ -106,10 +100,9 @@ public class CountedIngredient extends SelfConsumingIngredient {
             int count = GsonHelper.getAsInt(json, "count", 1);
             Ingredient ingredient;
             if (json.has("remainder_override")) {
-                ingredient = RemainderOverrideIngredient.Serializer.INSTANCE.parse(json);
+                ingredient = RemainderOverrideIngredient.Serializer.INSTANCE.read(json).toVanilla();
             } else {
-                JsonElement ingredientJson = json.get("ingredient");
-                ingredient = Ingredient.fromJson(ingredientJson);
+                ingredient = Ingredient.fromJson(json.get("ingredient"));
             }
 
             return new CountedIngredient(ingredient, count);
@@ -120,9 +113,15 @@ public class CountedIngredient extends SelfConsumingIngredient {
             ingredient.ingredient.toNetwork(buffer);
             buffer.writeVarInt(ingredient.count);
         }
+
+        @Override
+        public void write(JsonObject json, CountedIngredient ingredient) {
+            json.add("ingredient", ingredient.ingredient.toJson());
+            json.addProperty("count", ingredient.count);
+        }
     }
 
     public static void register() {
-        CraftingHelper.register(ID, Serializer.INSTANCE);
+        CustomIngredientSerializer.register(Serializer.INSTANCE);
     }
 }

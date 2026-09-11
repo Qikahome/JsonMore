@@ -5,21 +5,16 @@ import com.google.gson.JsonObject;
 import dev.gigaherz.jsonthings.things.builders.BaseBuilder;
 import dev.gigaherz.jsonthings.things.parsers.ThingParser;
 import dev.gigaherz.jsonthings.util.parse.JParse;
+import net.fabricmc.fabric.api.resource.ResourceManagerHelper;
+import net.fabricmc.fabric.api.resource.ResourcePackActivationType;
+import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
-import net.minecraft.server.packs.PackType;
-import net.minecraft.server.packs.repository.Pack;
-import net.minecraft.server.packs.repository.PackSource;
 import net.minecraft.server.packs.repository.RepositorySource;
-import net.minecraftforge.event.AddPackFindersEvent;
-import net.minecraftforge.eventbus.api.IEventBus;
-import net.minecraftforge.fml.ModList;
-import net.minecraftforge.resource.PathPackResources;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
-import java.nio.file.Path;
 import java.util.function.Consumer;
 
 public class BuiltInDatapackParser extends ThingParser<BuiltInDatapackParser.Builder> {
@@ -53,56 +48,45 @@ public class BuiltInDatapackParser extends ThingParser<BuiltInDatapackParser.Bui
         @Override
         protected RepositorySource buildInternal() {
             var regName = this.getRegistryName();
-            var modContainer = ModList.get()
-                    .getModContainerById(regName.getNamespace());
-            if (!modContainer.isPresent()) {
+            var modContainer = FabricLoader.getInstance().getModContainer(regName.getNamespace());
+            if (modContainer.isEmpty()) {
                 LOGGER.warn(
                         "Cannot find mod {} to load built-in datapack, if it's a thingpack you may ignore this warning.",
                         regName.getNamespace());
-                return c -> {
-                };
-            }
-            Path packPath = modContainer.get()
-                    .getModInfo()
-                    .getOwningFile()
-                    .getFile()
-                    .findResource("datapacks", regName.getPath());
-            return consumer -> {
-                try {
-                    var pack = Pack.readMetaAndCreate(regName.toString().replace(":", "/"),
-                            displayName, false,
-                            str -> new PathPackResources("built_in." + regName.toString().replace(":", "."),
-                                    true,
-                                    packPath),
-                            PackType.SERVER_DATA, Pack.Position.TOP,
-                            PackSource.create(val -> PackSource.BUILT_IN.decorate(val), defaultEnable));
-                    if (pack != null)
-                        consumer.accept(pack);
-                    else
-                        LOGGER.warn("Fail to load built-in datapack because pack is null");
-                } catch (Exception e) {
-                    LOGGER.warn("Fail to load built-in datapack " + regName.toString(), e);
+            } else {
+                // 上游 Forge 版本从 <mod>/datapacks/<name> 读 pack.mcmeta 后经 AddPackFindersEvent 注入
+                // SERVER_DATA 包库；Fabric 1.20.1 无 AddPackFindersEvent/PathPackResources 等价物，
+                // 改用 ResourceManagerHelper 的内置包登记（同时覆盖资源包与数据包）。
+                ResourcePackActivationType activationType = defaultEnable
+                        ? ResourcePackActivationType.DEFAULT_ENABLED
+                        : ResourcePackActivationType.NORMAL;
+                if (!ResourceManagerHelper.registerBuiltinResourcePack(regName, modContainer.get(), displayName,
+                        activationType)) {
+                    LOGGER.warn("Fail to load built-in datapack because pack is null");
                 }
+            }
+            // Fabric 侧不需要 RepositorySource，保留空实现仅为满足 Builder 的构建类型。
+            return consumer -> {
             };
         }
     }
 
     public static final Logger LOGGER = LogManager.getLogger();
 
-    public BuiltInDatapackParser(IEventBus bus) {
+    public BuiltInDatapackParser() {
         super(GSON, "built_in_datapack");
-        bus.addListener(this::register);
     }
 
-    public void register(AddPackFindersEvent event) {
-        if (event.getPackType() == PackType.SERVER_DATA) {
-            LOGGER.info(
-                    "Started loading built-in datapack things...");
-            for (var builder : this.getBuilders()) {
-                event.addRepositorySource(builder.build());
-            }
-            LOGGER.info("Done processing thingpack built-in datapack things.");
+    /**
+     * 上游 Forge 版在 {@code AddPackFindersEvent} 里注入包库；Fabric 无该事件，
+     * 由入口 {@code JsonMore#onInitialize} 在 thingpack 解析完成后显式调用。
+     */
+    public void registerValues() {
+        LOGGER.info("Started loading built-in datapack things...");
+        for (var builder : this.getBuilders()) {
+            builder.build();
         }
+        LOGGER.info("Done processing thingpack built-in datapack things.");
     }
 
     @Override

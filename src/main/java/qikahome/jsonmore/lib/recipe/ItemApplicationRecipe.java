@@ -9,16 +9,24 @@ import javax.annotation.Nullable;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonSyntaxException;
+import com.mojang.brigadier.exceptions.CommandSyntaxException;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
+import net.minecraft.core.Registry;
 import net.minecraft.core.RegistryAccess;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.core.registries.Registries;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.TagParser;
 import net.minecraft.network.FriendlyByteBuf;
+import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.tags.TagKey;
+import net.minecraft.util.GsonHelper;
+import net.minecraft.world.Container;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.player.Player;
@@ -40,24 +48,27 @@ import net.minecraft.world.level.block.state.StateDefinition;
 import net.minecraft.world.level.block.state.properties.BlockStateProperties;
 import net.minecraft.world.level.block.state.properties.DirectionProperty;
 import net.minecraft.world.level.block.state.properties.Property;
-import net.minecraftforge.common.crafting.CraftingHelper;
-import net.minecraftforge.event.entity.player.PlayerInteractEvent;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.Mod;
-import net.minecraftforge.items.wrapper.RecipeWrapper;
-import net.minecraft.core.registries.Registries;
-import net.minecraftforge.registries.ForgeRegistries;
+import net.minecraft.world.phys.BlockHitResult;
 import qikahome.jsonmore.lib.ingredient.SelfConsumingIngredient;
 
-@Mod.EventBusSubscriber
-public class ItemApplicationRecipe implements Recipe<RecipeWrapper>, IConsumingRecipe {
+public class ItemApplicationRecipe implements Recipe<Container>, IConsumingRecipe {
     public static final ResourceLocation TYPE_ID = new ResourceLocation("jsonmore:item_application");
-    public static final RecipeType<ItemApplicationRecipe> TYPE = new RecipeType<>() {
-        @Override
-        public String toString() {
-            return "jsonmore:item_application";
-        }
-    };
+    // 原版 1.20.1 的自定义 RecipeType 需自行注册进 BuiltInRegistries.RECIPE_TYPE。
+    // 注册必须早于注册表冻结，故由 JsonMore 入口显式调用 register()；不能放静态初始化里，
+    // 因为本类首次被加载是 JEI 进世界时（那时注册表已冻结）。
+    public static RecipeType<ItemApplicationRecipe> TYPE;
+
+    public static void register() {
+        if (TYPE != null)
+            return;
+        TYPE = Registry.register(BuiltInRegistries.RECIPE_TYPE, TYPE_ID, new RecipeType<ItemApplicationRecipe>() {
+            @Override
+            public String toString() {
+                return TYPE_ID.toString();
+            }
+        });
+    }
+
     public static final TagKey<Item> TOOL_TAG = TagKey.create(Registries.ITEM,
             new ResourceLocation("jsonmore:item_application_tool"));
 
@@ -158,12 +169,12 @@ public class ItemApplicationRecipe implements Recipe<RecipeWrapper>, IConsumingR
     }
 
     @Override
-    public boolean matches(RecipeWrapper inv, Level level) {
+    public boolean matches(Container inv, Level level) {
         return block.test(inv.getItem(0)) && tool.test(inv.getItem(1));
     }
 
     @Override
-    public ItemStack assemble(RecipeWrapper inv, RegistryAccess registryAccess) {
+    public ItemStack assemble(Container inv, RegistryAccess registryAccess) {
         return result.copy();
     }
 
@@ -192,26 +203,27 @@ public class ItemApplicationRecipe implements Recipe<RecipeWrapper>, IConsumingR
         return TYPE;
     }
 
-    @SubscribeEvent
-    public static void onRightClickBlock(PlayerInteractEvent.RightClickBlock event) {
-        Level level = event.getLevel();
-        ItemStack heldItem = event.getItemStack();
-        BlockPos pos = event.getPos();
+    /**
+     * 对应上游 Forge 的 {@code PlayerInteractEvent.RightClickBlock}：Fabric 侧等价钩子是
+     * {@code UseBlockCallback}，由 JsonMore 入口注册。
+     * <p>
+     * 返回 {@code SUCCESS} 表示接管本次右键（客户端会同步发包），{@code PASS} 表示交回原版流程。
+     */
+    public static InteractionResult onRightClickBlock(Player player, Level level, InteractionHand hand,
+            BlockHitResult hit) {
+        ItemStack heldItem = player.getItemInHand(hand);
+        BlockPos pos = hit.getBlockPos();
         BlockState blockState = level.getBlockState(pos);
 
         if (heldItem.isEmpty())
-            return;
+            return InteractionResult.PASS;
         if (blockState.isAir())
-            return;
-        if (event.isCanceled())
-            return;
+            return InteractionResult.PASS;
 
         if (!heldItem.is(TOOL_TAG))
-            return;
+            return InteractionResult.PASS;
 
-        Player player = event.getEntity();
-
-        for (var recipe : level.getRecipeManager().getAllRecipesFor(TYPE)) {
+        for (ItemApplicationRecipe recipe : level.getRecipeManager().getAllRecipesFor(TYPE)) {
             Boolean sneaking = recipe.getSneaking();
             if (sneaking != null && player.isShiftKeyDown() != sneaking)
                 continue;
@@ -221,17 +233,15 @@ public class ItemApplicationRecipe implements Recipe<RecipeWrapper>, IConsumingR
             if (!recipe.testTool(heldItem))
                 continue;
 
-            event.setCancellationResult(InteractionResult.SUCCESS);
-            event.setCanceled(true);
-
             if (level.isClientSide())
-                return;
+                return InteractionResult.SUCCESS;
 
             level.playSound(null, pos, SoundEvents.COPPER_BREAK, SoundSource.PLAYERS, 1, 1.45f);
 
-            recipe.apply(level, pos, player, event.getHand());
-            return;
+            recipe.apply(level, pos, player, hand);
+            return InteractionResult.SUCCESS;
         }
+        return InteractionResult.PASS;
     }
 
     public void apply(Level level, BlockPos pos, Player player, InteractionHand hand) {
@@ -428,14 +438,14 @@ public class ItemApplicationRecipe implements Recipe<RecipeWrapper>, IConsumingR
         public Block getBlock() {
             if (blockId == null)
                 return null;
-            Block block = ForgeRegistries.BLOCKS.getValue(blockId);
-            return block == null || block == Blocks.AIR ? null : block;
+            return BuiltInRegistries.BLOCK.getOptional(ResourceKey.create(Registries.BLOCK, blockId))
+                    .filter(block -> block != Blocks.AIR).orElse(null);
         }
 
         public boolean matches(BlockState state) {
             if (blockId != null) {
-                ResourceLocation current = ForgeRegistries.BLOCKS.getKey(state.getBlock());
-                if (current == null || !current.equals(blockId)) {
+                Block block = getBlock();
+                if (block == null || state.getBlock() != block) {
                     return false;
                 }
             }
@@ -530,11 +540,11 @@ public class ItemApplicationRecipe implements Recipe<RecipeWrapper>, IConsumingR
         public ItemApplicationRecipe fromJson(ResourceLocation id, JsonObject json) {
             Ingredient block = Ingredient.fromJson(json.get("block"));
             Ingredient tool = Ingredient.fromJson(json.get("tool"));
-            ItemStack result = CraftingHelper.getItemStack(json.getAsJsonObject("result"), true);
-            boolean dropContainer = net.minecraft.util.GsonHelper.getAsBoolean(json, "drop_container", true);
-            boolean keepBlockState = net.minecraft.util.GsonHelper.getAsBoolean(json, "keep_block_state", false);
-            boolean updateBlock = net.minecraft.util.GsonHelper.getAsBoolean(json, "update_block", true);
-            Boolean sneaking = json.has("sneaking") ? net.minecraft.util.GsonHelper.getAsBoolean(json, "sneaking") : null;
+            ItemStack result = parseResultStack(json.getAsJsonObject("result"));
+            boolean dropContainer = GsonHelper.getAsBoolean(json, "drop_container", true);
+            boolean keepBlockState = GsonHelper.getAsBoolean(json, "keep_block_state", false);
+            boolean updateBlock = GsonHelper.getAsBoolean(json, "update_block", true);
+            Boolean sneaking = json.has("sneaking") ? GsonHelper.getAsBoolean(json, "sneaking") : null;
             ForceBlockState forceInput = json.has("force_input") ? ForceBlockState.fromJson(json.get("force_input")) : null;
             ForceBlockState forceOutput = json.has("force_output")
                     ? ForceBlockState.fromJson(json.get("force_output"))
@@ -542,6 +552,34 @@ public class ItemApplicationRecipe implements Recipe<RecipeWrapper>, IConsumingR
 
             return new ItemApplicationRecipe(id, block, tool, result, dropContainer, keepBlockState, updateBlock,
                     sneaking, forceInput, forceOutput);
+        }
+
+        /**
+         * 解析 result 物品。
+         * <p>
+         * Forge 的 {@code CraftingHelper.getItemStack(json, true)} 在此没有等价物，
+         * 且 1.20.1 尚无 1.21 的数据组件（ItemStack.CODEC 不可用），
+         * 故按 Forge 语义自行解析 {@code {"item": "...", "count": n, "nbt": "{...}"}}（count 默认 1，nbt 可省略）。
+         */
+        private static ItemStack parseResultStack(JsonObject json) {
+            ResourceLocation itemId = new ResourceLocation(GsonHelper.getAsString(json, "item"));
+            Item item = BuiltInRegistries.ITEM.getOptional(itemId)
+                    .filter(i -> i != Items.AIR)
+                    .orElseThrow(() -> new JsonSyntaxException("Unknown item '" + itemId + "'"));
+            int count = GsonHelper.getAsInt(json, "count", 1);
+            if (count < 1) {
+                throw new JsonSyntaxException("Invalid output count: " + count);
+            }
+            ItemStack stack = new ItemStack(item, count);
+            if (json.has("nbt")) {
+                try {
+                    CompoundTag tag = TagParser.parseTag(GsonHelper.convertToString(json.get("nbt"), "nbt"));
+                    stack.setTag(tag);
+                } catch (CommandSyntaxException e) {
+                    throw new JsonSyntaxException("Invalid nbt tag", e);
+                }
+            }
+            return stack;
         }
 
         @Override

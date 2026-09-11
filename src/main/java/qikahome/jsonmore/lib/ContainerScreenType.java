@@ -5,8 +5,6 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.function.BiConsumer;
-import java.util.stream.Collectors;
 
 import javax.annotation.Nullable;
 
@@ -14,8 +12,10 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 
 import dev.gigaherz.jsonthings.things.parsers.ThingParseException;
+import net.fabricmc.fabric.api.screenhandler.v1.ExtendedScreenHandlerFactory;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.util.GsonHelper;
 import net.minecraft.world.Container;
 import net.minecraft.world.MenuProvider;
@@ -99,22 +99,31 @@ public class ContainerScreenType {
     private final IMenuFactory menuFactory;
     private final boolean available;
     private final TriConsumer<FriendlyByteBuf, List<Container>, Integer> additionalDataWriter;
+    /**
+     * 产出的菜单是否为扩展菜单（{@code ExtendedScreenHandlerType}）。
+     * Fabric 规定原版菜单类型（{@code minecraft:generic_9xN} 等）**不能**用
+     * {@code ExtendedScreenHandlerFactory} 打开，否则 {@code ServerPlayer#openMenu} 直接抛
+     * {@code IllegalArgumentException}，因此只有 JsonMore 自己注册的扩展菜单类型才走扩展通道。
+     * （已接入 autosizedgui 的 {@code autosizedgui:auto}；cyclopscore 在 1.20.1 无 Fabric 版，未接入。）
+     */
+    private final boolean extended;
 
     public ContainerScreenType(ResourceLocation id, IMenuFactory menuFactory, boolean available,
-            TriConsumer<FriendlyByteBuf, List<Container>, Integer> additionalDataWriter) {
+            TriConsumer<FriendlyByteBuf, List<Container>, Integer> additionalDataWriter, boolean extended) {
         this.id = id;
         this.menuFactory = menuFactory;
         this.available = available;
         this.additionalDataWriter = additionalDataWriter;
+        this.extended = extended;
     }
 
     private ContainerScreenType() {
-        this(new ResourceLocation("builtin:dynamic"), null, true, null);
+        this(new ResourceLocation("builtin:dynamic"), null, true, null, false);
     }
 
     public ContainerScreenType(ResourceLocation id, IMenuFactory menuFactory, boolean available) {
         this(id, menuFactory, available, (a, b, c) -> {
-        });
+        }, false);
     }
 
     public ResourceLocation getId() {
@@ -126,7 +135,39 @@ public class ContainerScreenType {
     }
 
     public MenuProvider createMenuProvider(List<Container> containers, int containerSize) {
-        return menuFactory.create(containers, containerSize);
+        MenuProvider delegate = menuFactory.create(containers, containerSize);
+        return extended ? toExtended(delegate, containers, containerSize) : delegate;
+    }
+
+    /**
+     * 上游 Forge 用 {@code NetworkHooks.openScreen(ServerPlayer, MenuProvider, Consumer<FriendlyByteBuf>)}
+     * 附带开屏数据；Fabric 的等价通道是 {@code ExtendedScreenHandlerFactory}：由服务端写出、
+     * 客户端 {@code ExtendedScreenHandlerType#create} 读回。
+     * <p>
+     * 1.20.1 的 {@code ExtendedScreenHandlerFactory} 是非泛型的，方法名为
+     * {@code writeScreenOpeningData(ServerPlayer, FriendlyByteBuf)}（1.21.1 才改叫
+     * {@code getScreenOpeningData} 且带 byte[] 泛型），这里直接写入开屏数据缓冲区。
+     * <p>
+     * 仅适用于扩展菜单类型，见 {@link #extended}。
+     */
+    protected MenuProvider toExtended(MenuProvider delegate, List<Container> containers, int containerSize) {
+        return new ExtendedScreenHandlerFactory() {
+            @Override
+            @Nullable
+            public AbstractContainerMenu createMenu(int containerId, Inventory inventory, Player player) {
+                return delegate.createMenu(containerId, inventory, player);
+            }
+
+            @Override
+            public Component getDisplayName() {
+                return delegate.getDisplayName();
+            }
+
+            @Override
+            public void writeScreenOpeningData(ServerPlayer player, FriendlyByteBuf buf) {
+                writeAdditionalData(buf, containers, containerSize);
+            }
+        };
     }
 
     public void writeAdditionalData(FriendlyByteBuf buf, List<Container> containers, int size) {
@@ -139,9 +180,10 @@ public class ContainerScreenType {
         return type;
     }
 
+    /** 带附加数据写出器的类型：附加数据本身就是扩展屏通道的一部分，故走 {@code ExtendedScreenHandlerFactory}。 */
     public static ContainerScreenType register(ResourceLocation id, IMenuFactory menuFactory, boolean available,
             TriConsumer<FriendlyByteBuf, List<Container>, Integer> additionalDataWriter) {
-        ContainerScreenType type = new ContainerScreenType(id, menuFactory, available, additionalDataWriter);
+        ContainerScreenType type = new ContainerScreenType(id, menuFactory, available, additionalDataWriter, true);
         TYPES.put(id, type);
         return type;
     }
@@ -222,17 +264,6 @@ public class ContainerScreenType {
                             }
                         }
                         throw new IllegalArgumentException("Container size " + containerSize + " not supported");
-                    }
-
-                    @Override
-                    public void writeAdditionalData(FriendlyByteBuf buf, List<Container> containers, int size) {
-                        for (IntRange range : types.keySet()) {
-                            if (range.contains(size)) {
-                                types.get(range).writeAdditionalData(buf, containers, size);
-                                return;
-                            }
-                        }
-                        throw new IllegalArgumentException("Container size " + size + " not supported");
                     }
                 };
             } catch (Exception e) {

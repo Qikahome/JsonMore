@@ -1,39 +1,46 @@
 package qikahome.jsonmore.minecraft.gamerule;
 
+import java.util.function.Predicate;
+
 import com.google.gson.JsonObject;
 
+import net.fabricmc.fabric.api.resource.conditions.v1.ResourceConditions;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.util.GsonHelper;
-import net.minecraftforge.server.ServerLifecycleHooks;
 import net.minecraft.world.level.GameRules;
-import net.minecraftforge.common.crafting.conditions.ICondition;
-import net.minecraftforge.common.crafting.conditions.IConditionSerializer;
 
 import qikahome.jsonmore.Utils;
 
-public class GameRuleCondition implements ICondition {
+/**
+ * 资源条件 {@code jsonmore:gamerule}：按游戏规则名（可带取值范围）决定资源是否加载。
+ * <p>
+ * 对应上游 Forge 的 {@code ICondition}，Fabric 1.20.1 侧的资源条件是 JSON 版，
+ * 等价物是 {@link ResourceConditions} 注册的 {@link Predicate}{@code <JsonObject>}。
+ * <p>
+ * JSON 结构：{@code {"condition": "jsonmore:gamerule", "rule": "...", "value": 可选}}，
+ * 其中 {@code value} 为整数时精确匹配，为字符串时按区间（如 {@code "[1,3]"}、{@code "[2,)"}）匹配。
+ */
+public class GameRuleCondition implements Predicate<JsonObject> {
     public static final ResourceLocation ID = new ResourceLocation("jsonmore:gamerule");
 
-    private final String ruleName;
-    private final String valueRange;
+    public static final GameRuleCondition INSTANCE = new GameRuleCondition();
 
-    public GameRuleCondition(String ruleName, String valueRange) {
-        this.ruleName = ruleName;
-        this.valueRange = valueRange;
+    /**
+     * 注册到 Fabric 资源条件系统，由入口在合适时机调用。
+     */
+    public static void register() {
+        ResourceConditions.register(ID, INSTANCE);
     }
 
     @Override
-    public ResourceLocation getID() {
-        return ID;
-    }
-
-    @Override
-    public boolean test(IContext context) {
-        MinecraftServer server = ServerLifecycleHooks.getCurrentServer();
+    public boolean test(JsonObject json) {
+        MinecraftServer server = Utils.getCurrentServer();
 
         if (server == null)
             return false;
+
+        String ruleName = GsonHelper.getAsString(json, "rule");
 
         GameRules.Key<?> foundKey = findKey(ruleName);
         if (foundKey == null)
@@ -43,20 +50,21 @@ public class GameRuleCondition implements ICondition {
         if (value == null)
             return false;
 
-        if (valueRange == null) {
+        // 未提供 value：布尔规则直接取布尔值
+        if (!json.has("value")) {
             if (value instanceof GameRules.BooleanValue bv)
                 return bv.get();
             return false;
         }
 
         if (value instanceof GameRules.IntegerValue iv) {
-            try {
-                int exact = Integer.parseInt(valueRange);
-                return iv.get() == exact;
-            } catch (NumberFormatException e) {
-                Utils.IntRange range = Utils.IntRange.parse(valueRange);
-                return range.contains(iv.get());
-            }
+            var valueEl = json.get("value");
+            // 整数：精确匹配
+            if (valueEl.isJsonPrimitive() && valueEl.getAsJsonPrimitive().isNumber())
+                return iv.get() == valueEl.getAsInt();
+            // 字符串：区间，如 "[1,3]"、"[2,)"
+            Utils.IntRange range = Utils.IntRange.parse(valueEl.getAsString());
+            return range.contains(iv.get());
         }
         return false;
     }
@@ -67,43 +75,5 @@ public class GameRuleCondition implements ICondition {
                 return entry.getKey();
         }
         return null;
-    }
-
-    public static class Serializer implements IConditionSerializer<GameRuleCondition> {
-        public static final Serializer INSTANCE = new Serializer();
-
-        @Override
-        public void write(JsonObject json, GameRuleCondition condition) {
-            json.addProperty("rule", condition.ruleName);
-            if (condition.valueRange != null) {
-                try {
-                    int exact = Integer.parseInt(condition.valueRange);
-                    json.addProperty("value", exact);
-                } catch (NumberFormatException e) {
-                    json.addProperty("value", condition.valueRange);
-                }
-            }
-        }
-
-        @Override
-        public GameRuleCondition read(JsonObject json) {
-            String rule = GsonHelper.getAsString(json, "rule");
-            String valueRange = null;
-            if (json.has("value")) {
-                var valueEl = json.get("value");
-                if (valueEl.isJsonPrimitive() && valueEl.getAsJsonPrimitive().isNumber()) {
-                    int exact = valueEl.getAsInt();
-                    valueRange = "[" + exact + "," + exact + "]";
-                } else {
-                    valueRange = GsonHelper.getAsString(json, "value");
-                }
-            }
-            return new GameRuleCondition(rule, valueRange);
-        }
-
-        @Override
-        public ResourceLocation getID() {
-            return GameRuleCondition.ID;
-        }
     }
 }

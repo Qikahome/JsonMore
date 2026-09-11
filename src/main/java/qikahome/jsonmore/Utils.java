@@ -2,7 +2,7 @@ package qikahome.jsonmore;
 
 import com.google.common.base.Supplier;
 
-
+import net.minecraft.server.MinecraftServer;
 
 import static qikahome.jsonmore.JsonMore.LOGGER;
 
@@ -13,6 +13,23 @@ import java.util.regex.Pattern;
 import javax.annotation.Nullable;
 
 public class Utils {
+    /**
+     * Fabric 没有 {@code ServerLifecycleHooks}，当前服务器由 {@code JsonMore} 订阅
+     * {@code ServerLifecycleEvents} 维护，等价上游 Forge 的
+     * {@code ServerLifecycleHooks#getCurrentServer()}。
+     */
+    @Nullable
+    private static MinecraftServer currentServer;
+
+    public static void setCurrentServer(@Nullable MinecraftServer server) {
+        currentServer = server;
+    }
+
+    @Nullable
+    public static MinecraftServer getCurrentServer() {
+        return currentServer;
+    }
+
     public static <T> T getOrDebug(Supplier<T> supplier, T defaultValue) {
         return getOrDebug(supplier, defaultValue, null);
     }

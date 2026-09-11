@@ -11,6 +11,8 @@ import dev.gigaherz.jsonthings.things.events.FlexEventHandler;
 import dev.gigaherz.jsonthings.things.events.FlexEventResult;
 import dev.gigaherz.jsonthings.things.events.IEventRunner;
 import dev.gigaherz.jsonthings.util.Utils;
+import io.github.fabricators_of_create.porting_lib.tool.ToolAction;
+import io.github.fabricators_of_create.porting_lib.tool.addons.ToolActionItem;
 import net.minecraft.core.Direction;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
@@ -29,12 +31,9 @@ import net.minecraft.world.item.StandingAndWallBlockItem;
 import net.minecraft.world.item.TooltipFlag;
 import net.minecraft.world.item.UseAnim;
 import net.minecraft.world.item.context.UseOnContext;
-import net.minecraft.world.item.crafting.RecipeType;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
-import net.minecraftforge.common.ToolAction;
-import net.minecraftforge.registries.RegistryObject;
 
 import javax.annotation.Nullable;
 import java.util.List;
@@ -43,9 +42,18 @@ import java.util.Set;
 import java.util.function.Supplier;
 
 public class FlexStandingAndWallBlockItem extends StandingAndWallBlockItem
-        implements IEventRunner, IFlexStandingAndWallBlockItem {
+        implements IEventRunner, ToolActionItem, IFlexStandingAndWallBlockItem {
 
-    public FlexStandingAndWallBlockItem(RegistryObject<Block> block, RegistryObject<Block> wallBlock,
+    /**
+     * vanilla 的 {@link StandingAndWallBlockItem} 构造器要求立即传入方块实例，而 JsonThings 的
+     * standing_and_wall 类型允许引用尚未注册完成的方块，因此这里传 {@code null} 并由
+     * {@link #getBlock()}/{@link #getWallBlock()} 惰性解析（配合 MixinStandingAndWallBlockItem
+     * 拦截对 {@code wallBlock} 字段的读取）。
+     * <p>
+     * Forge 侧用的是 {@code RegistryObject<Block>}，Fabric 侧改用 {@code Supplier<Block>}，
+     * 由调用方给出 {@code () -> BuiltInRegistries.BLOCK.get(id)} 形式的懒加载。
+     */
+    public FlexStandingAndWallBlockItem(Supplier<Block> block, Supplier<Block> wallBlock,
             boolean useBlockName, Properties properties,
             ItemBuilder builder, Direction direction) {
         super(null, null, properties, direction);
@@ -58,13 +66,12 @@ public class FlexStandingAndWallBlockItem extends StandingAndWallBlockItem
         this.attributeModifiers = builder.getAttributeModifiers();
         this.lore = builder.getLore();
         this.toolActions = builder.getToolActions();
-        this.burnTime = Utils.orElse(builder.getBurnDuration(), -1);
         initializeFlex();
     }
 
     // region BlockItem
     private final boolean useBlockName;
-    private final RegistryObject<Block> block;
+    private final Supplier<Block> block;
 
     // Recreation of ItemNameBlockItem's function
     @Override
@@ -74,7 +81,8 @@ public class FlexStandingAndWallBlockItem extends StandingAndWallBlockItem
 
     @Override
     public Block getBlock() {
-        return block.orElse(Blocks.AIR);
+        Block resolved = block.get();
+        return resolved != null ? resolved : Blocks.AIR;
     }
 
     public boolean canFitInsideContainerItems() {
@@ -94,12 +102,11 @@ public class FlexStandingAndWallBlockItem extends StandingAndWallBlockItem
     private final UseFinishMode useFinishMode;
     private final List<MutableComponent> lore;
     private final Set<ToolAction> toolActions;
-    private final int burnTime;
 
     private void initializeFlex() {
         for (EquipmentSlot slot1 : EquipmentSlot.values()) {
             attributeModifiers.computeIfAbsent(slot1, key -> ArrayListMultimap.create())
-                    .putAll(super.getAttributeModifiers(slot1, ItemStack.EMPTY));
+                    .putAll(super.getDefaultAttributeModifiers(slot1));
         }
     }
 
@@ -205,8 +212,10 @@ public class FlexStandingAndWallBlockItem extends StandingAndWallBlockItem
         }
     }
 
+    // Forge 的 getAttributeModifiers(EquipmentSlot, ItemStack) 是 Forge 扩展方法，
+    // vanilla/Fabric 的等价物是 getDefaultAttributeModifiers(EquipmentSlot)。
     @Override
-    public Multimap<Attribute, AttributeModifier> getAttributeModifiers(EquipmentSlot slot, ItemStack stack) {
+    public Multimap<Attribute, AttributeModifier> getDefaultAttributeModifiers(EquipmentSlot slot) {
         return Utils.orElseGet(attributeModifiers.get(slot), HashMultimap::create);
     }
 
@@ -214,23 +223,22 @@ public class FlexStandingAndWallBlockItem extends StandingAndWallBlockItem
     public boolean canPerformAction(ItemStack stack, ToolAction toolAction) {
         if (toolActions != null)
             return toolActions.contains(toolAction);
-        return super.canPerformAction(stack, toolAction);
+        return false;
     }
 
-    @Override
-    public int getBurnTime(ItemStack itemStack, @org.jetbrains.annotations.Nullable RecipeType<?> recipeType) {
-        return burnTime;
-    }
+    // 燃烧时长（burn_duration）由 JsonThings 的 ItemParser 经 Fabric FuelRegistry 注册
+    // （上游 Forge 借扩展注入的 Item#getBurnTime 在 vanilla/Fabric 不存在）。
 
     // endregion
 
     // region IFlexStandingAndWallBlockItem
 
-    private final RegistryObject<Block> wallBlock;
+    private final Supplier<Block> wallBlock;
 
     @Override
     public Block getWallBlock() {
-        return wallBlock.orElseGet(() -> Blocks.AIR);
+        Block resolved = wallBlock.get();
+        return resolved != null ? resolved : Blocks.AIR;
     }
     // endregion
 }

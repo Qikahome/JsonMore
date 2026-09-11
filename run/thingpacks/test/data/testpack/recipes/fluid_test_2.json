@@ -7,7 +7,7 @@
         {
             "type": "jsonmore:fluid",
             "ingredient": {
-                "type": "jsonmore:true"
+                "fabric:type": "jsonmore:true"
             },
             "fluid": [
                 {

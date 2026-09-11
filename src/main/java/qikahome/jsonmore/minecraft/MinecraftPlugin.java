@@ -16,12 +16,12 @@ import dev.gigaherz.jsonthings.things.parsers.ThingParseException;
 import dev.gigaherz.jsonthings.things.serializers.FlexBlockType;
 import dev.gigaherz.jsonthings.things.serializers.FlexItemType;
 import net.minecraft.core.Direction;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.sounds.SoundEvent;
 import net.minecraft.util.GsonHelper;
-import net.minecraftforge.registries.ForgeRegistries;
-import net.minecraftforge.registries.RegistryObject;
 import qikahome.jsonmore.Utils;
+import qikahome.jsonmore.lib.registration.DeferredHolder;
 import qikahome.jsonmore.lib.BlockedDirection;
 import qikahome.jsonmore.lib.ContainerScreenType;
 import qikahome.jsonmore.lib.ExpandableMode;
@@ -53,9 +53,11 @@ public class MinecraftPlugin {
             return (props, builder) -> {
                 ResourceLocation blockId = new ResourceLocation(blockName);
                 ResourceLocation wallBlockId = new ResourceLocation(wallBlockName);
+                // Forge 的 RegistryObject.create(id, ForgeRegistries.BLOCKS) 在 Fabric 侧改为按 id 懒取：
+                // BuiltInRegistries.BLOCK 在 1.20.1 是 Registry<Block>，get(ResourceLocation) 可能返回 null。
                 return new FlexStandingAndWallBlockItem(
-                        RegistryObject.create(blockId, ForgeRegistries.BLOCKS),
-                        RegistryObject.create(wallBlockId, ForgeRegistries.BLOCKS),
+                        () -> BuiltInRegistries.BLOCK.get(blockId),
+                        () -> BuiltInRegistries.BLOCK.get(wallBlockId),
                         useBlockName, props, builder, direction);
             };
         });
@@ -173,8 +175,8 @@ public class MinecraftPlugin {
             return (props, builder) -> {
                 List<Property<?>> _properties = builder.getProperties();
                 Map<Property<?>, Comparable<?>> propertyDefaultValues = builder.getPropertyDefaultValues();
-                SoundEvent openSoundEvent = ForgeRegistries.SOUND_EVENTS.getValue(openSound);
-                SoundEvent closeSoundEvent = ForgeRegistries.SOUND_EVENTS.getValue(closeSound);
+                SoundEvent openSoundEvent = BuiltInRegistries.SOUND_EVENT.get(openSound);
+                SoundEvent closeSoundEvent = BuiltInRegistries.SOUND_EVENT.get(closeSound);
                 PlacingDirections facingDirection;
                 try {
                     facingDirection = PlacingDirections.valueOf(facing.toUpperCase());
@@ -231,10 +233,10 @@ public class MinecraftPlugin {
             return (props, builder) -> {
                 List<Property<?>> _properties = builder.getProperties();
                 Map<Property<?>, Comparable<?>> propertyDefaultValues = builder.getPropertyDefaultValues();
-                SoundEvent assembleSound = ForgeRegistries.SOUND_EVENTS.getValue(assembleSoundId);
-                SoundEvent disassembleSound = ForgeRegistries.SOUND_EVENTS.getValue(disassembleSoundId);
-                SoundEvent openSound = ForgeRegistries.SOUND_EVENTS.getValue(openSoundId);
-                SoundEvent closeSound = ForgeRegistries.SOUND_EVENTS.getValue(closeSoundId);
+                SoundEvent assembleSound = BuiltInRegistries.SOUND_EVENT.get(assembleSoundId);
+                SoundEvent disassembleSound = BuiltInRegistries.SOUND_EVENT.get(disassembleSoundId);
+                SoundEvent openSound = BuiltInRegistries.SOUND_EVENT.get(openSoundId);
+                SoundEvent closeSound = BuiltInRegistries.SOUND_EVENT.get(closeSoundId);
                 return new StorageConnectorBlock(props, propertyDefaultValues, radius, maxConnectors, maxCapacity,
                         connectable, screenType, assembleSound, disassembleSound, openSound, closeSound) {
                     @Override
@@ -269,12 +271,14 @@ public class MinecraftPlugin {
         return filters;
     }
 
-    public static RegistryObject<BlockEntityType<FlexBarrelBlockEntity>> BARREL_TILE;
+    // Forge 的 RegistryObject<BlockEntityType<...>> → 自建 qikahome.jsonmore.lib.registration.DeferredHolder
+    // （入口 JsonMore.java 会给这两个字段赋 DeferredRegister.register("barrel"/"storage_connector", ...) 的结果）
+    public static DeferredHolder<BlockEntityType<?>, BlockEntityType<FlexBarrelBlockEntity>> BARREL_TILE;
     public static final Supplier<BlockEntityType<FlexBarrelBlockEntity>> BARREL_SUPPLIER = () -> BlockEntityType.Builder
             .of(FlexBarrelBlockEntity::new)
             .build(null);
 
-    public static RegistryObject<BlockEntityType<ControllerBlockEntity>> STORAGE_CONNECTOR_TILE;
+    public static DeferredHolder<BlockEntityType<?>, BlockEntityType<ControllerBlockEntity>> STORAGE_CONNECTOR_TILE;
     public static final Supplier<BlockEntityType<ControllerBlockEntity>> STORAGE_CONNECTOR_SUPPLIER = () -> BlockEntityType.Builder
             .of(ControllerBlockEntity::new)
             .build(null);
