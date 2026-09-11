@@ -9,7 +9,8 @@ on:
         default: 'beta'
   push:
     tags:
-      - 'v26.1.2-*'
+      # 加载器后缀：tag 全仓库共享，避免与其它加载器的模式互相触发
+      - 'v26.1.2-neoforge-*'
 
 env:
   CURSEFORGE_PROJECT_ID: '1570673'
