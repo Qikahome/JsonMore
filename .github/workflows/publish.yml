@@ -1,35 +1,59 @@
-name: Publish (tag)
+name: Publish (Fabric 1.21.1)
 
 on:
-  push:
-    # 仅打 v1.21.1-* tag 时发布（git tag v1.21.1-1.2.11 && git push origin tag）
-    tags: ['v1.21.1-*']
   workflow_dispatch:
+    inputs:
+      release_type:
+        description: 'Release type (alpha / beta / release)'
+        required: true
+        default: 'beta'
+  push:
+    tags:
+      # 加载器后缀：tag 全仓库共享，与 NeoForge 分支的模式相同会互相触发
+      - 'v1.21.1-fabric-*'
+
+env:
+  CURSEFORGE_PROJECT_ID: '1570673'
+
+permissions:
+  contents: write
 
 jobs:
   publish:
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
-      packages: write
     steps:
-      - uses: actions/checkout@v4
-      - name: Set up JDK 21
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Java
         uses: actions/setup-java@v4
         with:
+          distribution: microsoft
           java-version: '21'
-          distribution: 'microsoft'
-      - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@v4
-      - name: Grant execute permission for gradlew
+          cache: gradle
+
+      - name: Make Gradle Executable
         run: chmod +x gradlew
-      - name: Publish to GitHub Packages
-        run: ./gradlew publish
+
+      - name: Build
+        run: ./gradlew build
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      - name: Create GitHub Release
-        uses: softprops/action-gh-release@v2
+          # 解析 GitHub Packages 上的 JsonThings-Fabric / AutoSizedGUI（内嵌依赖）
+          GH_PACKAGES_TOKEN: ${{ secrets.GH_PACKAGES_TOKEN }}
+
+      - name: Publish to CurseForge
+        uses: Kir-Antipov/mc-publish@v3.3
         with:
-          files: |
-            build/libs/jsonmore-1.21.1-fabric-*.jar
-          generate_release_notes: true
+          curseforge-id: ${{ env.CURSEFORGE_PROJECT_ID }}
+          curseforge-token: ${{ secrets.CURSEFORGE_TOKEN }}
+          files-primary: build/libs/!(*-@(dev|sources|javadoc)).jar
+          version-type: ${{ inputs.release_type != '' && inputs.release_type || 'beta' }}
+          game-versions: |
+            1.21.1
+          loaders: |
+            fabric
+          java: |
+            21
+          changelog-file: CHANGELOG.md
+          github-tag: ${{ github.ref_name }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}

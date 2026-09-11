@@ -3,6 +3,8 @@
 ## 1.2.11
 
 ### 新增 / Added
+- Fabric 1.21.1 移植（已内嵌 Json Things 与 AutoSizedGUI，无需单独安装）
+  - Fabric 1.21.1 port (Json Things and AutoSizedGUI are bundled, no separate installation needed)
 - `jsonmore:item_application` 新增 `force_input` / `force_output`：按 block + properties 精确匹配输入方块 / 指定输出方块状态，支持无对应物品的方块与非默认状态
   - `jsonmore:item_application` gains `force_input` / `force_output` to match input blocks and force output block states by block + properties (supports blocks without items and non-default states)
 
