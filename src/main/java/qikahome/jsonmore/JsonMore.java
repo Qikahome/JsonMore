@@ -7,24 +7,19 @@ import com.mojang.logging.LogUtils;
 import dev.gigaherz.jsonthings.things.ThingRegistries;
 import io.github.fabricators_of_create.porting_lib.registry.DeferredHolder;
 import io.github.fabricators_of_create.porting_lib.registry.DeferredRegister;
-import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.api.ModInitializer;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
 import net.fabricmc.fabric.api.event.player.UseBlockCallback;
 import net.fabricmc.fabric.api.transfer.v1.item.InventoryStorage;
 import net.fabricmc.fabric.api.transfer.v1.item.ItemStorage;
 import net.fabricmc.loader.api.FabricLoader;
-import net.minecraft.client.gui.screens.MenuScreens;
 import net.minecraft.core.Registry;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.world.inventory.MenuType;
 import net.minecraft.world.item.crafting.RecipeSerializer;
 import net.minecraft.world.level.block.entity.BlockEntityType;
-import qikahome.autosizedgui.screen.AutoSizedContainerScreen;
 import qikahome.jsonmore.autosizedgui.AutoSizedGUIPlugin;
-import qikahome.jsonmore.autosizedgui.AutoSizedMenu;
 import qikahome.jsonmore.cyclopscore.CyclopsCorePlugin;
-import qikahome.jsonmore.cyclopscore.ScrollingContainerScreen;
 import qikahome.jsonmore.lib.ContainerPart;
 import qikahome.jsonmore.lib.MultiContainer;
 import qikahome.jsonmore.lib.ingredient.ConditionIngredient;
@@ -45,7 +40,7 @@ import qikahome.jsonmore.minecraft.StorageConnectorBlock.ControllerBlockEntity;
 import qikahome.jsonmore.minecraft.gamerule.GameRuleCondition;
 
 /**
- * JsonMore Fabric 入口（main + client 双入口），对应上游 NeoForge 的 {@code @Mod JsonMore}。
+ * JsonMore Fabric 主入口（common 部分），对应上游 NeoForge 的 {@code @Mod JsonMore}。
  *
  * <p>Neo → Fabric 的对应关系：
  * <ul>
@@ -56,10 +51,11 @@ import qikahome.jsonmore.minecraft.gamerule.GameRuleCondition;
  *       {@code ItemStorage.SIDED} + {@code InventoryStorage.of}；</li>
  *   <li>{@code PlayerInteractEvent.RightClickBlock} → {@code UseBlockCallback}；</li>
  *   <li>{@code ServerLifecycleHooks} → {@code ServerLifecycleEvents}（见 {@code Utils}）；</li>
- *   <li>{@code RegisterMenuScreensEvent} → {@code MenuScreens.register}（客户端入口，经 AW 开放）。</li>
+ *   <li>{@code RegisterMenuScreensEvent} → {@link JsonMoreClient}（客户端入口必须分开，
+ *       否则专用服务端加载 main 入口时会因引用客户端类而失败）。</li>
  * </ul>
  */
-public class JsonMore implements ModInitializer, ClientModInitializer {
+public class JsonMore implements ModInitializer {
     // 在一个公共位置定义 mod id，以便所有内容都可以引用
     public static final String MODID = "jsonmore";
     // 直接引用一个 slf4j 日志记录器
@@ -131,21 +127,6 @@ public class JsonMore implements ModInitializer, ClientModInitializer {
         UseBlockCallback.EVENT.register(ItemApplicationRecipe::onRightClickBlock);
         ServerLifecycleEvents.SERVER_STARTED.register(Utils::setCurrentServer);
         ServerLifecycleEvents.SERVER_STOPPING.register(server -> Utils.setCurrentServer(null));
-    }
-
-    @Override
-    public void onInitializeClient() {
-        // Fabric API 的 ScreenRegistry 在 fabric-screen-handler-api 1.3.88 已移除，
-        // 改为经 AccessWidener 开放的 MenuScreens.register 注册。
-        if (FabricLoader.getInstance().isModLoaded("cyclopscore")) {
-            MenuScreens.register(CyclopsCorePlugin.SCROLLING_CONTAINER_MENU.get(),
-                    ScrollingContainerScreen::new);
-        }
-        if (FabricLoader.getInstance().isModLoaded("autosizedgui")) {
-            MenuScreens.<AutoSizedMenu, AutoSizedContainerScreen<AutoSizedMenu>>register(
-                    AutoSizedGUIPlugin.AUTO_SIZED_MENU.get(),
-                    AutoSizedContainerScreen<AutoSizedMenu>::new);
-        }
     }
 
     public static void onFlexTypesLoad() {

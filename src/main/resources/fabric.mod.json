@@ -18,7 +18,7 @@
       "qikahome.jsonmore.JsonMore"
     ],
     "client": [
-      "qikahome.jsonmore.JsonMore"
+      "qikahome.jsonmore.JsonMoreClient"
     ],
     "jsonthings": [
       "qikahome.jsonmore.JsonMoreThingPlugin"
