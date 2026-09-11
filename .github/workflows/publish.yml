@@ -9,7 +9,8 @@ on:
         default: 'beta'
   push:
     tags:
-      - 'v1.21.1-*'
+      # 加载器后缀：tag 全仓库共享，与 Fabric 分支的模式相同会互相触发
+      - 'v1.21.1-neoforge-*'
 
 env:
   CURSEFORGE_PROJECT_ID: '1570673'
