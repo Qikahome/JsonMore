@@ -3,6 +3,8 @@
 ## 1.2.11
 
 ### 新增 / Added
+- Fabric 1.20.1 移植（已内嵌 Json Things 与 AutoSizedGUI，无需单独安装）
+  - Fabric 1.20.1 port (Json Things and AutoSizedGUI are bundled, no separate installation needed)
 - `jsonmore:item_application` 新增 `force_input` / `force_output`：按 block + properties 精确匹配输入方块 / 指定输出方块状态，支持无对应物品的方块与非默认状态
   - `jsonmore:item_application` gains `force_input` / `force_output` to match input blocks and force output block states by block + properties (supports blocks without items and non-default states)
 
@@ -13,8 +15,6 @@
   - Block-type outputs now mimic vanilla placement (result NBT is loaded and `setPlacedBy` is called); with `drop_container: true` old containers are removed with vanilla break semantics
 - 替换/移除失败时自动回滚旧方块实体，不残留损坏状态
   - Failed replacement/removal rolls back the old block entity, leaving no corrupted states
-- 依赖更新：Tinkers' Construct 3.12.0.220 / Mantle 1.11.117（开发环境 JEI 15.56.0.205，满足 TCon 3.12 的 JEI ≥15.56.0.204 要求）
-  - Dependency update: Tinkers' Construct 3.12.0.220 / Mantle 1.11.117 (JEI 15.56.0.205 in dev, satisfying TCon 3.12's JEI ≥15.56.0.204 requirement)
 
 ## 1.2.10
 

@@ -1,4 +1,4 @@
-name: Publish (Forge 1.20.1)
+name: Publish (Fabric 1.20.1)
 
 on:
   workflow_dispatch:
@@ -9,7 +9,8 @@ on:
         default: 'beta'
   push:
     tags:
-      - 'v1.20.1-*'
+      # 加载器后缀：tag 全仓库共享，与 Forge 分支的模式相同会互相触发
+      - 'v1.20.1-fabric-*'
 
 env:
   CURSEFORGE_PROJECT_ID: '1570673'
@@ -37,6 +38,7 @@ jobs:
       - name: Build
         run: ./gradlew build
         env:
+          # 解析 GitHub Packages 上的 JsonThings-Fabric / AutoSizedGUI（内嵌依赖）
           GH_PACKAGES_TOKEN: ${{ secrets.GH_PACKAGES_TOKEN }}
 
       - name: Publish to CurseForge
@@ -44,12 +46,12 @@ jobs:
         with:
           curseforge-id: ${{ env.CURSEFORGE_PROJECT_ID }}
           curseforge-token: ${{ secrets.CURSEFORGE_TOKEN }}
-          files-primary: build/libs/*-all.jar
+          files-primary: build/libs/!(*-@(dev|sources|javadoc)).jar
           version-type: ${{ inputs.release_type != '' && inputs.release_type || 'beta' }}
           game-versions: |
             1.20.1
           loaders: |
-            forge
+            fabric
           java: |
             17
           changelog-file: CHANGELOG.md
