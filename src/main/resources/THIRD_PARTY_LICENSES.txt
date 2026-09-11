@@ -1,25 +1,73 @@
-The MIT License (MIT)
+Json More（Fabric）内嵌的第三方组件及其许可声明
+================================================
 
+本模组以 jar-in-jar 方式内嵌了下列组件。除 LGPL 组件外，许可全文随附于下；
+LGPL 组件的完整文本位于各自嵌套 jar 的 META-INF/ 内。另有可选联动模组并不内嵌，
+一并列出以备查考。
+
+================
+Json Things（Fabric 移植）
+坐标：qikahome:JsonThings-<minecraft>-fabric
+- 上游代码 dev.gigaherz.jsonthings.*：Copyright (c) 2021, David Quintana <gigaherz@gmail.com>
+  许可：BSD 3-Clause（全文见下）
+- Fabric 移植新增部分：Copyright (c) 2026 Qikahome
+  许可：MIT
+================
+
+Copyright (c) 2021, David Quintana <gigaherz@gmail.com>
+All rights reserved.
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions are met:
+    * Redistributions of source code must retain the above copyright
+      notice, this list of conditions and the following disclaimer.
+    * Redistributions in binary form must reproduce the above copyright
+      notice, this list of conditions and the following disclaimer in the
+      documentation and/or other materials provided with the distribution.
+    * Neither the name of the author nor the
+      names of the contributors may be used to endorse or promote products
+      derived from this software without specific prior written permission.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
+ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+DISCLAIMED. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY
+DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+(INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
+ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+(INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+================
+AutoSizedGUI
+Copyright (c) 2026 Qikahome
+Licensed under MIT License
+================
+
+================
+CyclopsCore（可选联动，未内嵌）
 Copyright (c) 2015 Cyclops
+Licensed under MIT License
+https://github.com/CyclopsMC/CyclopsCore
+================
 
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
+================
+FabricatedForgeFluid
+Copyright (c) 2026 Qikahome
+Licensed under the GNU Lesser General Public License v2.1
+部分代码衍生自 Minecraft Forge（同为 LGPL 2.1）。
+完整许可文本位于该库嵌套 jar 的 META-INF/LICENSE.txt；
+https://www.gnu.org/licenses/old-licenses/lgpl-2.1.txt
+================
 
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
-
+================
+Porting Lib (io.github.fabricators_of_create.Porting-Lib)
+Copyright (c) Fabricators of Create
+Licensed under LGPL
+完整许可文本位于其自身 jar 的 LICENSE 文件。
+https://github.com/Fabricators-of-Create/Porting-Lib
+================
 
 ================
 Create (https://github.com/Creators-of-Create/Create)
@@ -30,6 +78,8 @@ Used for: JEI widget textures (gui/jei/widgets.png), JEI category visual layout 
 
 The MIT License (MIT)
 
+Copyright (c) 2026 Qikahome
+Copyright (c) 2015 Cyclops
 Copyright (c) 2023 Creators-of-Create
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
