@@ -29,7 +29,9 @@ jobs:
         uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: 17
+          # Gradle 必须跑在 JVM 21 上：Loom 1.17.20 的插件解析要求 JVM >= 21。
+          # 编译目标仍是 Java 17（由 build.gradle 的 toolchain 决定，runner 上自带 JDK 17）。
+          java-version: 21
           cache: gradle
 
       - name: Make Gradle Executable
