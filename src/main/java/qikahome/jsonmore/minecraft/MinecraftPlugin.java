@@ -20,9 +20,12 @@ import dev.gigaherz.jsonthings.things.serializers.FlexItemType;
 import dev.gigaherz.jsonthings.util.Utils;
 import net.minecraft.core.Direction;
 import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceKey;
 import net.minecraft.sounds.SoundEvent;
 import net.minecraft.util.GsonHelper;
+import net.minecraft.world.item.JukeboxSong;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockState;
@@ -58,6 +61,25 @@ public class MinecraftPlugin {
                 Block block = Utils.getOrCrash(BuiltInRegistries.BLOCK, Identifier.parse(blockName));
                 Block wallBlock = Utils.getOrCrash(BuiltInRegistries.BLOCK, Identifier.parse(wallBlockName));
                 return new FlexStandingAndWallBlockItem(block, wallBlock, direction, props, builder);
+            };
+        });
+        FlexItemType.register("jsonmore:record", data -> {
+            if (!data.has("jukebox_song")) {
+                throw new ThingParseException("Record item requires 'jukebox_song' field");
+            }
+            String songName = GsonHelper.getAsString(data, "jukebox_song");
+            Identifier songId;
+            try {
+                songId = Identifier.parse(songName);
+            } catch (Exception e) {
+                throw new ThingParseException("Invalid jukebox_song: " + songName, e);
+            }
+            ResourceKey<JukeboxSong> songKey = ResourceKey.create(Registries.JUKEBOX_SONG, songId);
+            return (props, builder) -> {
+                // 1.21 起唱片不再有三件套，改由 jukebox_playable 组件引用数据包里的 JukeboxSong。
+                // 该组件是"延迟组件"，解析物品时数据包注册表尚未加载，必须用 key 挂载。
+                props.jukeboxPlayable(songKey);
+                return new FlexRecordItem(props, builder);
             };
         });
         FlexBlockType.register("jsonmore:standing_sign", data -> {

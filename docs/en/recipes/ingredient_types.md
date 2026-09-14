@@ -330,6 +330,41 @@ In JEI/recipe book, it displays the excluded items list and shows as "Anything e
 
 The above example matches all items that are **not** shulker boxes.
 
+### `jsonmore:regex`
+
+A filter that matches item ids (`namespace:path`) with regular expressions. All three fields are regexes and are **full-string matches** (equivalent to having `^...$` built in; write `.*` yourself when you need "contains" semantics). At least one must be given, and when several are given they must all match:
+
+| Field | Description |
+|-------|-------------|
+| `pattern` | Matches the full `namespace:path` |
+| `namespace` | Matches the namespace only (commonly: all items of a mod) |
+| `path` | Matches the path only |
+| `expand_items` | Boolean, default `false`. Whether to expand and list all matching items in JEI/recipe book |
+
+Because matching is full-string, `"namespace": "create"` only matches `create`, never `createaddition`.
+
+> This branch is NeoForge 26.1.2: the type key of a custom ingredient is `neoforge:ingredient_type` (1.21.1 and earlier use `type`).
+
+```json
+{
+  "neoforge:ingredient_type": "jsonmore:regex",
+  "namespace": "create"
+}
+```
+
+The example above matches every item registered by Create. The following combination matches items ending in `_ore` from any mod:
+
+```json
+{
+  "neoforge:ingredient_type": "jsonmore:regex",
+  "path": ".*_ore"
+}
+```
+
+By default JEI/recipe book shows only a single representative stack with the rule itself written into the name (`Items whose id matches /<rule>/`) — the match set can be enormous, even covering an entire modpack, so listing every entry is pointless. Set `expand_items` to `true` to see the full list: on first call the item registry is scanned and the result cached, so it is never rescanned afterwards. This switch only affects **display**; matching is always done at runtime by registry name, so it is unaffected by registry loading order.
+
+Regexes are compiled while recipes are parsed, so a typo reports a clear error at load time. The actual matches depend on which items exist at runtime, so the same data pack may match different things in different modpacks; when debugging, trust the rule shown in the name.
+
 ### `jsonmore:keep_inventory_container`
 
 Matches **containers that can retain their inventory** (i.e., containers where `keep_inventory` is not `NEVER`). Supports two modes:

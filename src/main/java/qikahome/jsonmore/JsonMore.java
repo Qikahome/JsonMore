@@ -51,6 +51,7 @@ import qikahome.jsonmore.lib.ingredient.ItemDisplayOverrideIngredient;
 import qikahome.jsonmore.lib.ingredient.KeepInventoryContainerIngredient;
 import qikahome.jsonmore.lib.ingredient.NBTCopyIngredient;
 import qikahome.jsonmore.lib.ingredient.NotIngredient;
+import qikahome.jsonmore.lib.ingredient.RegexIngredient;
 import qikahome.jsonmore.lib.ingredient.RemainderOverrideIngredient;
 import qikahome.jsonmore.lib.ingredient.ToolDamagingIngredient;
 import qikahome.jsonmore.lib.ingredient.TrueIngredient;
@@ -154,6 +155,7 @@ public class JsonMore {
         RemainderOverrideIngredient.register();
         ItemDisplayOverrideIngredient.register();
         ConditionIngredient.register();
+        RegexIngredient.register();
         GameRuleCondition.register();
 
         MinecraftPlugin.BARREL_TILE = BLOCK_ENTITY_TYPES.register("barrel",

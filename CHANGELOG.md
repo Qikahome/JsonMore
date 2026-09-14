@@ -1,5 +1,13 @@
 # Json More Changelog
 
+## 1.2.12
+
+### 新增 / Added
+- 新增 `jsonmore:regex` 原料类型：按物品注册名（`命名空间:路径`）做正则匹配，`pattern` / `namespace` / `path` 三字段均为整串匹配且可组合，`expand_items` 可展开显示全部匹配物品（本分支类型键为 `neoforge:ingredient_type`）
+  - New `jsonmore:regex` ingredient type: regex matching against item registry names; `pattern` / `namespace` / `path` are anchored and combinable, and `expand_items` lists every matched item (this branch uses `neoforge:ingredient_type` as the type key)
+- 新增 `jsonmore:record` 物品类型：用 `jukebox_song` 引用数据包中的 `data/<命名空间>/jukebox_song/<id>.json`（1.21 起唱片为数据驱动，不再需要 `music_discs` 标签）
+  - New `jsonmore:record` item type: references a data-pack `jukebox_song` definition via `jukebox_song` (records are data-driven since 1.21; the `music_discs` tag is no longer needed)
+
 ## 1.2.11
 
 ### 新增 / Added

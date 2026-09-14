@@ -1,0 +1,18 @@
+{
+  "type": "jsonmore:shaped_consuming",
+  "pattern": [
+    "###",
+    "###",
+    "###"
+  ],
+  "key": {
+    "#": {
+      "neoforge:ingredient_type": "jsonmore:regex",
+      "path": ".*oak.*"
+    }
+  },
+  "result": {
+    "id": "minecraft:oak_log",
+    "count": 1
+  }
+}

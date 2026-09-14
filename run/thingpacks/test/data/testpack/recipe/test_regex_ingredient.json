@@ -1,0 +1,14 @@
+{
+  "type": "jsonmore:shapeless_consuming",
+  "ingredients": [
+    {
+      "neoforge:ingredient_type": "jsonmore:regex",
+      "namespace": "testpack",
+      "expand_items": true
+    }
+  ],
+  "result": {
+    "id": "minecraft:diamond",
+    "count": 1
+  }
+}

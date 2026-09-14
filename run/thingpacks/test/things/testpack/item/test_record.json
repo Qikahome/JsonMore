@@ -1,0 +1,5 @@
+{
+  "type": "jsonmore:record",
+  "jukebox_song": "testpack:test_record",
+  "max_stack_size": 1
+}
