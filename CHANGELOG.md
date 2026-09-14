@@ -1,5 +1,17 @@
 # Json More Changelog
 
+## 1.2.12
+
+### 新增 / Added
+- 新增 `jsonmore:regex` 原料类型：按物品注册名（`命名空间:路径`）做正则匹配，`pattern` / `namespace` / `path` 三字段均为整串匹配且可组合，`expand_items` 可展开显示全部匹配物品（本分支类型键为 `fabric:type`）
+  - New `jsonmore:regex` ingredient type: regex matching against item registry names; `pattern` / `namespace` / `path` are anchored and combinable, and `expand_items` lists every matched item (this branch uses `fabric:type` as the type key)
+- 新增 `jsonmore:record` 物品类型：`sound`（声音事件）、`length`（时长，单位游戏刻）、`comparator_value`（默认 15）；物品需加入 `minecraft:music_discs` 标签才能放入唱片机
+  - New `jsonmore:record` item type: `sound`, `length` (in game ticks) and `comparator_value` (default 15); the item must be added to the `minecraft:music_discs` tag to be playable
+
+### 变更 / Changed
+- 内置数据包的目录约定改为 `resourcepacks/<路径>/`，并改由 Fabric 内置资源包 API 注册
+  - Built-in datapacks now live under `resourcepacks/<path>/` and are registered through the Fabric built-in resource pack API
+
 ## 1.2.11
 
 ### 新增 / Added

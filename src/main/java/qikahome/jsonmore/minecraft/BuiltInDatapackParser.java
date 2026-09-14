@@ -54,15 +54,18 @@ public class BuiltInDatapackParser extends ThingParser<BuiltInDatapackParser.Bui
                         "Cannot find mod {} to load built-in datapack, if it's a thingpack you may ignore this warning.",
                         regName.getNamespace());
             } else {
-                // 上游 Forge 版本从 <mod>/datapacks/<name> 读 pack.mcmeta 后经 AddPackFindersEvent 注入
-                // SERVER_DATA 包库；Fabric 1.20.1 无 AddPackFindersEvent/PathPackResources 等价物，
-                // 改用 ResourceManagerHelper 的内置包登记（同时覆盖资源包与数据包）。
+                // 上游 Forge 版从 <mod>/datapacks/<name> 读 pack.mcmeta 后经 AddPackFindersEvent 注入
+                // SERVER_DATA 包库；Fabric 1.20.1 无 AddPackFindersEvent，改用 Fabric 内置包机制。
+                // 该机制固定按 resourcepacks/<path> 取包目录（公开 API 改不了 subPath），
+                // 故 Fabric 版的数据包目录约定为 resourcepacks/<path>/（见 docs，与 Forge/Neo 的 datapacks/ 不同）。
+                // 注册会按两种 PackType 各尝试建包，只有该目录下真有 data/ 的那侧才成立，
+                // 因此只会作为数据包出现在"数据包"列表；default_enable 映射为激活类型。
                 ResourcePackActivationType activationType = defaultEnable
                         ? ResourcePackActivationType.DEFAULT_ENABLED
                         : ResourcePackActivationType.NORMAL;
                 if (!ResourceManagerHelper.registerBuiltinResourcePack(regName, modContainer.get(), displayName,
                         activationType)) {
-                    LOGGER.warn("Fail to load built-in datapack because pack is null");
+                    LOGGER.warn("Fail to load built-in datapack {} because pack is null", regName);
                 }
             }
             // Fabric 侧不需要 RepositorySource，保留空实现仅为满足 Builder 的构建类型。

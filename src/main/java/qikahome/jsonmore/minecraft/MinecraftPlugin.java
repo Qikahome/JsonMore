@@ -61,6 +61,23 @@ public class MinecraftPlugin {
                         useBlockName, props, builder, direction);
             };
         });
+        FlexItemType.register("jsonmore:record", data -> {
+            int comparatorValue = GsonHelper.getAsInt(data, "comparator_value", 15);
+            String sound = GsonHelper.getAsString(data, "sound");
+            // 注意：length 的单位是 tick（Fabric 侧由 FlexRecordItem 覆盖 getLengthInTicks 提供）
+            int lengthInTicks = GsonHelper.getAsInt(data, "length");
+            if (lengthInTicks <= 0) {
+                throw new ThingParseException("Record length must be positive, got " + lengthInTicks);
+            }
+            return (props, builder) -> {
+                ResourceLocation soundId = new ResourceLocation(sound);
+                SoundEvent soundEvent = BuiltInRegistries.SOUND_EVENT.get(soundId);
+                if (soundEvent == null) {
+                    throw new ThingParseException("Sound event " + soundId + " not found");
+                }
+                return new FlexRecordItem(comparatorValue, soundEvent, props, lengthInTicks, builder);
+            };
+        });
         FlexBlockType.register("jsonmore:wall_sign", data -> {
             var blockSetType = new MutableObject<ResourceLocation>();
             var woodTypeName = Utils.getOrInfo(() -> data.get("wood_type").getAsString(), "oak");

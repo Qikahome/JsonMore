@@ -8,7 +8,7 @@ Path: `things/<namespace>/built_in_datapack/`
 - **default_enable** (boolean, optional) Whether the datapack is enabled by default. Defaults to `false`.
 - **display_name** ([Text Component](https://minecraft.wiki/w/Raw_JSON_text_format), optional) The display name for the datapack. If not specified, it will use a translatable key `pack.<namespace>.<path>`.
 
-The datapack files themselves should be placed in the `datapacks/<path>/` directory inside the mod JAR, where `<path>` corresponds to the path portion of the registry name.
+The datapack files themselves should be placed in the `resourcepacks/<path>/` directory inside the mod JAR, where `<path>` corresponds to the path portion of the registry name. The Fabric version uses the fixed `resourcepacks/` directory required by Fabric's built-in pack mechanism; Forge/Neo use `datapacks/`.
 
 ## Example
 
@@ -21,4 +21,4 @@ The datapack files themselves should be placed in the `datapacks/<path>/` direct
 }
 ```
 
-This registers a datapack with the path `datapacks/example_tweaks/` inside the mod JAR, enabled by default with the display name "Example Mod Tweaks".
+This registers a datapack with the path `resourcepacks/example_tweaks/` inside the mod JAR, enabled by default with the display name "Example Mod Tweaks".

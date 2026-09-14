@@ -18,6 +18,7 @@
   - [Note Block](block_types/note_block.md) *(requires [Anvil MusBox](https://github.com/Qikahome/Anvil_MusBox))*
 - **Item Types**
   - [Standing and Wall](item_types/standing_and_wall.md)
+  - [Record](item_types/record.md)
   - [Copper Can](item_types/copper_can.md) *(requires [Tinkers' Construct 3](https://github.com/SlimeKnights/TinkersConstruct))*
   - [Mantle Book](item_types/mantle_book.md) *(requires [Mantle](https://github.com/SlimeKnights/Mantle))*
 - **[Tinkers' Construct 3](https://github.com/SlimeKnights/TinkersConstruct) Addon**

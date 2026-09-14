@@ -26,6 +26,7 @@ import qikahome.jsonmore.lib.ingredient.KeepInventoryContainerIngredient;
 import qikahome.jsonmore.lib.ingredient.NBTCopyIngredient;
 import qikahome.jsonmore.lib.ingredient.NotIngredient;
 import qikahome.jsonmore.lib.ingredient.RemainderOverrideIngredient;
+import qikahome.jsonmore.lib.ingredient.RegexIngredient;
 import qikahome.jsonmore.lib.ingredient.ToolDamagingIngredient;
 import qikahome.jsonmore.lib.ingredient.TrueIngredient;
 import qikahome.jsonmore.lib.recipe.ItemApplicationRecipe;
@@ -110,6 +111,7 @@ public class JsonMore implements ModInitializer {
         RemainderOverrideIngredient.register();
         ItemDisplayOverrideIngredient.register();
         ConditionIngredient.register();
+        RegexIngredient.register();
 
         // 配方类型/条件注册必须早于注册表冻结（静态初始化时机太晚）
         ItemApplicationRecipe.register();
