@@ -16,11 +16,15 @@ import dev.gigaherz.jsonthings.things.serializers.FlexBlockType;
 import dev.gigaherz.jsonthings.things.serializers.FlexBlockType.DefaultTypeProperties;
 import dev.gigaherz.jsonthings.things.serializers.FlexItemType;
 import dev.gigaherz.jsonthings.util.Utils;
+import net.minecraft.ResourceLocationException;
 import net.minecraft.core.Direction;
 import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.core.registries.Registries;
+import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.sounds.SoundEvent;
 import net.minecraft.util.GsonHelper;
+import net.minecraft.world.item.JukeboxSong;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockState;
@@ -56,6 +60,21 @@ public class MinecraftPlugin {
                 Block wallBlock = Utils.getOrCrash(BuiltInRegistries.BLOCK, ResourceLocation.parse(wallBlockName));
                 return new FlexStandingAndWallBlockItem(block, wallBlock, useBlockName, direction, props, builder);
             };
+        });
+        FlexItemType.register("jsonmore:record", data -> {
+            if (!data.has("jukebox_song")) {
+                throw new ThingParseException("record requires a 'jukebox_song' field");
+            }
+            String songName = GsonHelper.getAsString(data, "jukebox_song");
+            ResourceLocation songId;
+            try {
+                songId = ResourceLocation.parse(songName);
+            } catch (ResourceLocationException e) {
+                throw new ThingParseException("Invalid 'jukebox_song' id: " + songName, e);
+            }
+            // 只解析成 key，不在此处取 Holder：thingpack 物品早于数据包注册表加载。
+            ResourceKey<JukeboxSong> songKey = ResourceKey.create(Registries.JUKEBOX_SONG, songId);
+            return (props, builder) -> new FlexRecordItem(props, builder, songKey);
         });
         FlexBlockType.register("jsonmore:standing_sign", data -> {
             String woodTypeName = GsonHelper.getAsString(data, "wood_type", "oak");
