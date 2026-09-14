@@ -18,9 +18,12 @@ import dev.gigaherz.jsonthings.things.serializers.FlexItemType;
 import dev.gigaherz.jsonthings.util.Utils;
 import net.minecraft.core.Direction;
 import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.core.registries.Registries;
+import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.sounds.SoundEvent;
 import net.minecraft.util.GsonHelper;
+import net.minecraft.world.item.JukeboxSong;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockState;
@@ -56,6 +59,22 @@ public class MinecraftPlugin {
                 Block wallBlock = Utils.getOrCrash(BuiltInRegistries.BLOCK, ResourceLocation.parse(wallBlockName));
                 return new FlexStandingAndWallBlockItem(block, wallBlock, useBlockName, direction, props, builder);
             };
+        });
+        FlexItemType.register("jsonmore:record", data -> {
+            // 1.21 起唱片改为引用数据包里的 JukeboxSong：sound/length/comparator 都在歌曲定义里，
+            // 物品只需保存歌曲 key（写入 jukebox_playable 数据组件）。
+            if (!data.has("jukebox_song")) {
+                throw new ThingParseException("Record requires a 'jukebox_song' field");
+            }
+            String songName = GsonHelper.getAsString(data, "jukebox_song");
+            ResourceLocation songId;
+            try {
+                songId = ResourceLocation.parse(songName);
+            } catch (Exception e) {
+                throw new ThingParseException("Invalid jukebox_song: " + songName, e);
+            }
+            ResourceKey<JukeboxSong> songKey = ResourceKey.create(Registries.JUKEBOX_SONG, songId);
+            return (props, builder) -> new FlexRecordItem(songKey, props, builder);
         });
         FlexBlockType.register("jsonmore:standing_sign", data -> {
             String woodTypeName = GsonHelper.getAsString(data, "wood_type", "oak");

@@ -1,5 +1,7 @@
 {
   "enchantment.testpack.deadly": "Deadly",
+  "item.testpack.test_record": "Test Record",
+  "jukebox_song.testpack.test_record": "Test Record",
   "block.testpack.container_expand_x": "Expand X Container",
   "block.testpack.container_expand_y": "Expand Y Container",
   "block.testpack.container_expand_z": "Expand Z Container",

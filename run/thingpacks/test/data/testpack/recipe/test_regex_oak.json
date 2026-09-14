@@ -1,0 +1,19 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "pattern": [
+    "###",
+    "###",
+    "###"
+  ],
+  "key": {
+    "#": {
+      "type": "jsonmore:regex",
+      "path": ".*oak.*",
+      "expand_items": true
+    }
+  },
+  "result": {
+    "id": "minecraft:oak_log",
+    "count": 1
+  }
+}

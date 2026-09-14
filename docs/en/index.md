@@ -18,6 +18,7 @@
   - [Sign](block_types/sign.md)
 - **Item Types**
   - [Standing and Wall](item_types/standing_and_wall.md)
+  - [Record](item_types/record.md)
   - ~~[Copper Can](item_types/copper_can.md) *(requires Tinkers' Construct 3, not yet ported to 1.21.1)*~~
   - ~~[Mantle Book](item_types/mantle_book.md) *(requires Mantle, not yet ported to 1.21.1)*~~
   - ~~**Tinkers' Construct 3 Addon:** [Material Stat Type](tinkers_addon/material_stat_type.md) *(not yet ported to 1.21.1)*~~
