@@ -1,0 +1,13 @@
+{
+  "type": "minecraft:crafting_shapeless",
+  "ingredients": [
+    {
+      "type": "jsonmore:regex",
+      "namespace": "testpack",
+      "expand_items": true
+    }
+  ],
+  "result": {
+    "item": "minecraft:diamond"
+  }
+}

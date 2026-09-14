@@ -59,6 +59,23 @@ public class MinecraftPlugin {
                         useBlockName, props, builder, direction);
             };
         });
+        FlexItemType.register("jsonmore:record", data -> {
+            int comparatorValue = GsonHelper.getAsInt(data, "comparator_value", 15);
+            String sound = GsonHelper.getAsString(data, "sound");
+            // 注意：length 的单位是 tick（Forge 的 RecordItem 新构造器不再把秒 ×20）
+            int lengthInTicks = GsonHelper.getAsInt(data, "length");
+            if (lengthInTicks <= 0) {
+                throw new ThingParseException("Record length must be positive, got " + lengthInTicks);
+            }
+            return (props, builder) -> {
+                ResourceLocation soundId = new ResourceLocation(sound);
+                SoundEvent soundEvent = ForgeRegistries.SOUND_EVENTS.getValue(soundId);
+                if (soundEvent == null) {
+                    throw new ThingParseException("Sound event " + soundId + " not found");
+                }
+                return new FlexRecordItem(builder, comparatorValue, () -> soundEvent, props, lengthInTicks);
+            };
+        });
         FlexBlockType.register("jsonmore:wall_sign", data -> {
             var blockSetType = new MutableObject<ResourceLocation>();
             var woodTypeName = Utils.getOrInfo(() -> data.get("wood_type").getAsString(), "oak");
@@ -73,11 +90,11 @@ public class MinecraftPlugin {
                     @Override
                     protected void createBlockStateDefinition(StateDefinition.Builder<Block, BlockState> builder1) {
                         super.createBlockStateDefinition(builder1);
-                                  for (Property<?> property : _properties) {
+                        for (Property<?> property : _properties) {
                             try {
                                 builder1.add(property);
                             } catch (IllegalArgumentException e) {
-                                //pass
+                                // pass
                             }
                         }
                     }
@@ -178,7 +195,7 @@ public class MinecraftPlugin {
                 PlacingDirections facingDirection;
                 try {
                     facingDirection = PlacingDirections.valueOf(facing.toUpperCase());
-                                } catch (IllegalArgumentException e) {
+                } catch (IllegalArgumentException e) {
                     throw new ThingParseException("Direction " + facing + " not found", e);
                 }
                 if (openSoundEvent == null && !openSound.toString().equals("none:none")
@@ -195,7 +212,7 @@ public class MinecraftPlugin {
                             try {
                                 builder1.add(property);
                             } catch (IllegalArgumentException e) {
-                                //pass
+                                // pass
                             }
                         }
                         if (waterlogged) {
@@ -215,7 +232,8 @@ public class MinecraftPlugin {
                 throw new ThingParseException("storage_connector requires 'connectable' field");
             }
             String connectableStr = GsonHelper.getAsString(data, "connectable");
-            if (connectableStr.startsWith("#")) connectableStr = connectableStr.substring(1);
+            if (connectableStr.startsWith("#"))
+                connectableStr = connectableStr.substring(1);
             ResourceLocation connectable = new ResourceLocation(connectableStr);
             ContainerScreenType screenType = ContainerScreenType.parse(data.get("screen"), "autosizedgui:auto");
 
