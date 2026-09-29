@@ -1,5 +1,11 @@
 # Json More Changelog
 
+## 1.2.13
+
+### 修复 / Fixed
+- 修复容器槽位超过 255 时存档丢失物品：原版 `ContainerHelper` 把槽位写成 TAG_Byte，256 以上会被截断并与低槽位撞号（256 → 0），读档时相互覆盖。现改用 `SlotContainerHelper`（`jsonmore:container` 的 `slots`、存储连接器拼接的大容器都可能超过 255），槽位以非负 TAG_Long 存储；读取时兼容旧存档，`128~255` 的负 byte 按无符号还原
+  - Fixed item loss when a container holds more than 255 slots: vanilla `ContainerHelper` wrote the slot as a TAG_Byte, so slots ≥ 256 were truncated and collided with lower slots (256 → 0), overwriting each other on load. Slots are now written as a non-negative TAG_Long by `SlotContainerHelper`, and old saves still load correctly (negative bytes for slots 128–255 are decoded as unsigned)
+
 ## 1.2.12
 
 ### 新增 / Added
