@@ -29,7 +29,7 @@ import net.minecraft.sounds.SoundEvent;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.tags.TagKey;
 import net.minecraft.world.Container;
-import net.minecraft.world.ContainerHelper;
+import qikahome.jsonmore.lib.SlotContainerHelper;
 import net.minecraft.world.Containers;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
@@ -626,7 +626,7 @@ public class StorageConnectorBlock extends BaseEntityBlock
 
         @Override
         protected void saveAdditional(ValueOutput output) {
-            ContainerHelper.saveAllItems(output, items);
+            SlotContainerHelper.saveAllItems(output, items);
             output.putInt("TotalSlots", totalSlots);
             var connectorList = output.childrenList("Connectors");
             for (ConnectorEntry e : connectors) {
@@ -641,7 +641,7 @@ public class StorageConnectorBlock extends BaseEntityBlock
         public void loadAdditional(ValueInput input) {
             totalSlots = input.getIntOr("TotalSlots", 0);
             items = NonNullList.withSize(totalSlots, ItemStack.EMPTY);
-            ContainerHelper.loadAllItems(input, items);
+            SlotContainerHelper.loadAllItems(input, items);
             connectors.clear();
             for (ValueInput child : input.childrenListOrEmpty("Connectors")) {
                 BlockPos rel = BlockPos.of(child.getLongOr("RelPos", 0L));

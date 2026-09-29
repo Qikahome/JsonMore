@@ -1,5 +1,11 @@
 # Json More Changelog
 
+## 1.2.13
+
+### 修复 / Fixed
+- 修复容器槽位超过 255 时存档丢失物品：槽位原先走 `ItemStackWithSlot` 的 `ExtraCodecs.UNSIGNED_BYTE` codec（上限 255），超出后直接编码失败。现改用 `SlotContainerHelper`（`jsonmore:container` 的 `slots`、存储连接器拼接的大容器都可能超过 255），槽位以非负 TAG_Long 存储；读取时兼容旧存档，`128~255` 的负 byte 按无符号还原
+  - Fixed item loss when a container holds more than 255 slots: the slot previously went through `ItemStackWithSlot`'s `ExtraCodecs.UNSIGNED_BYTE` codec (capped at 255) and failed to encode beyond that. Slots are now written as a non-negative TAG_Long by `SlotContainerHelper`, and old saves still load correctly (negative bytes for slots 128–255 are decoded as unsigned)
+
 ## 1.2.12
 
 ### 新增 / Added

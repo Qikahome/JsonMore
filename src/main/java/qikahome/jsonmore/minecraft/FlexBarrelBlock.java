@@ -32,7 +32,7 @@ import net.minecraft.tags.TagKey;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.CompoundContainer;
 import net.minecraft.world.Container;
-import net.minecraft.world.ContainerHelper;
+import qikahome.jsonmore.lib.SlotContainerHelper;
 import net.minecraft.world.Containers;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
@@ -779,7 +779,7 @@ public class FlexBarrelBlock extends BaseEntityBlock
             } else {
                 super.saveAdditional(output);
                 if (!this.trySaveLootTable(output)) {
-                    ContainerHelper.saveAllItems(output, this.items);
+                    SlotContainerHelper.saveAllItems(output, this.items);
                 }
             }
         }
@@ -795,7 +795,7 @@ public class FlexBarrelBlock extends BaseEntityBlock
                 super.loadAdditional(input);
                 this.items = NonNullList.withSize(this.getContainerSize(), ItemStack.EMPTY);
                 if (!this.tryLoadLootTable(input)) {
-                    ContainerHelper.loadAllItems(input, this.items);
+                    SlotContainerHelper.loadAllItems(input, this.items);
                 }
             }
         }
