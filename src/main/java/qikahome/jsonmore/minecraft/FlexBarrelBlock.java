@@ -30,7 +30,7 @@ import net.minecraft.sounds.SoundSource;
 import net.minecraft.tags.TagKey;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.Container;
-import net.minecraft.world.ContainerHelper;
+import qikahome.jsonmore.lib.SlotContainerHelper;
 import net.minecraft.world.CompoundContainer;
 import net.minecraft.world.WorldlyContainer;
 import net.minecraft.world.Containers;
@@ -291,7 +291,7 @@ public class FlexBarrelBlock extends BaseEntityBlock
             }
             if (compoundtag.contains("Items", 9)) {
                 NonNullList<ItemStack> items = NonNullList.withSize(containerSize, ItemStack.EMPTY);
-                ContainerHelper.loadAllItems(compoundtag, items);
+                SlotContainerHelper.loadAllItems(compoundtag, items);
                 int i = 0;
                 int j = 0;
                 for (ItemStack itemstack : items) {
@@ -817,7 +817,7 @@ public class FlexBarrelBlock extends BaseEntityBlock
             } else {
                 super.saveAdditional(tag);
                 if (!this.trySaveLootTable(tag)) {
-                    ContainerHelper.saveAllItems(tag, this.items);
+                    SlotContainerHelper.saveAllItems(tag, this.items);
                 }
             }
         }
@@ -835,7 +835,7 @@ public class FlexBarrelBlock extends BaseEntityBlock
                 super.load(tag);
                 this.items = NonNullList.withSize(this.getContainerSize(), ItemStack.EMPTY);
                 if (!this.tryLoadLootTable(tag)) {
-                    ContainerHelper.loadAllItems(tag, this.items);
+                    SlotContainerHelper.loadAllItems(tag, this.items);
                 }
             }
         }

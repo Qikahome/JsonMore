@@ -29,7 +29,7 @@ import net.minecraft.sounds.SoundEvent;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.tags.TagKey;
 import net.minecraft.world.Container;
-import net.minecraft.world.ContainerHelper;
+import qikahome.jsonmore.lib.SlotContainerHelper;
 import net.minecraft.world.Containers;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
@@ -618,7 +618,7 @@ public class StorageConnectorBlock extends BaseEntityBlock
 
         @Override
         protected void saveAdditional(CompoundTag tag) {
-            ContainerHelper.saveAllItems(tag, items);
+            SlotContainerHelper.saveAllItems(tag, items);
             tag.putInt("TotalSlots", totalSlots);
             ListTag connectorList = new ListTag();
             for (ConnectorEntry e : connectors) {
@@ -637,7 +637,7 @@ public class StorageConnectorBlock extends BaseEntityBlock
         public void load(CompoundTag tag) {
             totalSlots = tag.getInt("TotalSlots");
             items = NonNullList.withSize(totalSlots, ItemStack.EMPTY);
-            ContainerHelper.loadAllItems(tag, items);
+            SlotContainerHelper.loadAllItems(tag, items);
             connectors.clear();
             ListTag connectorList = tag.getList("Connectors", 10);
             for (int i = 0; i < connectorList.size(); i++) {
