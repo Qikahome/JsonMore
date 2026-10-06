@@ -445,20 +445,24 @@ public class FlexBarrelBlock extends BaseEntityBlock
     public boolean retryConnection(Level level, BlockPos pos, BlockState state) {
         var connection = state.getValue(PART);
         var facing = state.getValue(BlockStateProperties.FACING);
-        boolean connected = false;
         Direction neighborDir = connection.getWorldDirection(facing).getOpposite();
-        if (neighborDir != null) {
-            BlockPos neighborPos = pos.relative(neighborDir);
-            BlockState neighborState = level.getBlockState(neighborPos);
-            for (ExpandableMode mode : expandableModes) {
-                if (isConnectableBlock(neighborState)
-                        && neighborState.getValue(PART) == ContainerPart.NONE) {
-                    connected = mode.connect(neighborState, neighborPos, level, neighborDir.getOpposite());
-                }
-                if (connected) {
-                    return true;
-                }
-            }
+        if (neighborDir == null)
+            return false;
+        BlockPos neighborPos = pos.relative(neighborDir);
+        BlockState neighborState = level.getBlockState(neighborPos);
+        // 邻居已经与本方块互相配对（它的 part 指回本方块）：连接本来就是有效的，保留即可
+        if (neighborState.getBlock() instanceof FlexBarrelBlock) {
+            var neiPart = neighborState.getValue(PART);
+            if (neiPart.isConnected()
+                    && neiPart.getWorldDirection(
+                            neighborState.getValue(BlockStateProperties.FACING)) == neighborDir)
+                return true;
+        }
+        for (ExpandableMode mode : expandableModes) {
+            if (isConnectableBlock(neighborState)
+                    && neighborState.getValue(PART) == ContainerPart.NONE
+                    && mode.connect(neighborState, neighborPos, level, neighborDir.getOpposite()))
+                return true;
         }
         return false;
     }
