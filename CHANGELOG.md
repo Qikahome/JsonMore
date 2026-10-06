@@ -1,5 +1,11 @@
 # Json More Changelog
 
+## 1.2.14
+
+### 修复 / Fixed
+- 修复已互相配对的两格容器在再次放置或被就地替换时连接被强制拆开：`FlexBarrelBlock.retryConnection` 原先只在邻居 `part` 为 `none` 时才尝试连接，遇到已经连着自己的邻居会返回失败，`setPlacedBy` 随即把本方块的 `part` 清成 `none`。现在邻居的 `part` 已经指向本方块时视为连接有效并保留（判据与 `updateShape` 中互相配对的检查一致）
+  - Fixed forced disconnection when an already paired two-block container is placed again or replaced in place: `FlexBarrelBlock.retryConnection` only tried to connect while the neighbor's `part` was `none`, so a neighbor already linked to this block made it fail and `setPlacedBy` reset this block's `part` to `none`. A neighbor whose `part` already points back at this block is now treated as connected and kept, using the same mutual-pairing check as `updateShape`
+
 ## 1.2.13
 
 ### 修复 / Fixed
