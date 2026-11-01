@@ -1,5 +1,12 @@
 # Json More Changelog
 
+## 1.3.0
+
+### 变更 / Changed
+- 原料、配方、条件、方块保护（`IProtectedBlock`）、JEI 分类与模型 override 注入改为依赖共享库 **QikaLib 0.1.0**（jarJar 内嵌），JsonMore 不再自带这些实现；`jsonmore:*` 的原料/配方/条件 id 由 QikaLib 以旧 id 重新注册，数据包与旧存档无需改动
+  - Ingredients, recipes, conditions, `IProtectedBlock`, JEI categories and model override injection now come from the shared **QikaLib 0.1.0** library (jarJar'd). JsonMore no longer ships its own copies; QikaLib re-registers the legacy `jsonmore:*` ids, so datapacks and old saves keep working
+- 存储连接器幽灵槽修复同步到所有加载器：拆解时重建物品列表、读档时按实际最大槽位扩容、激活时归一化 `items.size() == totalSlots`，避免读档后容器凭空多出槽位、拆解时爆出物品或丢物品
+  - Ported the storage-connector ghost-slot fix to every loader: rebuild the item list on disassembly, expand to the highest saved slot on load, and normalize `items.size() == totalSlots` on assembly, preventing phantom slots after a reload and item loss/spill on disassembly
 ## 1.2.14
 
 ### 修复 / Fixed

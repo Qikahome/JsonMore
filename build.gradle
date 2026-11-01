@@ -61,7 +61,20 @@ if (secretFile.exists()) {
 }
 
 repositories {
+    // 本地 Maven（QikaLib 开发期发布到 mavenLocal）
+    mavenLocal()
+
     maven { url = 'https://maven.aliyun.com/repository/public' }
+
+    // QikaLib - GitHub Packages
+    maven {
+        name = "QikaLibPackages"
+        url = "https://maven.pkg.github.com/Qikahome/QikaLib"
+        credentials {
+            username = project.findProperty("gpr.user") ?: System.getenv("GITHUB_ACTOR")
+            password = project.findProperty("gpr.key") ?: System.getenv("GH_PACKAGES_TOKEN") ?: System.getenv("GITHUB_TOKEN")
+        }
+    }
 
     // AutoSizedGUI - GitHub Packages
     maven {
@@ -110,6 +123,10 @@ repositories {
 dependencies {
     // JSON Things - 必需依赖
     implementation "dev.gigaherz.jsonthings:JsonThings-1.21.1:${json_things_version}"
+
+    // QikaLib - 原料/配方/条件/模型注入共享库（jarjar 嵌入）
+    implementation "qikahome:qikalib-1.21.1-neoforge:${qikalib_version}"
+    jarJar("qikahome:qikalib-1.21.1-neoforge:[0.1.0,0.2.0)")
 
     // AutoSizedGUI - 自动布局GUI（jarjar 嵌入）
     implementation "qikahome:AutoSizedGUI-1.21.1:${autosizedgui_version}"

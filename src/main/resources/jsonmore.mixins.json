@@ -5,11 +5,7 @@
   "refmap": "jsonmore.refmap.json",
   "mixins": [
     "MixinBlockEntityType",
-    "MixinMechanicalCrafterBlockEntity",
-    "MixinUncraftingMenu",
-    "MixinTwilightForestJEICompat",
-    "MixinFlexBarrelBlockItem",
-    "MixinLevel"
+    "MixinFlexBarrelBlockItem"
   ],
   "client": [],
   "server": [],
