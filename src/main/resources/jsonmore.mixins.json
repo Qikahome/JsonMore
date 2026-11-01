@@ -5,8 +5,7 @@
   "refmap": "jsonmore.refmap.json",
   "mixins": [
     "MixinBlockEntityType",
-    "MixinFlexBarrelBlockItem",
-    "MixinLevel"
+    "MixinFlexBarrelBlockItem"
   ],
   "client": [],
   "server": [],

@@ -57,10 +57,13 @@ import net.minecraft.world.level.storage.ValueOutput;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.shapes.CollisionContext;
 import net.minecraft.world.phys.shapes.VoxelShape;
+import net.neoforged.neoforge.transfer.ResourceHandler;
+import net.neoforged.neoforge.transfer.item.ItemResource;
+import net.neoforged.neoforge.transfer.item.VanillaContainerWrapper;
 import static qikahome.jsonmore.JsonMore.LOGGER;
 import qikahome.jsonmore.lib.ContainerScreenType;
 import qikahome.jsonmore.lib.IFlexEntityBlock;
-import qikahome.jsonmore.lib.IProtectedBlock;
+import qikahome.qikalib.lib.IProtectedBlock;
 
 public class StorageConnectorBlock extends BaseEntityBlock
         implements IFlexEntityBlock<StorageConnectorBlock.ControllerBlockEntity>, IProtectedBlock {
@@ -309,9 +312,21 @@ public class StorageConnectorBlock extends BaseEntityBlock
         private int totalSlots;
         private final List<ConnectorEntry> connectors = new java.util.ArrayList<>();
         private boolean disassembling = false;
+        @Nullable
+        private ResourceHandler<ItemResource> inventoryWrapper;
 
         public ControllerBlockEntity(BlockPos pos, BlockState state) {
             super(MinecraftPlugin.STORAGE_CONNECTOR_TILE.get(), pos, state);
+        }
+
+        /**
+         * 缓存的物品处理器，保证同一个控制器始终返回同一个实例。
+         * 若每次 capability 查询都新建 wrapper，Tom's Storage 等模组会把它当成多个独立库存重复计数。
+         */
+        public ResourceHandler<ItemResource> getInventoryWrapper() {
+            if (inventoryWrapper == null)
+                inventoryWrapper = VanillaContainerWrapper.of(this);
+            return inventoryWrapper;
         }
 
         // ========================================================================
@@ -336,6 +351,7 @@ public class StorageConnectorBlock extends BaseEntityBlock
 
             int r = scb.radius;
             List<BlockPos> targets = new java.util.ArrayList<>();
+            Set<BlockPos> targetSet = new HashSet<>();
             Set<BlockPos> visited = new HashSet<>();
             Queue<BlockPos> queue = new ArrayDeque<>();
             int selectedConnectors = 0;
@@ -358,9 +374,25 @@ public class StorageConnectorBlock extends BaseEntityBlock
                 // If the limit is reached, skip this block AND stop expanding from it,
                 // so it cannot bridge connections across the gap.
                 if (!bs.getValue(FlexBarrelBlock.CONNECTED)
-                        && be instanceof FlexBarrelBlock.FlexBarrelBlockEntity fbe) {
-                    int size = fbe.getContainerSize();
-                    if (scb.maxConnectors > 0 && selectedConnectors >= scb.maxConnectors) {
+                        && be instanceof FlexBarrelBlock.FlexBarrelBlockEntity fbe
+                        && !targetSet.contains(p)) {
+                    // 双联桶必须整对一起捕获（另一半即使在半径外也要带上），否则会只连到半个
+                    List<FlexBarrelBlock.FlexBarrelBlockEntity> unit = new java.util.ArrayList<>();
+                    unit.add(fbe);
+                    FlexBarrelBlock.FlexBarrelBlockEntity paired = fbe.getPairedBarrel();
+                    if (paired != null && !targetSet.contains(paired.getBlockPos())) {
+                        boolean pairedReady = !paired.getBlockState().getValue(FlexBarrelBlock.CONNECTED)
+                                && paired.getController() == null;
+                        if (!pairedReady) {
+                            LOGGER.debug("  Skipped {}: paired barrel {} is not capturable", p, paired.getBlockPos());
+                            continue;
+                        }
+                        unit.add(paired);
+                    }
+                    int size = 0;
+                    for (FlexBarrelBlock.FlexBarrelBlockEntity u : unit)
+                        size += u.getContainerSize();
+                    if (scb.maxConnectors > 0 && selectedConnectors + unit.size() > scb.maxConnectors) {
                         LOGGER.debug("  Skipped {}: max connectors reached ({})", p, scb.maxConnectors);
                         continue;
                     }
@@ -369,9 +401,13 @@ public class StorageConnectorBlock extends BaseEntityBlock
                                 selectedSlots, size, scb.maxCapacity);
                         continue;
                     }
-                    targets.add(p);
-                    selectedConnectors++;
-                    selectedSlots += size;
+                    for (FlexBarrelBlock.FlexBarrelBlockEntity u : unit) {
+                        if (!targetSet.add(u.getBlockPos()))
+                            continue;
+                        targets.add(u.getBlockPos());
+                        selectedConnectors++;
+                        selectedSlots += u.getContainerSize();
+                    }
                 }
 
                 // Continue BFS through neighbors if within radius
@@ -391,6 +427,29 @@ public class StorageConnectorBlock extends BaseEntityBlock
             LOGGER.debug("Storage controller at {} found {} connectable blocks", pos, targets.size());
 
             if (targets.isEmpty()) return;
+
+            // 不变量：items 长度必须与 totalSlots 一致。
+            // 旧版本读档后拆解会留下等长的“幽灵槽”（NonNullList#clear 不缩容），这里先归一化：
+            // 多出来的槽位里的物品溢出到控制器位置，再裁掉尾部，避免静默丢失。
+            if (items.size() != totalSlots) {
+                if (items.size() > totalSlots) {
+                    for (int i = totalSlots; i < items.size(); i++) {
+                        ItemStack extra = items.get(i);
+                        if (!extra.isEmpty()) {
+                            Containers.dropItemStack(level, pos.getX() + 0.5D, pos.getY() + 0.5D, pos.getZ() + 0.5D,
+                                    extra);
+                        }
+                    }
+                    while (items.size() > totalSlots) {
+                        items.remove(items.size() - 1);
+                    }
+                } else {
+                    while (items.size() < totalSlots) {
+                        items.add(ItemStack.EMPTY);
+                    }
+                }
+                setChanged();
+            }
 
             // Ensure items list is growable (load() may have set it to fixed-size withSize())
             java.util.ArrayList<ItemStack> savedItems = new java.util.ArrayList<>(items);
@@ -525,7 +584,8 @@ public class StorageConnectorBlock extends BaseEntityBlock
                 }
 
                 // 5. Reset controller state
-                items.clear();
+                // NonNullList#clear() 在默认值非 null 时只是把每格填回默认值，不会缩短列表，必须重建
+                items = NonNullList.create();
                 totalSlots = 0;
 
                 // Play disassemble sound
@@ -640,7 +700,12 @@ public class StorageConnectorBlock extends BaseEntityBlock
         @Override
         public void loadAdditional(ValueInput input) {
             totalSlots = input.getIntOr("TotalSlots", 0);
-            items = NonNullList.withSize(totalSlots, ItemStack.EMPTY);
+            // 旧版本会留下超出 TotalSlots 的槽位（幽灵槽），扩到实际最大槽位，避免读取时被静默丢弃
+            totalSlots = Math.max(totalSlots, SlotContainerHelper.maxSlot(input) + 1);
+            items = NonNullList.create();
+            for (int i = 0; i < totalSlots; i++) {
+                items.add(ItemStack.EMPTY);
+            }
             SlotContainerHelper.loadAllItems(input, items);
             connectors.clear();
             for (ValueInput child : input.childrenListOrEmpty("Connectors")) {

@@ -38,6 +38,22 @@ public final class SlotContainerHelper {
     }
 
     /**
+     * 返回存档中出现的最大槽位，没有条目时返回 -1。
+     * <p>
+     * 用于读档时把容器扩到实际最大槽位，避免 loadAllItems 的边界检查静默丢弃旧存档里越界的条目。
+     */
+    public static int maxSlot(ValueInput input) {
+        long max = -1;
+        for (SlotEntry entry : input.listOrEmpty("Items", SlotEntry.CODEC)) {
+            long slot = decodeSlot(entry.slot());
+            if (slot > max) {
+                max = slot;
+            }
+        }
+        return max < 0 ? -1 : (int) Math.min(max, Integer.MAX_VALUE - 1);
+    }
+
+    /**
      * 旧存档（原版 ContainerHelper 写入）的槽位是 TAG_Byte，其中 128~255 存为负数，按无符号还原；
      * 本类写入的是非负 TAG_Long，原样使用。
      */

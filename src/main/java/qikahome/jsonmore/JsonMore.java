@@ -3,8 +3,6 @@ package qikahome.jsonmore;
 import org.slf4j.Logger;
 
 import com.mojang.logging.LogUtils;
-import com.mojang.serialization.MapCodec;
-
 
 import dev.gigaherz.jsonthings.things.ThingRegistries;
 import dev.gigaherz.jsonthings.things.parsers.ThingResourceManager;
@@ -12,10 +10,6 @@ import net.minecraft.core.Registry;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.world.inventory.MenuType;
-import net.minecraft.world.item.crafting.RecipeSerializer;
-import net.minecraft.world.item.crafting.RecipeType;
-import net.minecraft.world.item.crafting.ShapedRecipe;
-import net.minecraft.world.item.crafting.ShapelessRecipe;
 import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.IEventBus;
@@ -27,34 +21,15 @@ import net.neoforged.fml.event.lifecycle.FMLCommonSetupEvent;
 import net.neoforged.neoforge.capabilities.Capabilities;
 import net.neoforged.neoforge.capabilities.RegisterCapabilitiesEvent;
 import net.neoforged.neoforge.common.NeoForge;
-import net.neoforged.neoforge.common.conditions.ICondition;
 
-import net.neoforged.neoforge.common.crafting.IngredientType;
 import net.neoforged.neoforge.event.level.GameRuleChangedEvent;
-import net.neoforged.neoforge.registries.DeferredHolder;
 import net.neoforged.neoforge.registries.DeferredRegister;
-import net.neoforged.neoforge.registries.NeoForgeRegistries;
-import net.neoforged.neoforge.transfer.item.VanillaContainerWrapper;
 import qikahome.jsonmore.create.CreatePlugin;
 import qikahome.jsonmore.cyclopscore.CyclopsCorePlugin;
 import qikahome.jsonmore.cyclopscore.ScrollingContainerScreen;
 import qikahome.jsonmore.lib.ContainerPart;
-import qikahome.jsonmore.lib.recipe.ItemApplicationRecipe;
-import qikahome.jsonmore.lib.recipe.ShapedConsumingRecipe;
-import qikahome.jsonmore.lib.recipe.ShapelessConsumingRecipe;
 import qikahome.jsonmore.minecraft.gamerule.GameRuleParser;
 import qikahome.jsonmore.minecraft.BuiltInDatapackParser;
-import qikahome.jsonmore.lib.MultiContainer;
-import qikahome.jsonmore.lib.ingredient.ConditionIngredient;
-import qikahome.jsonmore.lib.ingredient.CountedIngredient;
-import qikahome.jsonmore.lib.ingredient.ItemDisplayOverrideIngredient;
-import qikahome.jsonmore.lib.ingredient.KeepInventoryContainerIngredient;
-import qikahome.jsonmore.lib.ingredient.NBTCopyIngredient;
-import qikahome.jsonmore.lib.ingredient.NotIngredient;
-import qikahome.jsonmore.lib.ingredient.RegexIngredient;
-import qikahome.jsonmore.lib.ingredient.RemainderOverrideIngredient;
-import qikahome.jsonmore.lib.ingredient.ToolDamagingIngredient;
-import qikahome.jsonmore.lib.ingredient.TrueIngredient;
 import qikahome.jsonmore.minecraft.FlexBarrelBlock;
 import qikahome.jsonmore.minecraft.MinecraftPlugin;
 import qikahome.jsonmore.minecraft.StorageConnectorBlock;
@@ -64,7 +39,6 @@ import qikahome.autosizedgui.screen.AutoSizedContainerScreen;
 import qikahome.jsonmore.autosizedgui.AutoSizedGUIPlugin;
 import qikahome.jsonmore.autosizedgui.AutoSizedMenu;
 import qikahome.jsonmore.minecraft.gamerule.FlexGameRuleType;
-import qikahome.jsonmore.minecraft.gamerule.GameRuleCondition;
 
 // 这里的值应该与 META-INF/neoforge.mods.toml 文件中的条目匹配
 @Mod(JsonMore.MODID)
@@ -84,10 +58,6 @@ public class JsonMore {
         
         BLOCK_ENTITY_TYPES.register(modEventBus);
         MENU_TYPES.register(modEventBus);
-        RECIPE_SERIALIZERS.register(modEventBus);
-        RECIPE_TYPES.register(modEventBus);
-        INGREDIENT_TYPES.register(modEventBus);
-        CONDITION_CODECS.register(modEventBus);
 
         var manager = ThingResourceManager.instance();
         manager.registerParser(new GameRuleParser(modEventBus));
@@ -101,24 +71,17 @@ public class JsonMore {
             if (blk instanceof FlexBarrelBlock barrel) {
                 event.registerBlock(
                         Capabilities.Item.BLOCK,
-                        (level, pos, state, be, side) -> {
-                            if (state.getBlock() instanceof FlexBarrelBlock flex) {
-                                return VanillaContainerWrapper.of(MultiContainer.of(flex.getContainers(level, pos, state)));
-                            }
-                            LOGGER.warn("Wrong Block Type for ItemCapability!");
-                            return null;
-                        },
+                        (level, pos, state, be, side) -> be instanceof FlexBarrelBlock.FlexBarrelBlockEntity barrelEntity
+                                ? barrelEntity.getInventoryWrapper()
+                                : null,
                         barrel);
             }
             if (blk instanceof StorageConnectorBlock scb) {
                 event.registerBlock(
                         Capabilities.Item.BLOCK,
-                        (level, pos, state, be, side) -> {
-                            if (be instanceof ControllerBlockEntity cbe) {
-                                return VanillaContainerWrapper.of(cbe);
-                            }
-                            return null;
-                        },
+                        (level, pos, state, be, side) -> be instanceof ControllerBlockEntity cbe
+                                ? cbe.getInventoryWrapper()
+                                : null,
                         scb);
             }
         }
@@ -128,36 +91,8 @@ public class JsonMore {
             .create(Registries.BLOCK_ENTITY_TYPE, MODID);
     public static final DeferredRegister<MenuType<?>> MENU_TYPES = DeferredRegister
             .create(Registries.MENU, MODID);
-    public static final DeferredRegister<RecipeSerializer<?>> RECIPE_SERIALIZERS = DeferredRegister
-            .create(Registries.RECIPE_SERIALIZER, MODID);
-    public static final DeferredRegister<RecipeType<?>> RECIPE_TYPES = DeferredRegister
-            .create(Registries.RECIPE_TYPE, MODID);
-    public static final DeferredRegister<IngredientType<?>> INGREDIENT_TYPES = DeferredRegister
-            .create(NeoForgeRegistries.INGREDIENT_TYPES, MODID);
-    public static final DeferredRegister<MapCodec<? extends ICondition>> CONDITION_CODECS = DeferredRegister
-            .create(NeoForgeRegistries.Keys.CONDITION_CODECS, MODID);
-    public static final DeferredHolder<RecipeSerializer<?>, RecipeSerializer<ShapelessRecipe>> SHAPELESS_CONSUMING_RECIPE = RECIPE_SERIALIZERS
-            .register("shapeless_consuming", () -> ShapelessConsumingRecipe.SERIALIZER);
-    public static final DeferredHolder<RecipeSerializer<?>, RecipeSerializer<ShapedRecipe>> SHAPED_CONSUMING_RECIPE = RECIPE_SERIALIZERS
-            .register("shaped_consuming", () -> ShapedConsumingRecipe.SERIALIZER);
-    public static final DeferredHolder<RecipeSerializer<?>, RecipeSerializer<ItemApplicationRecipe>> ITEM_APPLICATION_RECIPE = RECIPE_SERIALIZERS
-            .register("item_application", () -> ItemApplicationRecipe.Serializer.INSTANCE);
-    public static final DeferredHolder<RecipeType<?>, RecipeType<ItemApplicationRecipe>> ITEM_APPLICATION_TYPE = RECIPE_TYPES
-            .register("item_application", () -> ItemApplicationRecipe.TYPE);
 
     static {
-        NotIngredient.register();
-        KeepInventoryContainerIngredient.register();
-        TrueIngredient.register();
-        ToolDamagingIngredient.register();
-        CountedIngredient.register();
-        NBTCopyIngredient.register();
-        RemainderOverrideIngredient.register();
-        ItemDisplayOverrideIngredient.register();
-        ConditionIngredient.register();
-        RegexIngredient.register();
-        GameRuleCondition.register();
-
         MinecraftPlugin.BARREL_TILE = BLOCK_ENTITY_TYPES.register("barrel",
                 MinecraftPlugin.BARREL_SUPPLIER);
         MinecraftPlugin.STORAGE_CONNECTOR_TILE = BLOCK_ENTITY_TYPES.register("storage_connector",
@@ -174,8 +109,7 @@ public class JsonMore {
 
     private void commonSetup(final FMLCommonSetupEvent event) {
         LOGGER.info("Start JsonMore common setup.");
-        event.enqueueWork(() -> {
-        });
+        // 原料类型 / 配方序列化器 / gamerule 条件由 QikaLib 统一注册（含 jsonmore: 旧 id）
     }
 
 
