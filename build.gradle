@@ -93,7 +93,16 @@ repositories {
             includeGroup "dev.gigaherz.rhinolib"
         }
     }
-    mavenLocal()   // 自有库的本地发布产物（AutoSizedGUI 等）
+    mavenLocal()   // 自有库的本地发布产物（AutoSizedGUI、QikaLib 等）
+    maven {
+        // QikaLib（GitHub Packages）
+        name = "QikaLibPackages"
+        url = "https://maven.pkg.github.com/Qikahome/QikaLib"
+        credentials {
+            username = project.findProperty("gpr.user") ?: System.getenv("GITHUB_ACTOR")
+            password = project.findProperty("gpr.key") ?: System.getenv("GH_PACKAGES_TOKEN") ?: System.getenv("GITHUB_TOKEN")
+        }
+    }
     maven {
         // AutoSizedGUI（GitHub Packages）
         name = "AutoSizedGUI"
@@ -123,6 +132,9 @@ dependencies {
     // JSON Things Fabric：必需前置，jar-in-jar 内嵌
     // （其 jar 内已 include FabricatedForgeFluid 与 common/fluids/item_abilities/models/registry 等 Porting Lib 模块）
     modImplementation(include("qikahome:JsonThings-1.21.1-fabric:${project.property('json_things_version')}"))
+
+    // QikaLib（自有库）：原料/配方/条件/模型注入共享库，jar-in-jar 内嵌
+    modImplementation(include("qikahome:qikalib-${project.property('minecraft_version')}-fabric:${project.property('qikalib_version')}"))
 
     // AutoSizedGUI（自有库）：自动布局 GUI，jar-in-jar 内嵌
     modImplementation(include("qikahome:AutoSizedGUI-${project.property('minecraft_version')}-fabric:${project.property('autosizedgui_version')}"))

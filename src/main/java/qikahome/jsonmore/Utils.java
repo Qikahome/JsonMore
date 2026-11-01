@@ -6,7 +6,6 @@ import com.mojang.serialization.DynamicOps;
 import com.mojang.serialization.codecs.PrimitiveCodec;
 
 import net.minecraft.server.MinecraftServer;
-import net.minecraft.world.entity.player.Player;
 
 import static qikahome.jsonmore.JsonMore.LOGGER;
 
@@ -31,21 +30,6 @@ public class Utils {
     @Nullable
     public static MinecraftServer getCurrentServer() {
         return currentServer;
-    }
-
-    /**
-     * 合成台取结果的那一刻（{@code ResultSlot#onTake}）所处的玩家，由 {@code MixinResultSlot} 维护，
-     * 等价上游 Neo 的 {@code CommonHooks#getCraftingPlayer()}。
-     */
-    private static final ThreadLocal<Player> CRAFTING_PLAYER = new ThreadLocal<>();
-
-    public static void setCraftingPlayer(@Nullable Player player) {
-        CRAFTING_PLAYER.set(player);
-    }
-
-    @Nullable
-    public static Player getCraftingPlayer() {
-        return CRAFTING_PLAYER.get();
     }
 
     /**

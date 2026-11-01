@@ -22,9 +22,6 @@
     ],
     "jsonthings": [
       "qikahome.jsonmore.JsonMoreThingPlugin"
-    ],
-    "jei_mod_plugin": [
-      "qikahome.jsonmore.lib.recipe.jei.JsonMoreJEIPlugin"
     ]
   },
   "mixins": [
