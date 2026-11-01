@@ -1,5 +1,20 @@
 # Json More Changelog
 
+## 1.3.0
+
+### 变更 / Changed
+- 原料、配方、条件、方块保护（`IProtectedBlock`）、JEI 分类与模型 override 注入改为依赖共享库 **QikaLib 0.1.0**（jarJar 内嵌），JsonMore 不再自带这些实现；`jsonmore:*` 的原料/配方/条件 id 由 QikaLib 以旧 id 重新注册，数据包与旧存档无需改动
+  - Ingredients, recipes, conditions, `IProtectedBlock`, JEI categories and model override injection now come from the shared **QikaLib 0.1.0** library (jarJar'd). JsonMore no longer ships its own copies; QikaLib re-registers the legacy `jsonmore:*` ids, so datapacks and old saves keep working
+- 存储连接器幽灵槽修复同步到所有加载器：拆解时重建物品列表、读档时按实际最大槽位扩容、激活时归一化 `items.size() == totalSlots`，避免读档后容器凭空多出槽位、拆解时爆出物品或丢物品
+  - Ported the storage-connector ghost-slot fix to every loader: rebuild the item list on disassembly, expand to the highest saved slot on load, and normalize `items.size() == totalSlots` on assembly, preventing phantom slots after a reload and item loss/spill on disassembly
+## 1.2.15
+
+### 修复 / Fixed
+- 修复存储连接器读档后拆解产生“幽灵槽”、导致集装容器凭空多出槽位并在拆解时爆出物品/丢物品：`NonNullList#clear()` 在默认值非 null 时只是把每格填回默认值，并不会缩短列表。控制器 `load()` 用 `NonNullList.withSize(totalSlots, ItemStack.EMPTY)` 建的列表正属此类，`disassemble()` 里的 `items.clear()` 于是留下等长的空槽，之后 `assemble()` 追加新槽位，槽位越积越多（例如 54 幽灵槽 + 27 真实槽 = 81 格），而下一次拆解只按 `Connectors` 回填、多余物品全部溢出，再读档时超出 `TotalSlots` 的物品还会被静默丢弃。现在拆解改为重建列表，读档改用可变列表并把容器扩到实际最大槽位（旧存档里越界的物品不再被丢弃），`assemble()` 也增加了 `items.size() == totalSlots` 的归一化防御
+  - Fixed ghost slots after a world reload: `NonNullList#clear()` only refills the list with the default value when that default is non-null, so it never shrinks. The controller's `items` created by `NonNullList.withSize(totalSlots, ItemStack.EMPTY)` in `load()` is exactly such a list, so `disassemble()` left an equally-long list of empty slots; the next `assemble()` appended new slots on top (e.g. 54 ghost + 27 real = 81 slots), the next disassembly could only restore `Connectors`-sized slots and spilled the rest, and any item beyond `TotalSlots` was silently dropped on the following load. Disassembly now rebuilds the list, loading uses a growable list and expands to the highest saved slot (so out-of-range items in old saves are no longer dropped), and `assemble()` now normalizes `items.size() == totalSlots`
+- 修正连接器拆解日志：原来把木桶坐标当成“控制器坐标”打印，且恢复后仍打印 `connected=true` 的旧状态
+  - Fixed the disassembly log lines, which printed the barrel position as the controller position and the pre-restore `connected=true` state
+
 ## 1.2.14
 
 ### 修复 / Fixed

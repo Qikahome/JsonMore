@@ -58,7 +58,7 @@ import net.minecraftforge.network.NetworkHooks;
 import static qikahome.jsonmore.JsonMore.LOGGER;
 import qikahome.jsonmore.lib.ContainerScreenType;
 import qikahome.jsonmore.lib.IFlexEntityBlock;
-import qikahome.jsonmore.lib.IProtectedBlock;
+import qikahome.qikalib.lib.IProtectedBlock;
 
 public class StorageConnectorBlock extends BaseEntityBlock
         implements IFlexEntityBlock<StorageConnectorBlock.ControllerBlockEntity>, IProtectedBlock {
@@ -325,6 +325,7 @@ public class StorageConnectorBlock extends BaseEntityBlock
 
             int r = scb.radius;
             List<BlockPos> targets = new java.util.ArrayList<>();
+            Set<BlockPos> targetSet = new HashSet<>();
             Set<BlockPos> visited = new HashSet<>();
             Queue<BlockPos> queue = new ArrayDeque<>();
             int selectedConnectors = 0;
@@ -347,9 +348,25 @@ public class StorageConnectorBlock extends BaseEntityBlock
                 // If the limit is reached, skip this block AND stop expanding from it,
                 // so it cannot bridge connections across the gap.
                 if (!bs.getValue(FlexBarrelBlock.CONNECTED)
-                        && be instanceof FlexBarrelBlock.FlexBarrelBlockEntity fbe) {
-                    int size = fbe.getContainerSize();
-                    if (scb.maxConnectors > 0 && selectedConnectors >= scb.maxConnectors) {
+                        && be instanceof FlexBarrelBlock.FlexBarrelBlockEntity fbe
+                        && !targetSet.contains(p)) {
+                    // 双联桶必须整对一起捕获（另一半即使在半径外也要带上），否则会只连到半个
+                    List<FlexBarrelBlock.FlexBarrelBlockEntity> unit = new java.util.ArrayList<>();
+                    unit.add(fbe);
+                    FlexBarrelBlock.FlexBarrelBlockEntity paired = fbe.getPairedBarrel();
+                    if (paired != null && !targetSet.contains(paired.getBlockPos())) {
+                        boolean pairedReady = !paired.getBlockState().getValue(FlexBarrelBlock.CONNECTED)
+                                && paired.getController() == null;
+                        if (!pairedReady) {
+                            LOGGER.debug("  Skipped {}: paired barrel {} is not capturable", p, paired.getBlockPos());
+                            continue;
+                        }
+                        unit.add(paired);
+                    }
+                    int size = 0;
+                    for (FlexBarrelBlock.FlexBarrelBlockEntity u : unit)
+                        size += u.getContainerSize();
+                    if (scb.maxConnectors > 0 && selectedConnectors + unit.size() > scb.maxConnectors) {
                         LOGGER.debug("  Skipped {}: max connectors reached ({})", p, scb.maxConnectors);
                         continue;
                     }
@@ -358,9 +375,13 @@ public class StorageConnectorBlock extends BaseEntityBlock
                                 selectedSlots, size, scb.maxCapacity);
                         continue;
                     }
-                    targets.add(p);
-                    selectedConnectors++;
-                    selectedSlots += size;
+                    for (FlexBarrelBlock.FlexBarrelBlockEntity u : unit) {
+                        if (!targetSet.add(u.getBlockPos()))
+                            continue;
+                        targets.add(u.getBlockPos());
+                        selectedConnectors++;
+                        selectedSlots += u.getContainerSize();
+                    }
                 }
 
                 // Continue BFS through neighbors if within radius
@@ -380,6 +401,29 @@ public class StorageConnectorBlock extends BaseEntityBlock
             LOGGER.debug("Storage controller at {} found {} connectable blocks", pos, targets.size());
 
             if (targets.isEmpty()) return;
+
+            // 不变量：items 长度必须与 totalSlots 一致。
+            // 旧版本读档后拆解会留下等长的“幽灵槽”（NonNullList#clear 不缩容），这里先归一化：
+            // 多出来的槽位里的物品溢出到控制器位置，再裁掉尾部，避免静默丢失。
+            if (items.size() != totalSlots) {
+                if (items.size() > totalSlots) {
+                    for (int i = totalSlots; i < items.size(); i++) {
+                        ItemStack extra = items.get(i);
+                        if (!extra.isEmpty()) {
+                            Containers.dropItemStack(level, pos.getX() + 0.5D, pos.getY() + 0.5D, pos.getZ() + 0.5D,
+                                    extra);
+                        }
+                    }
+                    while (items.size() > totalSlots) {
+                        items.remove(items.size() - 1);
+                    }
+                } else {
+                    while (items.size() < totalSlots) {
+                        items.add(ItemStack.EMPTY);
+                    }
+                }
+                setChanged();
+            }
 
             // Ensure items list is growable (load() may have set it to fixed-size withSize())
             java.util.ArrayList<ItemStack> savedItems = new java.util.ArrayList<>(items);
@@ -511,7 +555,10 @@ public class StorageConnectorBlock extends BaseEntityBlock
                 }
 
                 // 5. Reset controller state
-                items.clear();
+                // 注意：NonNullList#clear() 在默认值非 null 时只是把每格填回默认值，不会缩短列表。
+                // 控制器读档后 items 的默认值是 ItemStack.EMPTY，直接 clear() 会留下等长的“幽灵槽”，
+                // 导致之后 assemble 追加时槽位越积越多、拆解时又分不回去。这里必须重建列表。
+                items = NonNullList.create();
                 totalSlots = 0;
 
                 // Play disassemble sound
@@ -629,7 +676,15 @@ public class StorageConnectorBlock extends BaseEntityBlock
         @Override
         public void load(CompoundTag tag) {
             totalSlots = tag.getInt("TotalSlots");
-            items = NonNullList.withSize(totalSlots, ItemStack.EMPTY);
+            // 旧版本会留下超出 TotalSlots 的槽位（幽灵槽），这里扩到实际最大槽位，
+            // 否则 SlotContainerHelper#loadAllItems 的边界检查会把它们静默丢弃。
+            totalSlots = Math.max(totalSlots, SlotContainerHelper.maxSlot(tag) + 1);
+            // 用可变列表而不是 NonNullList.withSize(...)：后者默认值非 null，
+            // clear() 不会缩短长度，后续拆解会再次产生幽灵槽。
+            items = NonNullList.create();
+            for (int i = 0; i < totalSlots; i++) {
+                items.add(ItemStack.EMPTY);
+            }
             SlotContainerHelper.loadAllItems(tag, items);
             connectors.clear();
             ListTag connectorList = tag.getList("Connectors", 10);
@@ -666,10 +721,22 @@ public class StorageConnectorBlock extends BaseEntityBlock
         public <T> net.minecraftforge.common.util.LazyOptional<T> getCapability(
                 net.minecraftforge.common.capabilities.Capability<T> cap, @Nullable Direction side) {
             if (!remove && cap == net.minecraftforge.common.capabilities.ForgeCapabilities.ITEM_HANDLER) {
-                return net.minecraftforge.common.util.LazyOptional
-                        .of(() -> new net.minecraftforge.items.wrapper.InvWrapper(this)).cast();
+                return getItemHandler().cast();
             }
             return super.getCapability(cap, side);
+        }
+
+        private net.minecraftforge.common.util.LazyOptional<net.minecraftforge.items.IItemHandlerModifiable> itemHandler;
+
+        /**
+         * 缓存的物品处理器，保证同一个控制器始终返回同一个实例。
+         */
+        public net.minecraftforge.common.util.LazyOptional<net.minecraftforge.items.IItemHandlerModifiable> getItemHandler() {
+            if (itemHandler == null) {
+                itemHandler = net.minecraftforge.common.util.LazyOptional
+                        .of(() -> new net.minecraftforge.items.wrapper.InvWrapper(this));
+            }
+            return itemHandler;
         }
 
         // ========================================================================

@@ -78,7 +78,7 @@ import qikahome.jsonmore.lib.ExpandableMode;
 import qikahome.jsonmore.lib.FaceFilter;
 import qikahome.jsonmore.lib.IFlexContainer;
 import qikahome.jsonmore.lib.IFlexEntityBlock;
-import qikahome.jsonmore.lib.IProtectedBlock;
+import qikahome.qikalib.lib.IProtectedBlock;
 import net.minecraft.resources.ResourceLocation;
 import qikahome.jsonmore.minecraft.StorageConnectorBlock.ControllerBlockEntity;
 import qikahome.jsonmore.lib.ContainerScreenType;
@@ -86,8 +86,8 @@ import qikahome.jsonmore.lib.ItemFilter;
 import qikahome.jsonmore.lib.KeepInventoryMode;
 import qikahome.jsonmore.lib.MultiContainer;
 import qikahome.jsonmore.lib.PlacingDirections;
-import qikahome.jsonmore.lib.ingredient.KeepInventoryContainerIngredient;
-import qikahome.jsonmore.lib.ingredient.NotIngredient;
+import qikahome.qikalib.lib.ingredient.KeepInventoryContainerIngredient;
+import qikahome.qikalib.lib.ingredient.NotIngredient;
 import net.minecraft.world.level.block.Mirror;
 import qikahome.jsonmore.JsonMore;
 import static qikahome.jsonmore.lib.ContainerPart.PART;
@@ -661,10 +661,13 @@ public class FlexBarrelBlock extends BaseEntityBlock
                 if (!level.isClientSide) {
                     var controller = fbe.getController();
                     if (controller != null && controller.isAssembled()) {
-                        JsonMore.LOGGER.debug("FlexBarrelBlock.maySetBlock: found controller at {}, disassembling", pos);
+                        JsonMore.LOGGER.debug("FlexBarrelBlock.maySetBlock: barrel {} found controller at {}, disassembling",
+                                pos, controller.getBlockPos());
                         controller.disassemble(level);
-                        level.setBlock(pos, oldState.setValue(CONNECTED, false), 2); // Restore self
-                        JsonMore.LOGGER.debug("FlexBarrelBlock.maySetBlock: disassembled, restored to {}", oldState);
+                        BlockState restored = oldState.setValue(CONNECTED, false);
+                        level.setBlock(pos, restored, 2); // Restore self
+                        JsonMore.LOGGER.debug("FlexBarrelBlock.maySetBlock: disassembled, restored {} to {}", pos,
+                                restored);
                         return false;
                     }
                     JsonMore.LOGGER.debug("FlexBarrelBlock.maySetBlock: controller not found at {}, allowing removal", pos);
@@ -790,6 +793,45 @@ public class FlexBarrelBlock extends BaseEntityBlock
 
         private boolean isConnected() {
             return captured;
+        }
+
+        /**
+         * 返回与本方块组成双联桶的另一半，未连接或只有单方块时返回 null。
+         */
+        @Nullable
+        public FlexBarrelBlockEntity getPairedBarrel() {
+            BlockState state = getBlockState();
+            ContainerPart part = state.getValue(PART);
+            if (!part.isConnected() || level == null)
+                return null;
+            Direction otherDir = part.getWorldDirection(state.getValue(BlockStateProperties.FACING)).getOpposite();
+            if (otherDir == null)
+                return null;
+            if (level.getBlockEntity(worldPosition.relative(otherDir)) instanceof FlexBarrelBlockEntity other
+                    && other != this)
+                return other;
+            return null;
+        }
+
+        /**
+         * 缓存的物品处理器，保证同一个容器始终返回同一个实例。
+         * 双联桶的另一半复用主方块的 LazyOptional；被控制器捕获时复用控制器的 LazyOptional。
+         */
+        public net.minecraftforge.common.util.LazyOptional<net.minecraftforge.items.IItemHandlerModifiable> getItemHandler() {
+            if (isConnected()) {
+                ControllerBlockEntity controller = getController();
+                if (controller != null)
+                    return controller.getItemHandler();
+                return net.minecraftforge.common.util.LazyOptional.empty();
+            }
+            List<Container> containers = flexBlock.getContainers(level, getBlockPos(), getBlockState());
+            if (!containers.isEmpty() && containers.get(0) != this
+                    && containers.get(0) instanceof FlexBarrelBlockEntity first)
+                return first.getItemHandler();
+            if (this.itemHandler == null) {
+                this.itemHandler = net.minecraftforge.common.util.LazyOptional.of(this::createHandler);
+            }
+            return this.itemHandler;
         }
 
         public void setCaptured(boolean captured, @Nullable BlockPos controllerPos) {
@@ -953,10 +995,7 @@ public class FlexBarrelBlock extends BaseEntityBlock
                 return net.minecraftforge.common.util.LazyOptional.empty();
             }
             if (cap == net.minecraftforge.common.capabilities.ForgeCapabilities.ITEM_HANDLER && !this.remove) {
-                if (this.itemHandler == null) {
-                    this.itemHandler = net.minecraftforge.common.util.LazyOptional.of(this::createHandler);
-                }
-                return this.itemHandler.cast();
+                return getItemHandler().cast();
             }
             return super.getCapability(cap, side);
         }

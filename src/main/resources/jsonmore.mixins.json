@@ -6,13 +6,8 @@
   "mixins": [
     "MixinStandingAndWallBlockItem",
     "MixinBlockEntityType",
-    "MixinMechanicalCrafterBlockEntity",
-    "MixinLazyResultSlot",
-    "MixinUncraftingMenu",
-    "MixinTwilightForestJEICompat",
     "MixinFlexBarrelBlockItem",
-    "MixinFlexHorizontalDirectionalBlock",
-    "MixinLevel"
+    "MixinFlexHorizontalDirectionalBlock"
   ],
   "client": [],
   "server": [],

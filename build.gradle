@@ -126,9 +126,22 @@ if (secretFile.exists()) {
 
 // 依赖仓库配置
 repositories {
+    // 本地 Maven（QikaLib 开发期发布到 mavenLocal）
+    mavenLocal()
+
     // 国内镜像（加速 Forge / Minecraft / 通用库下载）
     maven { url = 'https://bmclapi2.bangbang93.com/maven' }  // Minecraft 综合镜像
     maven { url = 'https://maven.aliyun.com/repository/public' } // 阿里云 Maven 镜像
+
+    // QikaLib - GitHub Packages
+    maven {
+        name = "QikaLibPackages"
+        url = "https://maven.pkg.github.com/Qikahome/QikaLib"
+        credentials {
+            username = project.findProperty("gpr.user") ?: System.getenv("GITHUB_ACTOR")
+            password = project.findProperty("gpr.key") ?: System.getenv("GH_PACKAGES_TOKEN") ?: System.getenv("GITHUB_TOKEN")
+        }
+    }
 
     // AutoSizedGUI - GitHub Packages
     maven {
@@ -190,6 +203,11 @@ dependencies {
 
     // JSON Things - 必需依赖
     implementation fg.deobf("dev.gigaherz.jsonthings:JsonThings-${minecraft_version}:${json_things_version}")
+
+    // QikaLib - 原料/配方/条件/模型注入共享库（jarjar 嵌入）
+    implementation jarJar(fg.deobf("qikahome:qikalib-${minecraft_version}-forge:${qikalib_version}")) {
+        jarJar.ranged(it, "[0.1.0,0.2.0)")
+    }
 
     // AutoSizedGUI - 自动布局GUI（jarjar 嵌入）
     implementation jarJar(fg.deobf("qikahome:AutoSizedGUI-1.20.1:${autosizedgui_version}")) {

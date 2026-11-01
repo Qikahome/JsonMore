@@ -18,15 +18,15 @@ import net.minecraftforge.common.capabilities.ForgeCapabilities;
 import net.minecraftforge.common.crafting.CraftingHelper;
 import net.minecraftforge.common.crafting.IIngredientSerializer;
 import net.minecraftforge.fluids.capability.IFluidHandler.FluidAction;
-import qikahome.jsonmore.lib.ingredient.SelfConsumingIngredient;
+import qikahome.qikalib.lib.ingredient.SelfHandlingIngredient;
 import slimeknights.mantle.recipe.ingredient.FluidIngredient;
 
-public class FluidItemIngredient extends SelfConsumingIngredient {
+public class FluidItemIngredient extends SelfHandlingIngredient {
     public static final ResourceLocation ID = new ResourceLocation("jsonmore:fluid");
     private final FluidIngredient fluid;
 
     public FluidItemIngredient(Ingredient ingredient, FluidIngredient fluid) {
-        super(ingredient);
+        super(ingredient, false);
         this.fluid = fluid;
     }
 
@@ -101,7 +101,7 @@ public class FluidItemIngredient extends SelfConsumingIngredient {
     }
 
     @Override
-    public IIngredientSerializer<? extends Ingredient> getSerializer() {
+    public IIngredientSerializer<? extends SelfHandlingIngredient> getSerializer() {
         return Serializer.INSTANCE;
     }
 
