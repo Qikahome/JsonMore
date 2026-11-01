@@ -7,8 +7,7 @@
     "MixinStandingAndWallBlockItem",
     "MixinBlockEntityType",
     "MixinFlexBarrelBlockItem",
-    "MixinFlexHorizontalDirectionalBlock",
-    "MixinLevel"
+    "MixinFlexHorizontalDirectionalBlock"
   ],
   "client": [],
   "server": [],
